@@ -1163,6 +1163,24 @@ router.get('/dashboard', async (req, res) => {
       padding: 48px;
       color: var(--text-muted);
     }
+    .result-list {
+      margin-top: 16px;
+    }
+    .result-item {
+      padding: 12px;
+      margin-bottom: 8px;
+      background: var(--bg-card);
+      border-radius: 8px;
+      border-left: 3px solid var(--accent);
+    }
+    .result-item h4 {
+      margin: 0 0 8px 0;
+      color: var(--accent);
+      font-size: 16px;
+    }
+    .result-item p {
+      margin: 4px 0;
+    }
   </style>
 </head>
 <body>
@@ -1499,6 +1517,174 @@ router.get('/job/:uuid', async (req, res) => {
     res.status(500).send('Error loading job');
   }
 });
+
+// ============================================
+// RESULT FORMATTING HELPERS
+// ============================================
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(unsafe) {
+  if (typeof unsafe !== 'string') return unsafe;
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Format job output_data into HTML for display
+ * @param {Object} outputData - The job's output_data (parsed JSON)
+ * @param {Object} job - The full job object (for context)
+ * @returns {string} HTML string for display
+ */
+function formatJobResult(outputData, job) {
+  if (!outputData) {
+    // No results yet
+    return `
+      <div class="job-section" style="text-align: center; padding: 48px;">
+        <div style="font-size: 48px; margin-bottom: 16px;">
+          ${job.status === 'paid' ? '🔄' : '⏳'}
+        </div>
+        <p style="color: var(--text-muted); font-size: 18px; font-weight: 500; margin-bottom: 8px;">
+          ${job.status === 'paid' ? 'AI is working on your request...' : 'Waiting for payment'}
+        </p>
+        <p style="color: var(--text-muted); font-size: 14px;">
+          ${job.status === 'paid' ? 'This usually takes 5-30 seconds' : 'Complete payment to start processing'}
+        </p>
+        ${job.status === 'paid' ? '<p style="color: var(--text-muted); font-size: 14px; margin-top: 16px;">⚡ Page will refresh automatically when complete</p>' : ''}
+      </div>
+    `;
+  }
+
+  // Check if this is an error result
+  if (outputData.error) {
+    return `
+      <div class="job-section" style="border-left: 4px solid #ef4444;">
+        <h3 style="color: #ef4444;">❌ Error</h3>
+        <p style="margin-top: 8px;"><strong>${escapeHtml(outputData.error)}</strong></p>
+        ${outputData.message ? `<p style="color: var(--text-muted); margin-top: 8px;">${escapeHtml(outputData.message)}</p>` : ''}
+      </div>
+    `;
+  }
+
+  // Check if this is an image result
+  if (outputData.images && Array.isArray(outputData.images)) {
+    return formatImageResult(outputData.images);
+  }
+
+  // Format text result (structured data)
+  return formatTextResult(outputData);
+}
+
+/**
+ * Format image result with <img> tags
+ */
+function formatImageResult(images) {
+  // Validate URLs are HTTPS
+  const validImages = images.filter(url =>
+    typeof url === 'string' && url.startsWith('https://')
+  );
+
+  if (validImages.length === 0) {
+    return '<div class="job-section"><p style="color: var(--text-muted);">No valid images to display</p></div>';
+  }
+
+  const imageHtml = validImages.map(url => `
+    <div style="margin-bottom: 16px;">
+      <img src="${escapeHtml(url)}" alt="Generated image" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <div style="margin-top: 8px; display: flex; gap: 8px;">
+        <a href="${escapeHtml(url)}" target="_blank" class="btn" style="font-size: 14px;">🔗 Open Full Size</a>
+        <a href="${escapeHtml(url)}" download class="btn" style="font-size: 14px;">⬇️ Download</a>
+      </div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="job-section">
+      <h3>🎨 Generated Image${images.length > 1 ? 's' : ''}</h3>
+      ${imageHtml}
+    </div>
+  `;
+}
+
+/**
+ * Format text result (structured JSON data)
+ */
+function formatTextResult(data) {
+  let html = '<div class="job-section"><h3>✅ Result</h3>';
+
+  // Format based on common field patterns
+  if (data.ideas && Array.isArray(data.ideas)) {
+    // Brainstorm format
+    html += '<div class="result-list">';
+    data.ideas.forEach((idea, i) => {
+      html += `
+        <div class="result-item">
+          <h4>${i + 1}. ${escapeHtml(idea.angle || 'Idea')}</h4>
+          <p><strong>${escapeHtml(idea.idea)}</strong></p>
+          ${idea.why ? `<p style="color: var(--text-muted); font-size: 14px;">💡 ${escapeHtml(idea.why)}</p>` : ''}
+        </div>
+      `;
+    });
+    html += '</div>';
+  } else if (data.findings && Array.isArray(data.findings)) {
+    // Research format
+    if (data.summary) {
+      html += `<p style="margin-bottom: 16px;"><strong>Summary:</strong> ${escapeHtml(data.summary)}</p>`;
+    }
+    html += '<div class="result-list"><h4>Key Findings:</h4>';
+    data.findings.forEach(finding => {
+      const findingText = typeof finding === 'string' ? finding : finding.finding;
+      html += `<div class="result-item">• ${escapeHtml(findingText)}</div>`;
+    });
+    html += '</div>';
+
+    if (data.recommendations && data.recommendations.length > 0) {
+      html += '<div class="result-list" style="margin-top: 16px;"><h4>Recommendations:</h4>';
+      data.recommendations.forEach(rec => {
+        html += `<div class="result-item">• ${escapeHtml(rec)}</div>`;
+      });
+      html += '</div>';
+    }
+  } else if (data.output || data.tone) {
+    // Copywriting format
+    if (data.tone) {
+      html += `<p style="color: var(--text-muted); font-size: 14px; margin-bottom: 8px;">Tone: ${escapeHtml(data.tone)}</p>`;
+    }
+    if (data.output) {
+      html += `<p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">${escapeHtml(data.output)}</p>`;
+    }
+    if (data.alternatives && data.alternatives.length > 0) {
+      html += '<div class="result-list"><h4>Alternatives:</h4>';
+      data.alternatives.forEach(alt => {
+        html += `<div class="result-item">• ${escapeHtml(alt)}</div>`;
+      });
+      html += '</div>';
+    }
+  } else if (data.main_takeaway) {
+    // Summary format
+    html += `<p style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">${escapeHtml(data.main_takeaway)}</p>`;
+    if (data.key_points && data.key_points.length > 0) {
+      html += '<div class="result-list"><h4>Key Points:</h4>';
+      data.key_points.forEach(point => {
+        html += `<div class="result-item">• ${escapeHtml(point)}</div>`;
+      });
+      html += '</div>';
+    }
+  } else {
+    // Fallback: pretty-print JSON
+    html += '<pre style="background: var(--bg-card); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.5;">';
+    html += escapeHtml(JSON.stringify(data, null, 2));
+    html += '</pre>';
+  }
+
+  html += '</div>';
+  return html;
+}
 
 // ============================================
 // API ROUTES
