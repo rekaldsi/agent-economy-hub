@@ -10,6 +10,12 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Security: Content-Security-Policy header to prevent XSS
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'");
+  next();
+});
+
 const PORT = process.env.PORT || 7378;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -638,6 +644,13 @@ const services = {
   brief: { desc: 'Comprehensive creative brief', price: 1.00 }
 };
 
+// Security: HTML escape to prevent XSS
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 function updatePrice() {
   const s = document.getElementById('service').value;
   document.getElementById('service-desc').textContent = services[s].desc;
@@ -685,7 +698,7 @@ async function generate() {
     results.scrollIntoView({ behavior: 'smooth', block: 'start' });
     
   } catch (err) {
-    results.innerHTML = '<div class="results-empty"><div class="icon">⚠️</div><h4>Error</h4><p>' + err.message + '</p></div>';
+    results.innerHTML = '<div class="results-empty"><div class="icon">⚠️</div><h4>Error</h4><p>' + escapeHtml(err.message) + '</p></div>';
   } finally {
     btn.disabled = false;
     btn.textContent = 'Generate Results ✨';
@@ -694,73 +707,73 @@ async function generate() {
 
 function formatResults(service, data) {
   let html = '';
-  
+
   if (service === 'brainstorm' && data.ideas) {
     data.ideas.forEach((idea, i) => {
       html += '<div class="result-item">';
-      html += '<div class="result-title"><span class="result-num">' + (i+1) + '</span>' + idea.angle + '</div>';
-      html += '<div class="result-body">' + idea.idea + '</div>';
-      html += '<div class="result-note">↳ ' + idea.why + '</div>';
+      html += '<div class="result-title"><span class="result-num">' + (i+1) + '</span>' + escapeHtml(idea.angle) + '</div>';
+      html += '<div class="result-body">' + escapeHtml(idea.idea) + '</div>';
+      html += '<div class="result-note">↳ ' + escapeHtml(idea.why) + '</div>';
       html += '</div>';
     });
   }
-  
+
   else if (service === 'concept' && data.concept) {
     const c = data.concept;
-    html += '<div class="result-section"><div class="result-label">Insight</div><div class="result-text">' + c.insight + '</div></div>';
-    html += '<div class="result-section"><div class="result-label">Tension</div><div class="result-text">' + c.tension + '</div></div>';
-    html += '<div class="result-section"><div class="result-label">Core Idea</div><div class="result-text">' + c.idea + '</div></div>';
-    html += '<div class="result-headline">"' + c.headline + '"</div>';
+    html += '<div class="result-section"><div class="result-label">Insight</div><div class="result-text">' + escapeHtml(c.insight) + '</div></div>';
+    html += '<div class="result-section"><div class="result-label">Tension</div><div class="result-text">' + escapeHtml(c.tension) + '</div></div>';
+    html += '<div class="result-section"><div class="result-label">Core Idea</div><div class="result-text">' + escapeHtml(c.idea) + '</div></div>';
+    html += '<div class="result-headline">"' + escapeHtml(c.headline) + '"</div>';
     if (c.execution) {
       html += '<div class="result-section"><div class="result-label">Execution</div><ul class="result-list">';
-      html += '<li><strong>Hero:</strong> ' + (c.execution.hero || 'N/A') + '</li>';
-      html += '<li><strong>Social:</strong> ' + (c.execution.social || 'N/A') + '</li>';
-      html += '<li><strong>Experiential:</strong> ' + (c.execution.experiential || 'N/A') + '</li>';
+      html += '<li><strong>Hero:</strong> ' + escapeHtml(c.execution.hero || 'N/A') + '</li>';
+      html += '<li><strong>Social:</strong> ' + escapeHtml(c.execution.social || 'N/A') + '</li>';
+      html += '<li><strong>Experiential:</strong> ' + escapeHtml(c.execution.experiential || 'N/A') + '</li>';
       html += '</ul></div>';
     }
-    html += '<div class="result-section"><div class="result-label">Why It Works</div><div class="result-text" style="color:var(--text-muted);font-style:italic;">' + c.why_it_works + '</div></div>';
+    html += '<div class="result-section"><div class="result-label">Why It Works</div><div class="result-text" style="color:var(--text-muted);font-style:italic;">' + escapeHtml(c.why_it_works) + '</div></div>';
   }
-  
+
   else if (service === 'research' && data.report) {
     const r = data.report;
-    html += '<div class="result-section"><div class="result-label">Summary</div><div class="result-text">' + r.summary + '</div></div>';
+    html += '<div class="result-section"><div class="result-label">Summary</div><div class="result-text">' + escapeHtml(r.summary) + '</div></div>';
     r.findings.forEach((f, i) => {
       html += '<div class="result-item">';
-      html += '<div class="result-title"><span class="result-num">' + (i+1) + '</span>' + f.finding + '</div>';
-      html += '<div class="result-note" style="color:var(--green);">→ ' + f.implication + '</div>';
+      html += '<div class="result-title"><span class="result-num">' + (i+1) + '</span>' + escapeHtml(f.finding) + '</div>';
+      html += '<div class="result-note" style="color:var(--green);">→ ' + escapeHtml(f.implication) + '</div>';
       html += '</div>';
     });
     html += '<div class="result-section"><div class="result-label">Recommendations</div><ul class="result-list">';
-    r.recommendations.forEach(rec => { html += '<li>' + rec + '</li>'; });
+    r.recommendations.forEach(rec => { html += '<li>' + escapeHtml(rec) + '</li>'; });
     html += '</ul></div>';
   }
-  
+
   else if (service === 'write' && data.result) {
     const w = data.result;
-    html += '<div class="result-section"><div class="result-label">Tone: ' + w.tone + '</div></div>';
-    html += '<div class="result-quote">' + w.output + '</div>';
+    html += '<div class="result-section"><div class="result-label">Tone: ' + escapeHtml(w.tone) + '</div></div>';
+    html += '<div class="result-quote">' + escapeHtml(w.output) + '</div>';
     html += '<div class="result-section" style="margin-top:16px;"><div class="result-label">Alternatives</div><ul class="result-list">';
-    w.alternatives.forEach(alt => { html += '<li>' + alt + '</li>'; });
+    w.alternatives.forEach(alt => { html += '<li>' + escapeHtml(alt) + '</li>'; });
     html += '</ul></div>';
   }
-  
+
   else if (service === 'brief' && data.brief) {
     const b = data.brief;
-    html += '<div class="result-section"><div class="result-label">Project</div><div class="result-text" style="font-size:1.1rem;font-weight:600;">' + b.project + '</div></div>';
-    html += '<div class="result-section"><div class="result-label">Objective</div><div class="result-text">' + b.objective + '</div></div>';
-    html += '<div class="result-section"><div class="result-label">Audience</div><div class="result-text">' + b.audience + '</div></div>';
-    html += '<div class="result-section"><div class="result-label">Insight</div><div class="result-text">' + b.insight + '</div></div>';
-    html += '<div class="result-headline">"' + b.proposition + '"</div>';
-    html += '<div class="result-section"><div class="result-label">Tone</div><div class="result-text">' + b.tone + '</div></div>';
+    html += '<div class="result-section"><div class="result-label">Project</div><div class="result-text" style="font-size:1.1rem;font-weight:600;">' + escapeHtml(b.project) + '</div></div>';
+    html += '<div class="result-section"><div class="result-label">Objective</div><div class="result-text">' + escapeHtml(b.objective) + '</div></div>';
+    html += '<div class="result-section"><div class="result-label">Audience</div><div class="result-text">' + escapeHtml(b.audience) + '</div></div>';
+    html += '<div class="result-section"><div class="result-label">Insight</div><div class="result-text">' + escapeHtml(b.insight) + '</div></div>';
+    html += '<div class="result-headline">"' + escapeHtml(b.proposition) + '"</div>';
+    html += '<div class="result-section"><div class="result-label">Tone</div><div class="result-text">' + escapeHtml(b.tone) + '</div></div>';
     html += '<div class="result-section"><div class="result-label">Success Metrics</div><ul class="result-list">';
-    b.success_metrics.forEach(m => { html += '<li>' + m + '</li>'; });
+    b.success_metrics.forEach(m => { html += '<li>' + escapeHtml(m) + '</li>'; });
     html += '</ul></div>';
   }
-  
+
   else {
-    html = '<pre style="color:var(--text-muted);font-size:0.85rem;">' + JSON.stringify(data, null, 2) + '</pre>';
+    html = '<pre style="color:var(--text-muted);font-size:0.85rem;">' + escapeHtml(JSON.stringify(data, null, 2)) + '</pre>';
   }
-  
+
   return html;
 }
 
