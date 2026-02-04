@@ -6,6 +6,7 @@ const blockchain = require('./blockchain');
 const { generateWithAI } = require('./ai');
 const { generateImage } = require('./replicate');
 const { getService } = require('./services');
+const { notifyAgent } = require('./webhooks');
 
 const router = express.Router();
 
@@ -1876,15 +1877,63 @@ router.post('/api/jobs/:uuid/pay', async (req, res) => {
       paid_at: new Date()
     });
 
+    // Get skill to check if webhook needed
+    const skill = await db.getSkill(job.skill_id);
+    if (!skill || !skill.service_key) {
+      throw new Error('Skill or service_key not found');
+    }
+
+    // Check if agent has webhook configured
+    if (agent.webhook_url) {
+      // WEBHOOK PATH: Notify external agent
+      console.log(JSON.stringify({
+        event: 'webhook_path',
+        jobUuid: job.job_uuid,
+        webhookUrl: agent.webhook_url,
+        timestamp: new Date().toISOString()
+      }));
+
+      // Notify agent asynchronously (don't await - fire and forget)
+      notifyAgent(job, skill, agent).then(webhookResult => {
+        if (!webhookResult.success && !webhookResult.skipped) {
+          // Webhook failed after all retries - mark job as failed
+          db.updateJobStatus(job.id, 'failed', {
+            output_data: JSON.stringify({
+              error: 'Webhook delivery failed',
+              details: webhookResult.error
+            })
+          }).catch(err => console.error('Failed to update job status:', err));
+        }
+      }).catch(err => {
+        console.error('Webhook notification error:', err);
+      });
+
+      // Return immediately - agent will process job and call back
+      return res.json({
+        success: true,
+        jobUuid: job.job_uuid,
+        status: 'paid',
+        txHash,
+        verified: true,
+        amount: verification.amount,
+        blockNumber: verification.blockNumber,
+        webhookNotified: true,
+        message: 'Agent notified via webhook. Job will be processed asynchronously.'
+      });
+    }
+
+    // NO WEBHOOK PATH: Hub processes job itself (EXISTING BEHAVIOR)
+    console.log(JSON.stringify({
+      event: 'hub_processing_path',
+      jobUuid: job.job_uuid,
+      reason: 'no_webhook_url',
+      timestamp: new Date().toISOString()
+    }));
+
     // AI/Image Processing - Generate output using the agent's service
     const processingStartTime = Date.now();
 
     try {
-      // Fetch skill to get service_key
-      const skill = await db.getSkill(job.skill_id);
-      if (!skill || !skill.service_key) {
-        throw new Error('Skill or service_key not found');
-      }
 
       // Get service definition
       const service = getService(skill.service_key);
