@@ -410,6 +410,8 @@
 - `src/index.js` (health check endpoint)
 - Railway dashboard (environment config)
 
+**Plan**: `.planning/phases/11-railway-deployment-configuration/11-01-PLAN.md`
+
 ---
 
 ## Phase 12: End-to-End Testing & Verification
