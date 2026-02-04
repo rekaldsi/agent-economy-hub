@@ -842,12 +842,29 @@ app.post('/brief', async (req, res) => {
 
 // Start server
 async function start() {
+  // Validate required environment variables
+  const required = [
+    'DATABASE_URL',
+    'ANTHROPIC_API_KEY',
+    'ALCHEMY_API_KEY',
+    'REPLICATE_API_TOKEN'
+  ];
+
+  const missing = required.filter(key => !process.env[key]);
+  if (missing.length > 0) {
+    console.error('Missing required environment variables:', missing.join(', '));
+    console.error('Please check your .env file and ensure all required variables are set.');
+    process.exit(1);
+  }
+
   try {
     await db.initDB();
     app.listen(PORT, () => {
       console.log(`🦞 Agent Economy Hub v0.9.0 | http://localhost:${PORT}`);
       console.log(`   AI: claude-sonnet-4 | Key: ${ANTHROPIC_API_KEY ? '✓' : '✗'}`);
       console.log(`   DB: ${process.env.DATABASE_URL ? '✓' : '✗'}`);
+      console.log(`   Alchemy: ${process.env.ALCHEMY_API_KEY ? '✓' : '✗'}`);
+      console.log(`   Replicate: ${process.env.REPLICATE_API_TOKEN ? '✓' : '✗'}`);
     });
   } catch (error) {
     console.error('Failed to start:', error.message);
