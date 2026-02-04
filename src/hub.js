@@ -1375,7 +1375,8 @@ const HUB_SCRIPTS = `
   }
 
   // Check connection on load
-  window.addEventListener('load', checkConnection);
+  // Don't auto-connect on load - wait for user to click Connect Wallet
+  // window.addEventListener('load', checkConnection);
 
   // Animate elements with stagger effect
   function animateList(selector, delay = 50) {
