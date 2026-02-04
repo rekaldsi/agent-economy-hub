@@ -123,7 +123,54 @@ const HUB_STYLES = `
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    font-size: 16px;
   }
+
+  /* ============================================
+     TYPOGRAPHY SYSTEM
+     ============================================ */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 0.5em;
+  }
+
+  h1 { font-size: 2.5rem; }
+  h2 { font-size: 2rem; }
+  h3 { font-size: 1.5rem; }
+  h4 { font-size: 1.25rem; }
+  h5 { font-size: 1.1rem; }
+  h6 { font-size: 1rem; }
+
+  p {
+    line-height: 1.6;
+    margin-bottom: 1em;
+  }
+
+  /* ============================================
+     SPACING SYSTEM
+     ============================================ */
+  .mb-1 { margin-bottom: 8px; }
+  .mb-2 { margin-bottom: 16px; }
+  .mb-3 { margin-bottom: 24px; }
+  .mb-4 { margin-bottom: 32px; }
+  .mb-5 { margin-bottom: 48px; }
+
+  .mt-1 { margin-top: 8px; }
+  .mt-2 { margin-top: 16px; }
+  .mt-3 { margin-top: 24px; }
+  .mt-4 { margin-top: 32px; }
+  .mt-5 { margin-top: 48px; }
+
+  .p-1 { padding: 8px; }
+  .p-2 { padding: 16px; }
+  .p-3 { padding: 24px; }
+  .p-4 { padding: 32px; }
+
+  .gap-1 { gap: 8px; }
+  .gap-2 { gap: 16px; }
+  .gap-3 { gap: 24px; }
+
   .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
   header {
     display: flex;
@@ -272,6 +319,107 @@ const HUB_STYLES = `
     width: 300px;
     height: 300px;
   }
+
+  /* ============================================
+     CARD COMPONENTS
+     ============================================ */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.2s;
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+  }
+
+  .card-header {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .card-subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 4px;
+  }
+
+  .card-body {
+    /* Content goes here */
+  }
+
+  .card-footer {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ============================================
+     FORM ELEMENTS
+     ============================================ */
+  label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--text-muted);
+    opacity: 0.6;
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-help {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .form-error {
+    font-size: 0.85rem;
+    color: #ef4444;
+    margin-top: 4px;
+  }
+
   .hero {
     text-align: center;
     padding: 80px 24px;
@@ -759,6 +907,22 @@ const HUB_STYLES = `
     a, button, input[type="submit"], input[type="button"] {
       min-height: 44px;
       min-width: 44px;
+    }
+
+    /* Responsive Typography */
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.75rem; }
+    h3 { font-size: 1.25rem; }
+    h4 { font-size: 1.1rem; }
+
+    body {
+      font-size: 15px;
+    }
+
+    /* Card Responsive */
+    .card {
+      padding: 16px;
+      border-radius: 8px;
     }
   }
 
