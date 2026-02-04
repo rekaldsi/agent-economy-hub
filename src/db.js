@@ -190,11 +190,27 @@ async function createJob(jobUuid, requesterId, agentId, skillId, inputData, pric
 }
 
 async function updateJobStatus(jobId, status, extraFields = {}) {
+  // Whitelist allowed fields to prevent SQL injection
+  const allowedFields = [
+    'payment_tx_hash',
+    'payout_tx_hash',
+    'paid_at',
+    'delivered_at',
+    'completed_at',
+    'output_data'
+  ];
+
   const setClauses = ['status = $2'];
   const values = [jobId, status];
   let paramIndex = 3;
 
   for (const [key, value] of Object.entries(extraFields)) {
+    // Security: Only allow whitelisted fields
+    if (!allowedFields.includes(key)) {
+      console.warn(`updateJobStatus: Ignoring invalid field '${key}'`);
+      continue;
+    }
+
     setClauses.push(`${key} = $${paramIndex}`);
     values.push(value);
     paramIndex++;

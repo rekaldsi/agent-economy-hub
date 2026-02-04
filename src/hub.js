@@ -7,6 +7,19 @@ const blockchain = require('./blockchain');
 const router = express.Router();
 
 // ============================================
+// VALIDATION HELPERS
+// ============================================
+
+function isValidEthereumAddress(address) {
+  return /^0x[a-fA-F0-9]{40}$/.test(address);
+}
+
+function isValidPrice(price) {
+  const num = Number(price);
+  return !isNaN(num) && num > 0 && num < 1000; // Max $1000 per job
+}
+
+// ============================================
 // HUB LANDING PAGE
 // ============================================
 const HUB_STYLES = `
@@ -1505,8 +1518,34 @@ router.post('/api/users', async (req, res) => {
 router.post('/api/jobs', async (req, res) => {
   try {
     const { wallet, agentId, skillId, input, price } = req.body;
+
+    // Validate required fields
     if (!wallet || !agentId || !skillId || !input) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Validate wallet address format
+    if (!isValidEthereumAddress(wallet)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
+
+    // Validate price
+    if (!isValidPrice(price)) {
+      return res.status(400).json({ error: 'Invalid price (must be positive number < $1000)' });
+    }
+
+    // Validate IDs are positive integers
+    if (!Number.isInteger(agentId) || agentId <= 0) {
+      return res.status(400).json({ error: 'Invalid agent ID' });
+    }
+    if (!Number.isInteger(skillId) || skillId <= 0) {
+      return res.status(400).json({ error: 'Invalid skill ID' });
+    }
+
+    // Verify agent exists and is active
+    const agent = await db.getAgent(agentId);
+    if (!agent || !agent.is_active) {
+      return res.status(404).json({ error: 'Agent not found or inactive' });
     }
 
     // Get or create user
