@@ -1617,20 +1617,86 @@ router.post('/api/jobs/:uuid/pay', async (req, res) => {
     console.log('Payment verified:', verification);
 
     // Update job status to paid
-    const updated = await db.updateJobStatus(job.id, 'paid', {
+    await db.updateJobStatus(job.id, 'paid', {
       payment_tx_hash: txHash,
       paid_at: new Date()
     });
 
-    // TODO: Trigger agent webhook / process job (Phase 3)
+    // AI Processing - Generate output using the agent's service
+    console.log(JSON.stringify({
+      event: 'ai_processing_start',
+      jobUuid: job.job_uuid,
+      skillId: job.skill_id,
+      timestamp: new Date().toISOString()
+    }));
 
-    res.json({
-      status: 'paid',
-      txHash,
-      verified: true,
-      amount: verification.amount,
-      blockNumber: verification.blockNumber
-    });
+    const aiStartTime = Date.now();
+
+    try {
+      // Fetch skill to get service_key
+      const skill = await db.getSkill(job.skill_id);
+      if (!skill || !skill.service_key) {
+        throw new Error('Skill or service_key not found');
+      }
+
+      // Get input prompt from job
+      const userPrompt = job.input_data?.prompt || JSON.stringify(job.input_data);
+
+      // Call AI generation
+      const result = await generateWithAI(skill.service_key, userPrompt);
+
+      // Store result and update status to completed
+      await db.updateJobStatus(job.id, 'completed', {
+        output_data: JSON.stringify(result),
+        completed_at: new Date()
+      });
+
+      const aiDuration = Date.now() - aiStartTime;
+
+      console.log(JSON.stringify({
+        event: 'ai_processing_complete',
+        jobUuid: job.job_uuid,
+        skillId: job.skill_id,
+        serviceKey: skill.service_key,
+        durationMs: aiDuration,
+        timestamp: new Date().toISOString()
+      }));
+
+      res.json({
+        status: 'completed',
+        txHash,
+        verified: true,
+        amount: verification.amount,
+        blockNumber: verification.blockNumber,
+        result
+      });
+
+    } catch (aiError) {
+      const aiDuration = Date.now() - aiStartTime;
+
+      console.error(JSON.stringify({
+        event: 'ai_processing_error',
+        jobUuid: job.job_uuid,
+        skillId: job.skill_id,
+        error: aiError.message,
+        durationMs: aiDuration,
+        timestamp: new Date().toISOString()
+      }));
+
+      // Update job status to failed
+      await db.updateJobStatus(job.id, 'failed', {
+        output_data: JSON.stringify({ error: aiError.message })
+      });
+
+      res.json({
+        status: 'failed',
+        txHash,
+        verified: true,
+        amount: verification.amount,
+        blockNumber: verification.blockNumber,
+        error: 'AI processing failed: ' + aiError.message
+      });
+    }
   } catch (error) {
     console.error('Payment endpoint error:', error);
     res.status(500).json({ error: error.message });
