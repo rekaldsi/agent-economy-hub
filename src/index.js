@@ -8,7 +8,17 @@ const { generateWithAI } = require('./ai');
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+
+// More restrictive limits for API endpoints
+app.use(express.json({
+  limit: '100kb', // Default limit for most requests
+  strict: true    // Only accept arrays and objects
+}));
+
+// Specific limit for job completion (agents posting results)
+app.use('/api/jobs/:uuid/complete', express.json({
+  limit: '500kb' // Allow larger output data from agents
+}));
 
 // Security: Content-Security-Policy header to prevent XSS
 app.use((req, res, next) => {
