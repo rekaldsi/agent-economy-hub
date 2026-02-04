@@ -2069,11 +2069,39 @@ router.get('/api/jobs/:uuid', async (req, res) => {
 // Agent completes job (webhook callback)
 router.post('/api/jobs/:uuid/complete', async (req, res) => {
   try {
-    const { apiKey, output } = req.body;
+    const { apiKey, output, status } = req.body;
 
     // Validate API key
     if (!apiKey || typeof apiKey !== 'string') {
       return res.status(401).json({ error: 'API key required' });
+    }
+
+    // Agent can optionally POST { apiKey, status: 'in_progress' } to mark job as in-progress
+    if (status === 'in_progress' && !output) {
+      // Get job
+      const job = await db.getJob(req.params.uuid);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      // Get agent and verify API key
+      const agent = await db.getAgent(job.agent_id);
+      if (!agent) {
+        return res.status(500).json({ error: 'Agent not found' });
+      }
+
+      if (agent.api_key !== apiKey) {
+        return res.status(403).json({ error: 'Invalid API key' });
+      }
+
+      // Mark as in-progress without output
+      await db.markJobInProgress(job.id);
+      return res.json({
+        success: true,
+        jobUuid: job.job_uuid,
+        status: 'in_progress',
+        message: 'Job marked as in-progress'
+      });
     }
 
     // Validate output

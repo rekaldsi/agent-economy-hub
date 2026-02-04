@@ -335,6 +335,15 @@ async function logWebhookDelivery(jobId, agentId, webhookUrl, result) {
   );
 }
 
+/**
+ * Mark job as in-progress (agent is processing)
+ */
+async function markJobInProgress(jobId) {
+  return updateJobStatus(jobId, 'in_progress', {
+    // No additional fields needed
+  });
+}
+
 module.exports = {
   pool,
   query,
@@ -353,5 +362,6 @@ module.exports = {
   getJob,
   getJobsByUser,
   getJobsByAgent,
-  logWebhookDelivery
+  logWebhookDelivery,
+  markJobInProgress
 };
