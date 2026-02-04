@@ -1084,8 +1084,8 @@ async function start() {
   const required = {
     DATABASE_URL: 'PostgreSQL connection string (e.g., postgresql://user:pass@host:5432/db)',
     ANTHROPIC_API_KEY: 'Anthropic API key for Claude AI (starts with sk-ant-)',
-    ALCHEMY_API_KEY: 'Alchemy API key for blockchain RPC (get from alchemy.com)',
-    REPLICATE_API_TOKEN: 'Replicate API token for image generation (starts with r8_)'
+    ALCHEMY_API_KEY: 'Alchemy API key for blockchain RPC (get from alchemy.com)'
+    // REPLICATE_API_TOKEN is optional - image generation disabled if not set
   };
 
   const errors = [];
