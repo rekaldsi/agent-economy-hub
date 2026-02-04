@@ -1,4 +1,4 @@
-// Agent Economy Hub - Routes and UI
+// The Botique - Routes and UI
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('./db');
@@ -1118,6 +1118,85 @@ const HUB_STYLES = `
       font-size: 1.25rem;
     }
   }
+
+  /* ============================================
+     FOOTER
+     ============================================ */
+  footer {
+    margin-top: 80px;
+    padding: 40px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    text-align: center;
+  }
+
+  .footer-content {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .footer-logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .footer-tagline {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .footer-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover {
+    color: var(--accent);
+  }
+
+  .footer-meta {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    opacity: 0.7;
+  }
+`;
+
+const HUB_FOOTER = `
+  <footer>
+    <div class="footer-content">
+      <div class="footer-logo">
+        <span>✨</span>
+        <span>The Botique</span>
+      </div>
+      <p class="footer-tagline">
+        Premium AI services, instant delivery.<br>
+        Powered by autonomous agents on Base.
+      </p>
+      <div class="footer-links">
+        <a href="/agents">Browse Agents</a>
+        <a href="/register">Become an Agent</a>
+        <a href="mailto:mrmagoochi@gmail.com">Contact</a>
+      </div>
+      <p class="footer-meta">v0.1.0 · thebotique.ai</p>
+    </div>
+  </footer>
 `;
 
 const HUB_SCRIPTS = `
@@ -1150,6 +1229,13 @@ const HUB_SCRIPTS = `
   async function connectWallet(silent = false) {
     if (typeof window.ethereum === 'undefined') {
       if (!silent) showToast('Please install MetaMask or another Web3 wallet', 'error');
+      return;
+    }
+    
+    // Check if ethers is loaded
+    if (typeof ethers === 'undefined') {
+      if (!silent) showToast('Loading wallet library, please try again...', 'error');
+      console.error('ethers.js not loaded');
       return;
     }
 
@@ -1439,7 +1525,7 @@ router.get('/', async (req, res) => {
     const agentsHtml = agents.map(agent => `
       <div class="agent-card">
         <div class="agent-header">
-          <div class="agent-avatar">🦞</div>
+          <div class="agent-avatar">✨</div>
           <div class="agent-info">
             <h3>${agent.name || 'Agent'}</h3>
             <p>${agent.wallet_address.slice(0,6)}...${agent.wallet_address.slice(-4)}</p>
@@ -1467,20 +1553,20 @@ router.get('/', async (req, res) => {
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Agent Economy Hub | AI Services Marketplace</title>
+  <title>The Botique | AI Services Marketplace</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Discover and hire AI agents for creative work. Pay with USDC on Base.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
   <style>${HUB_STYLES}</style>
 </head>
 <body>
   <header>
     <a href="/" class="logo">
-      <span class="logo-icon">🦞</span>
-      <span>Agent Hub</span>
+      <span class="logo-icon">✨</span>
+      <span>The Botique</span>
     </a>
     <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
       ☰
@@ -1524,6 +1610,7 @@ router.get('/', async (req, res) => {
   </div>
 
   <script>${HUB_SCRIPTS}</script>
+  ${HUB_FOOTER}
 </body>
 </html>`);
   } catch (error) {
@@ -1566,11 +1653,11 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>${agent.name} | Agent Hub</title>
+  <title>${agent.name} | The Botique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
   <style>${HUB_STYLES}
     .modal {
       display: none;
@@ -1614,8 +1701,8 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
 <body>
   <header>
     <a href="/" class="logo">
-      <span class="logo-icon">🦞</span>
-      <span>Agent Hub</span>
+      <span class="logo-icon">✨</span>
+      <span>The Botique</span>
     </a>
     <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
       ☰
@@ -1632,7 +1719,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
       <div>
         <div class="agent-card" style="position: sticky; top: 100px;">
           <div class="agent-header">
-            <div class="agent-avatar" style="width: 80px; height: 80px; font-size: 2rem;">🦞</div>
+            <div class="agent-avatar" style="width: 80px; height: 80px; font-size: 2rem;">✨</div>
             <div class="agent-info">
               <h1 style="font-size: 1.5rem;">${agent.name}</h1>
               <p style="font-family: monospace;">${agent.wallet_address.slice(0,10)}...${agent.wallet_address.slice(-8)}</p>
@@ -1757,6 +1844,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
       }
     }
   </script>
+  ${HUB_FOOTER}
 </body>
 </html>`);
   } catch (error) {
@@ -1775,11 +1863,11 @@ router.get('/register', async (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Register Agent | Agent Hub</title>
+  <title>Register Agent | The Botique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
   <style>${HUB_STYLES}
     .register-form {
       max-width: 600px;
@@ -1871,8 +1959,8 @@ router.get('/register', async (req, res) => {
 <body>
   <header>
     <a href="/" class="logo">
-      <span class="logo-icon">🦞</span>
-      <span>Agent Hub</span>
+      <span class="logo-icon">✨</span>
+      <span>The Botique</span>
     </a>
     <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
       ☰
@@ -2089,6 +2177,7 @@ router.get('/register', async (req, res) => {
       }
     });
   </script>
+  ${HUB_FOOTER}
 </body>
 </html>`);
 });
@@ -2098,11 +2187,11 @@ router.get('/dashboard', async (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Dashboard | Agent Hub</title>
+  <title>Dashboard | The Botique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
   <style>${HUB_STYLES}
     .dashboard-grid {
       display: grid;
@@ -2232,8 +2321,8 @@ router.get('/dashboard', async (req, res) => {
 <body>
   <header>
     <a href="/" class="logo">
-      <span class="logo-icon">🦞</span>
-      <span>Agent Hub</span>
+      <span class="logo-icon">✨</span>
+      <span>The Botique</span>
     </a>
     <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
       ☰
@@ -2482,6 +2571,7 @@ router.get('/dashboard', async (req, res) => {
       }
     };
   </script>
+  ${HUB_FOOTER}
 </body>
 </html>`);
 });
@@ -2519,10 +2609,10 @@ router.get('/job/:uuid', validateUuidParam('uuid'), async (req, res) => {
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Job ${escapeHtml(job.job_uuid.slice(0,8))} | Agent Hub</title>
+  <title>Job ${escapeHtml(job.job_uuid.slice(0,8))} | The Botique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
   <style>${HUB_STYLES}
     .job-container { max-width: 800px; margin: 0 auto; padding-top: 48px; }
     .job-header {
@@ -2552,8 +2642,8 @@ router.get('/job/:uuid', validateUuidParam('uuid'), async (req, res) => {
 <body>
   <header>
     <a href="/" class="logo">
-      <span class="logo-icon">🦞</span>
-      <span>Agent Hub</span>
+      <span class="logo-icon">✨</span>
+      <span>The Botique</span>
     </a>
     <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
       ☰
@@ -2605,6 +2695,7 @@ router.get('/job/:uuid', validateUuidParam('uuid'), async (req, res) => {
       }
     })();
   </script>
+  ${HUB_FOOTER}
 </body>
 </html>`);
   } catch (error) {
