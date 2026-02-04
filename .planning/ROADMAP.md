@@ -47,28 +47,38 @@
 
 ---
 
-## Phase 2: Payment Verification & Security
+## Phase 2: Payment Verification & Security ✅
 
 **Goal**: Validate USDC transactions on-chain, secure exposed API keys
 
+**Status**: ✅ **COMPLETE** (2026-02-03)
+
 **Why second**: Security critical before processing real payments. Move Alchemy key to backend.
 
-**Deliverables**:
-- On-chain transaction verification (check txHash actually occurred)
-- Validate payment amount matches job price
-- Move Alchemy RPC calls to backend (hide API key)
-- Input validation on all API endpoints
-- XSS prevention (sanitize HTML outputs)
+**Deliverables**: ✅ All delivered
+- ✅ On-chain transaction verification (verifyUSDCPayment in blockchain.js)
+- ✅ Payment amount validation (0.1% tolerance, 6 decimals)
+- ✅ Alchemy key moved to backend (server-side .env only)
+- ✅ Input validation on all API endpoints (wallet format, price, IDs)
+- ✅ XSS prevention (HTML escaping + CSP header)
+- ✅ SQL injection fix (field whitelist in updateJobStatus)
 
 **Requires Research**: Partial (ethers.js transaction verification patterns)
 
 **Estimated Complexity**: Medium (blockchain integration)
 
+**Actual Time**: ~2 hours (5 commits)
+
 **Files**:
-- `src/hub.js:1544-1562` (POST /api/jobs/:uuid/pay)
-- `src/hub.js:288` (exposed Alchemy key)
-- Create `src/blockchain.js` (new backend service)
-- `src/hub.js` (sanitize HTML outputs)
+- ✅ `src/blockchain.js` (created — 133 lines, transaction verification)
+- ✅ `src/hub.js:1528-1596` (payment endpoint with verification)
+- ✅ `src/hub.js:289` (removed exposed Alchemy key)
+- ✅ `src/hub.js:1518-1533` (job creation with validation)
+- ✅ `src/db.js:192-221` (SQL injection fix)
+- ✅ `src/index.js` (CSP header + HTML sanitization)
+
+**Plan**: `.planning/phases/02-payment-verification-security/02-01-PLAN.md`
+**Summary**: `.planning/phases/02-payment-verification-security/02-01-SUMMARY.md`
 
 ---
 
