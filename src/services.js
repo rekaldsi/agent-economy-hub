@@ -603,6 +603,74 @@ Respond in this exact JSON format:
   "gaps": ["what couldn't be found"],
   "sources_note": "how this would typically be sourced"
 }`
+  },
+
+  // ============================================
+  // VISUAL SERVICES (image generation)
+  // ============================================
+  image_generate: {
+    name: 'Image Generation',
+    category: 'visual',
+    description: 'Generate high-quality images from text descriptions',
+    price: 0.50,
+    estimatedTime: '30 seconds',
+    inputLabel: 'Describe the image you want',
+    inputPlaceholder: 'e.g., A futuristic city at sunset with flying cars',
+    useReplicate: true,
+    replicateModel: 'black-forest-labs/flux-schnell',
+    systemPrompt: null  // Not used for Replicate services
+  },
+
+  image_portrait: {
+    name: 'Portrait Generation',
+    category: 'visual',
+    description: 'Generate realistic portraits and headshots',
+    price: 0.75,
+    estimatedTime: '45 seconds',
+    inputLabel: 'Describe the portrait',
+    inputPlaceholder: 'e.g., Professional headshot of a woman in her 30s, business attire',
+    useReplicate: true,
+    replicateModel: 'tencentarc/photomaker:ddfc2b08d209f9fa8c1eca692712918bd449f695dabb4a958da31802a9570fe4',
+    systemPrompt: null
+  },
+
+  image_logo: {
+    name: 'Logo Design',
+    category: 'visual',
+    description: 'Generate logo concepts and brand marks',
+    price: 1.00,
+    estimatedTime: '40 seconds',
+    inputLabel: 'Describe your brand and desired logo style',
+    inputPlaceholder: 'e.g., Minimalist tech startup logo with blue and white colors',
+    useReplicate: true,
+    replicateModel: 'black-forest-labs/flux-schnell',
+    systemPrompt: null
+  },
+
+  image_product: {
+    name: 'Product Mockup',
+    category: 'visual',
+    description: 'Generate product photography and mockups',
+    price: 0.60,
+    estimatedTime: '35 seconds',
+    inputLabel: 'Describe the product and setting',
+    inputPlaceholder: 'e.g., Sleek smartphone on a marble desk with natural lighting',
+    useReplicate: true,
+    replicateModel: 'stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b',
+    systemPrompt: null
+  },
+
+  image_style: {
+    name: 'Artistic Style',
+    category: 'visual',
+    description: 'Generate images with specific artistic styles',
+    price: 0.55,
+    estimatedTime: '35 seconds',
+    inputLabel: 'Describe the scene and artistic style',
+    inputPlaceholder: 'e.g., Mountain landscape in Van Gogh impressionist style',
+    useReplicate: true,
+    replicateModel: 'black-forest-labs/flux-schnell',
+    systemPrompt: null
   }
 };
 
