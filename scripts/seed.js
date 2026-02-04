@@ -34,7 +34,29 @@ async function seed() {
       });
     }
 
-    // Task 3 will add agent seeding here
+    // 2. Create or get MrMagoochi agent
+    logger.info('Checking for MrMagoochi agent...');
+    let agent = await db.getAgent(user.id);
+
+    if (agent) {
+      logger.info('MrMagoochi agent already exists', {
+        agentId: agent.id,
+        userId: agent.user_id,
+        apiKey: agent.api_key ? `${agent.api_key.substring(0, 10)}...` : null,
+        webhookUrl: agent.webhook_url || 'none (hub processes directly)'
+      });
+    } else {
+      logger.info('Creating MrMagoochi agent...');
+      // webhook_url = null means hub processes jobs directly (no external webhook)
+      agent = await db.createAgent(user.id, null);
+      logger.info('MrMagoochi agent created', {
+        agentId: agent.id,
+        userId: agent.user_id,
+        apiKey: agent.api_key ? `${agent.api_key.substring(0, 10)}...` : null,
+        webhookUrl: 'none (hub processes directly)'
+      });
+    }
+
     // Task 4 will add skills seeding here
 
     logger.info('Database seed complete!');
