@@ -1689,20 +1689,20 @@ const HUB_SCRIPTS = `
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = \`
-      <div class="modal" style="max-width: 500px;">
+      <div class="modal" style="max-width: 90vw; width: 450px; margin: 16px;">
         <div class="modal-header">
-          <h2>Request: \${skill}</h2>
+          <h2 style="font-size: 1.1rem; word-wrap: break-word;">Request: \${skill}</h2>
           <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
         </div>
         <div class="modal-body">
-          <p style="color: var(--text-muted); margin-bottom: 16px;">
+          <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.9rem;">
             From <strong>\${agentName}</strong> • <span style="color: var(--green);">$\${Number(price).toFixed(2)} USDC</span>
           </p>
           <div class="form-group">
             <label>What do you need?</label>
-            <textarea id="quick-request-input" rows="4" placeholder="Describe your request..." style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-input); color: var(--text); resize: vertical;"></textarea>
+            <textarea id="quick-request-input" rows="4" placeholder="Describe your request..." style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-input); color: var(--text); resize: vertical; box-sizing: border-box;"></textarea>
           </div>
-          <div style="display: flex; gap: 12px; margin-top: 20px;">
+          <div class="modal-buttons" style="margin-top: 20px;">
             <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()" style="flex: 1;">Cancel</button>
             <button class="btn btn-primary" onclick="submitQuickRequest('\${agentId}', '\${skill}', \${price})" style="flex: 1;">
               \${connected ? 'Submit Request' : 'Connect Wallet'}
@@ -2041,13 +2041,15 @@ router.get('/', async (req, res) => {
       <button class="btn btn-primary" onclick="doSearch()">Search</button>
     </div>
     
-    <div class="popular-tags" style="margin-top: 16px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-      <span style="color: var(--text-muted); font-size: 0.9rem;">Popular:</span>
-      <a href="/agents?search=research" class="tag-link">Research</a>
-      <a href="/agents?search=copywriting" class="tag-link">Copywriting</a>
-      <a href="/agents?search=data%20analysis" class="tag-link">Data Analysis</a>
-      <a href="/agents?search=image" class="tag-link">Image Gen</a>
-      <a href="/agents?search=code%20review" class="tag-link">Code Review</a>
+    <div class="popular-tags" style="margin-top: 16px; text-align: center;">
+      <span style="color: var(--text-muted); font-size: 0.9rem; display: block; margin-bottom: 8px;">Popular:</span>
+      <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+        <a href="/agents?search=research" class="tag-link">Research</a>
+        <a href="/agents?search=copywriting" class="tag-link">Copywriting</a>
+        <a href="/agents?search=data%20analysis" class="tag-link">Data Analysis</a>
+        <a href="/agents?search=image" class="tag-link">Image Gen</a>
+        <a href="/agents?search=code%20review" class="tag-link">Code Review</a>
+      </div>
     </div>
     
     <div class="trust-banner">
@@ -2227,16 +2229,27 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
       margin: 16px;
       box-sizing: border-box;
     }
-    @media (max-width: 480px) {
+    @media (max-width: 520px) {
       .modal-content {
-        padding: 20px;
-        width: calc(100% - 32px);
+        padding: 16px;
+        width: calc(100vw - 32px) !important;
+        max-width: calc(100vw - 32px) !important;
         margin: 16px;
         border-radius: 12px;
+      }
+      .modal-content h2 {
+        font-size: 1.1rem;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
       }
       .modal-content .btn {
         padding: 12px 16px;
         font-size: 0.9rem;
+      }
+      .modal-content .price-row {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 4px;
       }
     }
     /* Agent Profile Page */
@@ -2415,14 +2428,14 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
   <!-- Job Request Modal -->
   <div id="job-modal" class="modal">
     <div class="modal-content">
-      <h2 id="modal-title">Request Service</h2>
+      <h2 id="modal-title" style="word-wrap: break-word; overflow-wrap: break-word; font-size: 1.25rem;">Request Service</h2>
       <div class="form-group">
         <label>What do you need?</label>
-        <textarea id="job-input" placeholder="Describe your request..."></textarea>
+        <textarea id="job-input" placeholder="Describe your request..." style="box-sizing: border-box;"></textarea>
       </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div class="price-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
         <span style="color: var(--text-muted);">Price:</span>
-        <span id="modal-price" style="font-size: 1.25rem; font-weight: 700; color: var(--green);">$0.00</span>
+        <span id="modal-price" style="font-size: 1.1rem; font-weight: 700; color: var(--green);">$0.00</span>
       </div>
       <div class="modal-buttons">
         <button class="btn btn-secondary" style="flex: 1;" onclick="closeJobModal()">Cancel</button>
