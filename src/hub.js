@@ -1967,12 +1967,16 @@ router.get('/', async (req, res) => {
       margin-right: auto;
     }
     .cta-section .btn {
-      background: white;
-      color: var(--orange);
-      font-weight: 600;
+      background: white !important;
+      color: #d35400 !important;
+      font-weight: 700;
+      padding: 14px 32px;
+      font-size: 1rem;
+      border: none;
     }
     .cta-section .btn:hover {
-      background: rgba(255,255,255,0.9);
+      background: #f5f5f5 !important;
+      color: #c0392b !important;
     }
     .tag-link {
       background: rgba(255,138,76,0.15);
