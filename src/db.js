@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const logger = require('./logger');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -124,9 +125,9 @@ async function initDB() {
       WHERE service_key IS NULL
     `);
 
-    console.log('✓ Database schema initialized');
+    logger.info('Database schema initialized');
   } catch (error) {
-    console.error('Database init error:', error.message);
+    logger.error('Database initialization failed', { error: error.message, stack: error.stack });
     throw error;
   } finally {
     client.release();
@@ -246,7 +247,7 @@ async function updateJobStatus(jobId, status, extraFields = {}) {
   for (const [key, value] of Object.entries(extraFields)) {
     // Security: Only allow whitelisted fields
     if (!allowedFields.includes(key)) {
-      console.warn(`updateJobStatus: Ignoring invalid field '${key}'`);
+      logger.warn('Ignoring invalid field in updateJobStatus', { field: key });
       continue;
     }
 

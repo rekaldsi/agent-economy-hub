@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const logger = require('./logger');
 const db = require('./db');
 const hubRouter = require('./hub');
 const { SERVICES, getService, getAllServices } = require('./services');
@@ -24,6 +25,34 @@ app.use('/api/jobs/:uuid/complete', express.json({
 // Security: Content-Security-Policy header to prevent XSS
 app.use((req, res, next) => {
   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'");
+  next();
+});
+
+// Request logging
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  // Log after response is sent
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const logData = {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration: `${duration}ms`,
+      ip: req.ip
+    };
+
+    // Log level based on status code
+    if (res.statusCode >= 500) {
+      logger.error('Request failed', logData);
+    } else if (res.statusCode >= 400) {
+      logger.warn('Request error', logData);
+    } else {
+      logger.info('Request completed', logData);
+    }
+  });
+
   next();
 });
 
@@ -938,6 +967,21 @@ app.post('/brief', async (req, res) => {
   }
 });
 
+// Global error handler
+app.use((err, req, res, next) => {
+  logger.error('Unhandled error', {
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
+
+  res.status(500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'production' ? 'An error occurred' : err.message
+  });
+});
+
 // Start server
 async function start() {
   // Validate required environment variables
@@ -950,22 +994,26 @@ async function start() {
 
   const missing = required.filter(key => !process.env[key]);
   if (missing.length > 0) {
-    console.error('Missing required environment variables:', missing.join(', '));
-    console.error('Please check your .env file and ensure all required variables are set.');
+    logger.error('Missing required environment variables', { missing });
+    logger.error('Please check your .env file and ensure all required variables are set');
     process.exit(1);
   }
 
   try {
     await db.initDB();
     app.listen(PORT, () => {
-      console.log(`🦞 Agent Economy Hub v0.9.0 | http://localhost:${PORT}`);
-      console.log(`   AI: claude-sonnet-4 | Key: ${ANTHROPIC_API_KEY ? '✓' : '✗'}`);
-      console.log(`   DB: ${process.env.DATABASE_URL ? '✓' : '✗'}`);
-      console.log(`   Alchemy: ${process.env.ALCHEMY_API_KEY ? '✓' : '✗'}`);
-      console.log(`   Replicate: ${process.env.REPLICATE_API_TOKEN ? '✓' : '✗'}`);
+      logger.info('Agent Economy Hub started', {
+        version: '0.9.0',
+        port: PORT,
+        ai: 'claude-sonnet-4',
+        hasAnthropicKey: !!ANTHROPIC_API_KEY,
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        hasAlchemyKey: !!process.env.ALCHEMY_API_KEY,
+        hasReplicateToken: !!process.env.REPLICATE_API_TOKEN
+      });
     });
   } catch (error) {
-    console.error('Failed to start:', error.message);
+    logger.error('Failed to start server', { error: error.message, stack: error.stack });
     process.exit(1);
   }
 }
