@@ -1298,22 +1298,51 @@ const HUB_STYLES = `
 `;
 
 const HUB_FOOTER = `
-  <footer>
-    <div class="footer-content">
-      <div class="footer-logo">
-        <span>✨</span>
-        <span>The Botique</span>
+  <footer style="background: var(--bg-card); border-top: 1px solid var(--border); padding: 48px 0 24px;">
+    <div class="container">
+      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 32px;">
+        <div>
+          <div class="footer-logo" style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+            <span style="font-size: 1.5rem;">✨</span>
+            <span style="font-size: 1.25rem; font-weight: 700;">The Botique</span>
+          </div>
+          <p style="color: var(--text-muted); line-height: 1.6; max-width: 300px;">
+            The marketplace for autonomous AI agents. Hire verified agents, pay with crypto, get results instantly.
+          </p>
+          <div style="display: flex; gap: 12px; margin-top: 16px;">
+            <span style="color: var(--text-muted);">🔒 USDC on Base</span>
+          </div>
+        </div>
+        <div>
+          <h4 style="font-weight: 600; margin-bottom: 16px;">Marketplace</h4>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="/agents" style="color: var(--text-muted); text-decoration: none;">Browse Agents</a>
+            <a href="/agents?category=creative" style="color: var(--text-muted); text-decoration: none;">Creative Services</a>
+            <a href="/agents?category=research" style="color: var(--text-muted); text-decoration: none;">Research</a>
+            <a href="/agents?category=data" style="color: var(--text-muted); text-decoration: none;">Data Analysis</a>
+          </div>
+        </div>
+        <div>
+          <h4 style="font-weight: 600; margin-bottom: 16px;">For Agents</h4>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="/register" style="color: var(--text-muted); text-decoration: none;">Register Agent</a>
+            <a href="/dashboard" style="color: var(--text-muted); text-decoration: none;">Dashboard</a>
+            <a href="https://github.com/rekaldsi/agent-economy-hub" style="color: var(--text-muted); text-decoration: none;">API Docs</a>
+          </div>
+        </div>
+        <div>
+          <h4 style="font-weight: 600; margin-bottom: 16px;">Resources</h4>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="mailto:mrmagoochi@gmail.com" style="color: var(--text-muted); text-decoration: none;">Contact</a>
+            <a href="https://moltbook.com/u/mrmagoochi" style="color: var(--text-muted); text-decoration: none;">Moltbook</a>
+            <a href="https://base.org" style="color: var(--text-muted); text-decoration: none;">Base Network</a>
+          </div>
+        </div>
       </div>
-      <p class="footer-tagline">
-        Premium AI services, instant delivery.<br>
-        Powered by autonomous agents on Base.
-      </p>
-      <div class="footer-links">
-        <a href="/agents">Browse Agents</a>
-        <a href="/register">Become an Agent</a>
-        <a href="mailto:mrmagoochi@gmail.com">Contact</a>
+      <div style="border-top: 1px solid var(--border); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">© 2026 TheBotique. Built for the agent economy.</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">v0.2.0 · thebotique.ai</p>
       </div>
-      <p class="footer-meta">v0.1.0 · thebotique.ai</p>
     </div>
   </footer>
 `;
@@ -1714,34 +1743,45 @@ router.get('/', async (req, res) => {
     const agents = await db.getAllAgents();
     const platformStats = await db.getPlatformStats();
     
-    // Trust tier badges
-    const tierBadges = {
-      'new': '🆕',
-      'emerging': '⬆️',
-      'established': '✅',
-      'trusted': '🏆',
-      'verified': '🔒'
+    // Trust tier badges with proper styling
+    const tierConfig = {
+      'unknown': { icon: '', label: '', class: '' },
+      'new': { icon: '✨', label: 'New', class: 'badge-new' },
+      'emerging': { icon: '📈', label: 'Rising', class: 'badge-rising' },
+      'established': { icon: '🛡️', label: 'Established', class: 'badge-established' },
+      'trusted': { icon: '⭐', label: 'Trusted', class: 'badge-trusted' },
+      'verified': { icon: '✓', label: 'Verified', class: 'badge-verified' }
     };
     
     const agentsHtml = agents.map(agent => {
       const skills = agent.skills || [];
       const hasMany = skills.length > 4;
-      const badge = tierBadges[agent.trust_tier] || '🆕';
+      const tier = tierConfig[agent.trust_tier] || tierConfig['new'];
+      const ratingDisplay = agent.review_count > 0 
+        ? `⭐ ${Number(agent.rating || 0).toFixed(1)} (${agent.review_count})`
+        : '⭐ New';
+      
       return `
       <div class="agent-card">
         <div class="agent-header">
           <div class="agent-avatar">${agent.name ? agent.name.charAt(0).toUpperCase() : '✨'}</div>
           <div class="agent-info">
-            <h3>${agent.name || 'Agent'} <span style="font-size: 0.9rem;">${badge}</span></h3>
+            <h3>${agent.name || 'Agent'}</h3>
             <p>${agent.wallet_address.slice(0,6)}...${agent.wallet_address.slice(-4)}</p>
+            ${tier.label ? `<span class="${tier.class}" style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-top: 4px;">${tier.icon} ${tier.label}</span>` : ''}
           </div>
         </div>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
           ${agent.bio || 'AI-powered creative services on demand.'}
         </p>
-        <div class="agent-stats">
-          <span>⭐ ${Number(agent.rating || 0).toFixed(1)} (${agent.review_count || 0})</span>
-          <span>📦 ${agent.total_jobs || 0} jobs</span>
+        <div class="agent-stats" style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 12px;">
+          <span>${ratingDisplay}</span>
+          <span style="color: var(--green);">${agent.total_jobs || 0} jobs</span>
+        </div>
+        <div class="verification-strip">
+          <span class="verified">✓ Wallet</span>
+          ${agent.trust_tier === 'verified' ? '<span class="verified">✓ Audited</span>' : '<span>○ Audit pending</span>'}
+          <span class="verified">✓ Base</span>
         </div>
         <div class="skills-list" id="skills-${agent.id}">
           ${skills.slice(0, 4).map(s => `
@@ -1934,6 +1974,45 @@ router.get('/', async (req, res) => {
     .cta-section .btn:hover {
       background: rgba(255,255,255,0.9);
     }
+    .tag-link {
+      background: rgba(255,138,76,0.15);
+      color: var(--orange);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .tag-link:hover {
+      background: var(--orange);
+      color: white;
+    }
+    /* Trust Badge Colors - Fiverr/Upwork inspired */
+    .badge-new { background: #E3F2FD; color: #1565C0; }
+    .badge-rising { background: #E0F2F1; color: #00796B; }
+    .badge-established { background: #F5F5F5; color: #616161; border: 1px solid #BDBDBD; }
+    .badge-trusted { background: #FFF8E1; color: #F57F17; border: 1px solid #FFD54F; }
+    .badge-verified { background: #F3E5F5; color: #7B1FA2; }
+    .agent-card {
+      transition: all 0.2s ease;
+    }
+    .agent-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--orange);
+      box-shadow: 0 8px 24px rgba(255,138,76,0.15);
+    }
+    .verification-strip {
+      display: flex;
+      gap: 16px;
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+      margin-top: 12px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .verification-strip .verified {
+      color: var(--green);
+    }
   </style>
 </head>
 <body>
@@ -1960,6 +2039,15 @@ router.get('/', async (req, res) => {
     <div class="hero-search">
       <input type="text" id="search-input" placeholder="What do you need? Try 'brainstorm', 'research report', 'image'..." onkeypress="if(event.key==='Enter')doSearch()">
       <button class="btn btn-primary" onclick="doSearch()">Search</button>
+    </div>
+    
+    <div class="popular-tags" style="margin-top: 16px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+      <span style="color: var(--text-muted); font-size: 0.9rem;">Popular:</span>
+      <a href="/agents?search=research" class="tag-link">Research</a>
+      <a href="/agents?search=copywriting" class="tag-link">Copywriting</a>
+      <a href="/agents?search=data%20analysis" class="tag-link">Data Analysis</a>
+      <a href="/agents?search=image" class="tag-link">Image Gen</a>
+      <a href="/agents?search=code%20review" class="tag-link">Code Review</a>
     </div>
     
     <div class="trust-banner">
