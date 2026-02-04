@@ -1128,8 +1128,8 @@ async function start() {
       logger.warn('ANTHROPIC_API_KEY format unexpected (should start with sk-ant-)');
     }
 
-    // Verify Replicate token format
-    if (!process.env.REPLICATE_API_TOKEN.startsWith('r8_')) {
+    // Verify Replicate token format (if provided)
+    if (process.env.REPLICATE_API_TOKEN && !process.env.REPLICATE_API_TOKEN.startsWith('r8_')) {
       logger.warn('REPLICATE_API_TOKEN format unexpected (should start with r8_)');
     }
 
