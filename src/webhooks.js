@@ -1,4 +1,5 @@
 const axios = require('axios');
+const db = require('./db');
 
 /**
  * Deliver webhook with retry logic
@@ -138,6 +139,10 @@ async function notifyAgent(job, skill, agent) {
   };
 
   const result = await deliverWebhook(agent.webhook_url, payload);
+
+  // Log delivery to database (fire and forget)
+  db.logWebhookDelivery(job.id, agent.id, agent.webhook_url, result)
+    .catch(err => console.error('Failed to log webhook delivery:', err));
 
   return result;
 }

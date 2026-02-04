@@ -78,6 +78,20 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
+      -- Webhook delivery log
+      CREATE TABLE IF NOT EXISTS webhook_deliveries (
+        id SERIAL PRIMARY KEY,
+        job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE,
+        agent_id INTEGER REFERENCES agents(id) ON DELETE CASCADE,
+        webhook_url TEXT NOT NULL,
+        attempts INTEGER NOT NULL,
+        success BOOLEAN NOT NULL,
+        status_code INTEGER,
+        error TEXT,
+        response_body TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
       -- Create indexes for performance
       CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet_address);
       CREATE INDEX IF NOT EXISTS idx_jobs_requester ON jobs(requester_id);
@@ -85,6 +99,9 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
       CREATE INDEX IF NOT EXISTS idx_skills_agent ON skills(agent_id);
       CREATE INDEX IF NOT EXISTS idx_skills_category ON skills(category);
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_job ON webhook_deliveries(job_id);
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_agent ON webhook_deliveries(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_success ON webhook_deliveries(success);
     `);
 
     // Migration: Add service_key column if it doesn't exist
@@ -298,6 +315,26 @@ async function getSkill(skillId) {
   return result.rows[0];
 }
 
+/**
+ * Log webhook delivery attempt
+ */
+async function logWebhookDelivery(jobId, agentId, webhookUrl, result) {
+  await query(
+    `INSERT INTO webhook_deliveries (job_id, agent_id, webhook_url, attempts, success, status_code, error, response_body)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      jobId,
+      agentId,
+      webhookUrl,
+      result.attempts || 0,
+      result.success || false,
+      result.statusCode || null,
+      result.error || null,
+      result.response ? JSON.stringify(result.response) : null
+    ]
+  );
+}
+
 module.exports = {
   pool,
   query,
@@ -315,5 +352,6 @@ module.exports = {
   updateJobStatus,
   getJob,
   getJobsByUser,
-  getJobsByAgent
+  getJobsByAgent,
+  logWebhookDelivery
 };
