@@ -3,6 +3,9 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('./db');
 const blockchain = require('./blockchain');
+const { generateWithAI } = require('./ai');
+const { generateImage } = require('./replicate');
+const { getService } = require('./services');
 
 const router = express.Router();
 
@@ -1622,15 +1625,8 @@ router.post('/api/jobs/:uuid/pay', async (req, res) => {
       paid_at: new Date()
     });
 
-    // AI Processing - Generate output using the agent's service
-    console.log(JSON.stringify({
-      event: 'ai_processing_start',
-      jobUuid: job.job_uuid,
-      skillId: job.skill_id,
-      timestamp: new Date().toISOString()
-    }));
-
-    const aiStartTime = Date.now();
+    // AI/Image Processing - Generate output using the agent's service
+    const processingStartTime = Date.now();
 
     try {
       // Fetch skill to get service_key
@@ -1639,59 +1635,109 @@ router.post('/api/jobs/:uuid/pay', async (req, res) => {
         throw new Error('Skill or service_key not found');
       }
 
+      // Get service definition
+      const service = getService(skill.service_key);
+      if (!service) {
+        throw new Error(`Unknown service: ${skill.service_key}`);
+      }
+
       // Get input prompt from job
-      const userPrompt = job.input_data?.prompt || JSON.stringify(job.input_data);
+      const userInput = job.input_data?.prompt ||
+        job.input_data?.input ||
+        JSON.stringify(job.input_data);
 
-      // Call AI generation with timeout protection (30 seconds)
-      const timeoutMs = 30000;
-      const result = await Promise.race([
-        generateWithAI(skill.service_key, userPrompt),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('AI generation timeout (30s)')), timeoutMs)
-        )
-      ]);
+      let result;
 
-      // Store result and update status to completed
+      // Route to appropriate service based on type
+      if (service.useReplicate) {
+        // IMAGE GENERATION via Replicate
+        console.log(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          event: 'image_processing_start',
+          jobUuid: job.job_uuid,
+          serviceKey: skill.service_key,
+          model: service.replicateModel
+        }));
+
+        const IMAGE_TIMEOUT = 60000;
+
+        result = await Promise.race([
+          generateImage(service.replicateModel, userInput),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Image generation timeout')), IMAGE_TIMEOUT)
+          )
+        ]);
+
+        const duration = Date.now() - processingStartTime;
+
+        console.log(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          event: 'image_processing_complete',
+          jobUuid: job.job_uuid,
+          duration: duration,
+          imageCount: result.images ? result.images.length : 0
+        }));
+
+      } else {
+        // TEXT GENERATION via Claude
+        console.log(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          event: 'ai_processing_start',
+          jobUuid: job.job_uuid,
+          serviceKey: skill.service_key
+        }));
+
+        const AI_TIMEOUT = 30000;
+
+        result = await Promise.race([
+          generateWithAI(skill.service_key, userInput),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('AI generation timeout')), AI_TIMEOUT)
+          )
+        ]);
+
+        const duration = Date.now() - processingStartTime;
+
+        console.log(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          event: 'ai_processing_complete',
+          jobUuid: job.job_uuid,
+          duration: duration
+        }));
+      }
+
+      // Store result and mark completed
       await db.updateJobStatus(job.id, 'completed', {
         output_data: JSON.stringify(result),
         completed_at: new Date()
       });
 
-      const aiDuration = Date.now() - aiStartTime;
-
-      console.log(JSON.stringify({
-        event: 'ai_processing_complete',
-        jobUuid: job.job_uuid,
-        skillId: job.skill_id,
-        serviceKey: skill.service_key,
-        durationMs: aiDuration,
-        timestamp: new Date().toISOString()
-      }));
-
       res.json({
+        success: true,
+        jobUuid: job.job_uuid,
         status: 'completed',
         txHash,
         verified: true,
         amount: verification.amount,
         blockNumber: verification.blockNumber,
+        serviceType: service.useReplicate ? 'image' : 'text',
         result
       });
 
-    } catch (aiError) {
-      const aiDuration = Date.now() - aiStartTime;
+    } catch (processingError) {
+      const duration = Date.now() - processingStartTime;
 
       console.error(JSON.stringify({
-        event: 'ai_processing_error',
+        event: 'processing_error',
         jobUuid: job.job_uuid,
-        skillId: job.skill_id,
-        error: aiError.message,
-        durationMs: aiDuration,
+        error: processingError.message,
+        duration: duration,
         timestamp: new Date().toISOString()
       }));
 
       // Update job status to failed
       await db.updateJobStatus(job.id, 'failed', {
-        output_data: JSON.stringify({ error: aiError.message })
+        output_data: JSON.stringify({ error: processingError.message })
       });
 
       res.json({
@@ -1700,7 +1746,7 @@ router.post('/api/jobs/:uuid/pay', async (req, res) => {
         verified: true,
         amount: verification.amount,
         blockNumber: verification.blockNumber,
-        error: 'AI processing failed: ' + aiError.message
+        error: 'Processing failed: ' + processingError.message
       });
     }
   } catch (error) {
