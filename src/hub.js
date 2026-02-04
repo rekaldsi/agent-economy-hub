@@ -1642,8 +1642,14 @@ router.post('/api/jobs/:uuid/pay', async (req, res) => {
       // Get input prompt from job
       const userPrompt = job.input_data?.prompt || JSON.stringify(job.input_data);
 
-      // Call AI generation
-      const result = await generateWithAI(skill.service_key, userPrompt);
+      // Call AI generation with timeout protection (30 seconds)
+      const timeoutMs = 30000;
+      const result = await Promise.race([
+        generateWithAI(skill.service_key, userPrompt),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('AI generation timeout (30s)')), timeoutMs)
+        )
+      ]);
 
       // Store result and update status to completed
       await db.updateJobStatus(job.id, 'completed', {
