@@ -393,6 +393,98 @@ const HUB_STYLES = `
     cursor: not-allowed;
   }
 
+  /* ============================================
+     TOAST NOTIFICATIONS
+     ============================================ */
+  .toast-container {
+    position: fixed;
+    top: 80px;
+    right: 24px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 400px;
+  }
+
+  @media (max-width: 767px) {
+    .toast-container {
+      top: 70px;
+      right: 16px;
+      left: 16px;
+      max-width: none;
+    }
+  }
+
+  .toast {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: start;
+    gap: 12px;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(400px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .toast.success {
+    border-left-color: var(--green);
+  }
+
+  .toast.error {
+    border-left-color: #ef4444;
+  }
+
+  .toast.info {
+    border-left-color: var(--blue);
+  }
+
+  .toast-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  .toast-content {
+    flex: 1;
+  }
+
+  .toast-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .toast-message {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  .toast-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .toast-close:hover {
+    color: var(--text);
+  }
+
   /* Mobile menu toggle - hidden on desktop */
   .mobile-menu-toggle {
     display: none;
@@ -617,7 +709,7 @@ const HUB_SCRIPTS = `
   // Connect wallet
   async function connectWallet(silent = false) {
     if (typeof window.ethereum === 'undefined') {
-      if (!silent) alert('Please install MetaMask or another Web3 wallet');
+      if (!silent) showToast('Please install MetaMask or another Web3 wallet', 'error');
       return;
     }
 
@@ -680,7 +772,7 @@ const HUB_SCRIPTS = `
 
     } catch (error) {
       console.error('Wallet connection error:', error);
-      if (!silent) alert('Failed to connect wallet: ' + error.message);
+      if (!silent) showToast('Failed to connect wallet: ' + error.message, 'error');
     } finally {
       const btn = document.getElementById('connect-btn');
       if (btn && !silent) {
@@ -735,11 +827,12 @@ const HUB_SCRIPTS = `
       const receipt = await tx.wait();
 
       hideLoading();
+      showToast('Payment sent successfully!', 'success');
       return receipt.hash;
     } catch (error) {
       console.error('Payment error:', error);
       hideLoading();
-      alert('Payment failed: ' + error.message);
+      showToast('Payment failed: ' + error.message, 'error');
       return null;
     }
   }
@@ -797,6 +890,56 @@ const HUB_SCRIPTS = `
       button.disabled = false;
       button.textContent = button.dataset.originalText || originalText;
     }
+  }
+
+  // Toast notification system
+  function showToast(message, type = 'info', title = null, duration = 5000) {
+    // Create container if doesn't exist
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+
+    // Icon mapping
+    const icons = {
+      success: '✓',
+      error: '✕',
+      info: 'ℹ'
+    };
+
+    // Title mapping
+    const titles = {
+      success: title || 'Success',
+      error: title || 'Error',
+      info: title || 'Info'
+    };
+
+    // Create toast
+    const toast = document.createElement('div');
+    toast.className = \`toast \${type}\`;
+    toast.innerHTML = \`
+      <div class="toast-icon">\${icons[type] || icons.info}</div>
+      <div class="toast-content">
+        <div class="toast-title">\${titles[type]}</div>
+        <div class="toast-message">\${message}</div>
+      </div>
+      <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    \`;
+
+    container.appendChild(toast);
+
+    // Auto-remove after duration
+    if (duration > 0) {
+      setTimeout(() => {
+        toast.style.animation = 'slideIn 0.3s ease-out reverse';
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    return toast;
   }
 `;
 
@@ -1071,7 +1214,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
 
       const input = document.getElementById('job-input').value.trim();
       if (!input) {
-        alert('Please describe what you need');
+        showToast('Please describe what you need', 'error');
         return;
       }
 
@@ -1113,12 +1256,14 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
         const result = await updateRes.json();
 
         closeJobModal();
-        alert('Job submitted! Check your dashboard for results.');
-        window.location.href = '/job/' + job.jobUuid;
+        showToast('Job submitted successfully! Redirecting to results...', 'success');
+        setTimeout(() => {
+          window.location.href = '/job/' + job.jobUuid;
+        }, 1000);
 
       } catch (error) {
         console.error('Job submission error:', error);
-        alert('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
         setButtonLoading(btn, false, 'Pay & Submit');
       }
     }
@@ -1386,7 +1531,7 @@ router.get('/register', async (req, res) => {
 
     async function submitRegistration() {
       if (!connected) {
-        alert('Please connect your wallet first');
+        showToast('Please connect your wallet first', 'error');
         goToStep(1);
         return;
       }
@@ -1396,7 +1541,7 @@ router.get('/register', async (req, res) => {
       const webhookUrl = document.getElementById('webhook-url').value.trim();
 
       if (!name) {
-        alert('Please enter an agent name');
+        showToast('Please enter an agent name', 'error');
         goToStep(2);
         return;
       }
@@ -1412,9 +1557,11 @@ router.get('/register', async (req, res) => {
       });
 
       if (skills.length === 0) {
-        alert('Please add at least one skill');
+        showToast('Please add at least one skill', 'error');
         return;
       }
+
+      showLoading('Registering agent...');
 
       try {
         const res = await fetch('/api/register-agent', {
@@ -1432,12 +1579,15 @@ router.get('/register', async (req, res) => {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
+        hideLoading();
+        showToast('Agent registered successfully!', 'success');
         document.getElementById('api-key-display').textContent = 'API Key: ' + data.apiKey;
         document.getElementById('step3').classList.add('hidden');
         document.getElementById('success').classList.remove('hidden');
 
       } catch (error) {
-        alert('Registration failed: ' + error.message);
+        hideLoading();
+        showToast('Registration failed: ' + error.message, 'error');
       }
     }
 
