@@ -317,6 +317,200 @@ const HUB_STYLES = `
     text-align: center;
   }
   .hidden { display: none; }
+
+  /* Mobile menu toggle - hidden on desktop */
+  .mobile-menu-toggle {
+    display: none;
+  }
+
+  /* ============================================
+     RESPONSIVE - TABLET (768px - 1199px)
+     ============================================ */
+  @media (max-width: 1199px) {
+    .container { padding: 20px; }
+
+    .hero {
+      padding: 60px 20px;
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+    }
+
+    .agents-grid {
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .stats {
+      gap: 32px;
+    }
+  }
+
+  /* ============================================
+     RESPONSIVE - MOBILE (320px - 767px)
+     ============================================ */
+  @media (max-width: 767px) {
+    .container {
+      padding: 16px;
+      max-width: 100%;
+    }
+
+    /* Header */
+    header {
+      padding: 12px 16px;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      font-size: 1.1rem;
+      gap: 8px;
+    }
+
+    .logo-icon { font-size: 1.3rem; }
+
+    /* Navigation - Hamburger Menu */
+    nav {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      flex-direction: column;
+      gap: 0;
+      padding: 16px;
+      z-index: 40;
+    }
+
+    nav.mobile-menu-open {
+      display: flex;
+    }
+
+    nav a {
+      padding: 12px 16px;
+      display: block;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .mobile-menu-toggle {
+      display: block;
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 8px;
+    }
+
+    /* Hero */
+    .hero {
+      padding: 48px 16px;
+    }
+
+    .hero h1 {
+      font-size: 2rem;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      font-size: 1rem;
+      margin-bottom: 24px;
+    }
+
+    /* Stats - Stack Vertically */
+    .stats {
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .stat-value { font-size: 1.75rem; }
+
+    /* Grids - Single Column */
+    .agents-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .agent-card {
+      padding: 20px;
+    }
+
+    .agent-avatar {
+      width: 48px;
+      height: 48px;
+      font-size: 1.25rem;
+    }
+
+    /* Skills */
+    .skills-list {
+      gap: 6px;
+    }
+
+    .skill-tag {
+      font-size: 0.75rem;
+      padding: 5px 10px;
+    }
+
+    /* Buttons - Full Width on Mobile */
+    .btn {
+      width: 100%;
+      padding: 12px 20px;
+      font-size: 1rem;
+    }
+
+    .btn-group {
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn-group .btn {
+      width: 100%;
+    }
+
+    /* Wallet Section */
+    .wallet-section {
+      padding: 16px;
+    }
+
+    .wallet-connected {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .wallet-address {
+      font-size: 0.75rem;
+      word-break: break-all;
+    }
+
+    /* Forms */
+    input, select, textarea {
+      font-size: 16px; /* Prevents iOS zoom on focus */
+    }
+
+    /* Touch Targets - Min 44x44px */
+    a, button, input[type="submit"], input[type="button"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* Extra Small Devices */
+  @media (max-width: 479px) {
+    .hero h1 {
+      font-size: 1.75rem;
+    }
+
+    .agent-card {
+      padding: 16px;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+    }
+  }
 `;
 
 const HUB_SCRIPTS = `
@@ -474,6 +668,14 @@ const HUB_SCRIPTS = `
 
   // Check connection on load
   window.addEventListener('load', checkConnection);
+
+  // Mobile menu toggle
+  function toggleMobileMenu() {
+    const nav = document.querySelector('nav');
+    if (nav) {
+      nav.classList.toggle('mobile-menu-open');
+    }
+  }
 `;
 
 // Hub landing page
@@ -526,7 +728,10 @@ router.get('/', async (req, res) => {
       <span class="logo-icon">🦞</span>
       <span>Agent Hub</span>
     </a>
-    <nav>
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
+      ☰
+    </button>
+    <nav id="mobile-nav">
       <a href="/agents">Browse Agents</a>
       <a href="/register">Register Agent</a>
       <a href="/dashboard">Dashboard</a>
@@ -658,7 +863,10 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
       <span class="logo-icon">🦞</span>
       <span>Agent Hub</span>
     </a>
-    <nav>
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
+      ☰
+    </button>
+    <nav id="mobile-nav">
       <a href="/agents">Browse Agents</a>
       <a href="/dashboard">Dashboard</a>
       <button id="connect-btn" class="btn btn-primary" onclick="connectWallet()">Connect Wallet</button>
@@ -914,7 +1122,10 @@ router.get('/register', async (req, res) => {
       <span class="logo-icon">🦞</span>
       <span>Agent Hub</span>
     </a>
-    <nav>
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
+      ☰
+    </button>
+    <nav id="mobile-nav">
       <a href="/">Browse Agents</a>
       <a href="/dashboard">Dashboard</a>
       <button id="connect-btn" class="btn btn-primary" onclick="connectWallet()">Connect Wallet</button>
@@ -1267,7 +1478,10 @@ router.get('/dashboard', async (req, res) => {
       <span class="logo-icon">🦞</span>
       <span>Agent Hub</span>
     </a>
-    <nav>
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
+      ☰
+    </button>
+    <nav id="mobile-nav">
       <a href="/">Browse Agents</a>
       <a href="/register">Register Agent</a>
       <button id="connect-btn" class="btn btn-primary" onclick="connectWallet()">Connect Wallet</button>
@@ -1584,7 +1798,10 @@ router.get('/job/:uuid', validateUuidParam('uuid'), async (req, res) => {
       <span class="logo-icon">🦞</span>
       <span>Agent Hub</span>
     </a>
-    <nav>
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
+      ☰
+    </button>
+    <nav id="mobile-nav">
       <a href="/">Browse</a>
       <a href="/dashboard">Dashboard</a>
       <button id="connect-btn" class="btn btn-primary" onclick="connectWallet()">Connect Wallet</button>
