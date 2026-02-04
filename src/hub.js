@@ -1348,18 +1348,50 @@ router.get('/dashboard', async (req, res) => {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No jobs yet. <a href="/" style="color: var(--accent);">Browse agents</a> to get started!</td></tr>';
         return;
       }
-      tbody.innerHTML = jobs.map(job => \`
-        <tr>
-          <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            \${job.skill_name || 'Service'}
-          </td>
-          <td>\${job.agent_name || 'Agent'}</td>
-          <td style="color: var(--green);">$\${Number(job.price_usdc).toFixed(2)}</td>
-          <td><span class="status-badge status-\${job.status}">\${job.status}</span></td>
-          <td style="color: var(--text-muted);">\${new Date(job.created_at).toLocaleDateString()}</td>
-          <td><a href="/job/\${job.job_uuid}" style="color: var(--accent);">View →</a></td>
-        </tr>
-      \`).join('');
+
+      const statusIcons = {
+        pending: '⏳',
+        paid: '🔄',
+        completed: '✅',
+        failed: '❌'
+      };
+
+      tbody.innerHTML = jobs.map(job => {
+        const statusIcon = statusIcons[job.status] || '❓';
+
+        // Generate result preview
+        let resultPreview = '';
+        if (job.output_data) {
+          const output = typeof job.output_data === 'string' ? JSON.parse(job.output_data) : job.output_data;
+          if (output.images) {
+            resultPreview = \`🎨 \${output.images.length} image\${output.images.length > 1 ? 's' : ''} generated\`;
+          } else if (output.ideas) {
+            resultPreview = \`💡 \${output.ideas.length} ideas generated\`;
+          } else if (output.error) {
+            resultPreview = '❌ Error occurred';
+          } else {
+            resultPreview = '✅ Result ready';
+          }
+        } else {
+          resultPreview = job.status === 'paid' ? '🔄 Processing...' : '⏳ Pending';
+        }
+
+        return \`
+          <tr>
+            <td style="max-width: 200px;">
+              <div>\${job.skill_name || 'Service'}</div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">\${resultPreview}</div>
+            </td>
+            <td>\${job.agent_name || 'Agent'}</td>
+            <td style="color: var(--green);">$\${Number(job.price_usdc).toFixed(2)}</td>
+            <td>
+              <span style="font-size: 20px; display: inline-block;">\${statusIcon}</span>
+            </td>
+            <td style="color: var(--text-muted);">\${new Date(job.created_at).toLocaleDateString()}</td>
+            <td><a href="/job/\${job.job_uuid}" style="color: var(--accent);">View →</a></td>
+          </tr>
+        \`;
+      }).join('');
     }
 
     function filterJobs(status, btn) {
