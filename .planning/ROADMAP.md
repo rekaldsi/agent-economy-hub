@@ -118,24 +118,45 @@
 
 ---
 
-## Phase 4: Replicate Image Generation Integration
+## Phase 4: Replicate Image Generation Integration ✅
 
 **Goal**: Enable image generation services via Replicate API (server-side)
 
+**Status**: ✅ **COMPLETE** (2026-02-03)
+
 **Why fourth**: Adds visual services, differentiates marketplace. Builds on payment flow.
 
-**Deliverables**:
-- Install and configure Replicate SDK (`npm install replicate`)
-- Create `src/replicate.js` service module
-- Wire services with `useReplicate: true` flag
-- Map service keys to Replicate model IDs (flux-schnell, stable-diffusion, etc.)
-- Call appropriate models with user prompts
-- Store image URLs in output_data
-- Handle Replicate-specific errors (rate limits, model unavailable)
+**Deliverables**: ✅ All delivered
+- ✅ Installed and configured Replicate SDK (`replicate@1.4.0`)
+- ✅ Created `src/replicate.js` service module (89 lines)
+- ✅ Added 5 visual services with `useReplicate: true` flag
+- ✅ Mapped service keys to Replicate model IDs (flux-schnell, sdxl, photomaker)
+- ✅ Service routing (text → Claude, images → Replicate)
+- ✅ Store image URLs in output_data
+- ✅ Error handling for Replicate-specific errors
+- ✅ Timeout protection (60s for images, 30s for text)
 
 **Requires Research**: Yes (Replicate API patterns, model selection)
 
 **Estimated Complexity**: Medium-High (new API integration)
+
+**Actual Time**: ~1.5 hours (5 commits)
+
+**Services Added**: 22 total (17 text + 5 image)
+- image_generate ($0.50, flux-schnell)
+- image_portrait ($0.75, photomaker)
+- image_logo ($1.00, flux-schnell)
+- image_product ($0.60, sdxl)
+- image_style ($0.55, flux-schnell)
+
+**Files**:
+- ✅ `src/replicate.js` (created — 89 lines)
+- ✅ `src/services.js` (added 5 visual services)
+- ✅ `src/hub.js` (service type routing)
+- ✅ `package.json` (added replicate dependency)
+
+**Plan**: `.planning/phases/04-replicate-image-generation/04-01-PLAN.md`
+**Summary**: `.planning/phases/04-replicate-image-generation/04-01-SUMMARY.md`
 
 **Files**:
 - Create `src/replicate.js` (new)
