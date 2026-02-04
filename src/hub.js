@@ -2,6 +2,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('./db');
+const blockchain = require('./blockchain');
 
 const router = express.Router();
 
@@ -1527,19 +1528,72 @@ router.post('/api/jobs', async (req, res) => {
 router.post('/api/jobs/:uuid/pay', async (req, res) => {
   try {
     const { txHash } = req.body;
+
+    // Validate transaction hash format
+    if (!txHash || typeof txHash !== 'string' || !txHash.startsWith('0x')) {
+      return res.status(400).json({ error: 'Invalid transaction hash format' });
+    }
+
     const job = await db.getJob(req.params.uuid);
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
+    if (job.status !== 'pending') {
+      return res.status(400).json({
+        error: `Job status is ${job.status}, cannot accept payment`
+      });
+    }
+
+    // Get agent details for wallet address
+    const agent = await db.getAgent(job.agent_id);
+    if (!agent) return res.status(500).json({ error: 'Agent not found' });
+
+    // Get agent's wallet address
+    const agentUser = await db.query(
+      'SELECT wallet_address FROM users WHERE id = $1',
+      [agent.user_id]
+    );
+    if (!agentUser.rows[0]) {
+      return res.status(500).json({ error: 'Agent wallet not found' });
+    }
+
+    const agentWallet = agentUser.rows[0].wallet_address;
+
+    // Verify payment on-chain
+    console.log(`Verifying payment: txHash=${txHash}, amount=${job.price_usdc} USDC, recipient=${agentWallet}`);
+
+    const verification = await blockchain.verifyUSDCPayment(
+      txHash,
+      job.price_usdc,
+      agentWallet
+    );
+
+    if (!verification.valid) {
+      console.error('Payment verification failed:', verification.error);
+      return res.status(400).json({
+        error: 'Payment verification failed',
+        details: verification.error
+      });
+    }
+
+    console.log('Payment verified:', verification);
+
+    // Update job status to paid
     const updated = await db.updateJobStatus(job.id, 'paid', {
       payment_tx_hash: txHash,
       paid_at: new Date()
     });
 
-    // TODO: Trigger agent webhook / process job
-    // For now, we'll process inline (MrMagoochi)
-    
-    res.json({ status: 'paid', txHash });
+    // TODO: Trigger agent webhook / process job (Phase 3)
+
+    res.json({
+      status: 'paid',
+      txHash,
+      verified: true,
+      amount: verification.amount,
+      blockNumber: verification.blockNumber
+    });
   } catch (error) {
+    console.error('Payment endpoint error:', error);
     res.status(500).json({ error: error.message });
   }
 });
