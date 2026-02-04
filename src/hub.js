@@ -154,26 +154,124 @@ const HUB_STYLES = `
     transition: color 0.2s;
   }
   nav a:hover { color: var(--text); }
+
+  /* ============================================
+     ENHANCED BUTTON STATES
+     ============================================ */
   .btn {
-    padding: 10px 20px;
+    padding: 12px 24px;
     border-radius: 8px;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     cursor: pointer;
     border: none;
     transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
   }
+
+  /* Hover Effects */
+  .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  /* Primary Button */
   .btn-primary {
-    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
     color: white;
   }
-  .btn-primary:hover { background: var(--accent-light); }
+
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 100%);
+  }
+
+  /* Secondary Button */
   .btn-secondary {
     background: var(--bg-input);
     color: var(--text);
     border: 1px solid var(--border);
   }
-  .btn-secondary:hover { border-color: var(--text-muted); }
+
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--bg-card);
+  }
+
+  /* Success Button (after action completed) */
+  .btn-success {
+    background: var(--green);
+    color: white;
+  }
+
+  .btn-success::before {
+    content: '✓ ';
+  }
+
+  /* Disabled State */
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Button Group */
+  .btn-group {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  /* Icon Buttons */
+  .btn-icon {
+    padding: 10px;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Small Buttons */
+  .btn-sm {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+  }
+
+  /* Large Buttons */
+  .btn-lg {
+    padding: 14px 28px;
+    font-size: 1.05rem;
+  }
+
+  /* Focus Styles (Accessibility) */
+  .btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Ripple Effect on Click */
+  .btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+
+  .btn:active::after {
+    width: 300px;
+    height: 300px;
+  }
   .hero {
     text-align: center;
     padding: 80px 24px;
@@ -890,6 +988,34 @@ const HUB_SCRIPTS = `
       button.disabled = false;
       button.textContent = button.dataset.originalText || originalText;
     }
+  }
+
+  // Set button to success state
+  function setButtonSuccess(button, text = 'Success!', duration = 2000) {
+    const originalText = button.textContent;
+    const originalClass = button.className;
+
+    button.className = 'btn btn-success';
+    button.textContent = text;
+    button.disabled = true;
+
+    setTimeout(() => {
+      button.className = originalClass;
+      button.textContent = originalText;
+      button.disabled = false;
+    }, duration);
+  }
+
+  // Disable button
+  function disableButton(button, reason) {
+    button.disabled = true;
+    button.title = reason;
+  }
+
+  // Enable button
+  function enableButton(button) {
+    button.disabled = false;
+    button.title = '';
   }
 
   // Toast notification system
