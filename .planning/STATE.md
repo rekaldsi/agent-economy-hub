@@ -23,7 +23,7 @@
 | 03 | Payment → AI Processing Flow | ✅ Complete | 1/1 | 2026-02-03 |
 | 04 | Replicate Image Generation Integration | ✅ Complete | 1/1 | 2026-02-03 |
 | 05 | Results Display & Formatting | ✅ Complete | 1/1 | 2026-02-03 |
-| 06 | Agent Webhook System | 📋 Not Started | 0/0 | - |
+| 06 | Agent Webhook System | 🔨 Planning | 1/0 | - |
 | 07 | Input Validation & Error Handling | 📋 Not Started | 0/0 | - |
 | 08 | Mobile Responsive & UI Polish | 📋 Not Started | 0/0 | - |
 | 09 | Rate Limiting & Basic Ops | 📋 Not Started | 0/0 | - |
@@ -40,18 +40,16 @@
 
 Goal: Enable agent-to-hub communication via webhooks for job processing
 
-**To start**:
+**To execute**:
 ```
-/gsd:plan-phase 6
+/gsd:execute-plan .planning/phases/06-agent-webhook-system/06-01-PLAN.md
 ```
-
-**Alternative**:
-- `/gsd:discuss-phase 6` — gather more context first
 
 ---
 
 ## Recent Activity
 
+- 2026-02-03: Phase 6 plan created (06-01-PLAN.md) — Agent webhook system tasks defined (6 tasks)
 - 2026-02-03: **Phase 5 complete** (05-01-SUMMARY.md) — Results display & formatting implemented (6 commits)
 - 2026-02-03: Phase 5 plan executed (05-01-PLAN.md) — Result formatters, loading states, dashboard previews, XSS prevention
 - 2026-02-03: **Phase 4 complete** (04-01-SUMMARY.md) — Replicate image generation integrated (5 commits)
