@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const db = require('./db');
 
 // ============================================
 // ZOD SCHEMAS
@@ -211,6 +212,140 @@ function isValidUuid(uuid) {
 }
 
 // ============================================
+// DATABASE EXISTENCE VALIDATORS
+// ============================================
+
+/**
+ * Validate that agent exists in database
+ */
+async function validateAgentExists(agentId) {
+  const agent = await db.getAgent(agentId);
+  if (!agent) {
+    throw new Error('Agent not found');
+  }
+  return agent;
+}
+
+/**
+ * Validate that skill exists in database
+ */
+async function validateSkillExists(skillId) {
+  const skill = await db.getSkill(skillId);
+  if (!skill) {
+    throw new Error('Skill not found');
+  }
+  return skill;
+}
+
+/**
+ * Validate that user exists in database
+ */
+async function validateUserExists(wallet) {
+  const user = await db.getUser(wallet);
+  if (!user) {
+    throw new Error('User not found. Please create an account first.');
+  }
+  return user;
+}
+
+/**
+ * Validate that skill belongs to agent
+ */
+async function validateSkillBelongsToAgent(skillId, agentId) {
+  const skill = await db.getSkill(skillId);
+  if (!skill) {
+    throw new Error('Skill not found');
+  }
+  if (skill.agent_id !== agentId) {
+    throw new Error('Skill does not belong to specified agent');
+  }
+  return skill;
+}
+
+/**
+ * Validate that skill price matches expected price
+ */
+async function validateSkillPrice(skillId, expectedPrice) {
+  const skill = await db.getSkill(skillId);
+  if (!skill) {
+    throw new Error('Skill not found');
+  }
+
+  const skillPrice = parseFloat(skill.price_usdc);
+  const providedPrice = parseFloat(expectedPrice);
+
+  // Allow 0.1% tolerance for floating point precision
+  const tolerance = skillPrice * 0.001;
+  if (Math.abs(skillPrice - providedPrice) > tolerance) {
+    throw new Error(`Price mismatch. Expected $${skillPrice.toFixed(2)}, got $${providedPrice.toFixed(2)}`);
+  }
+
+  return skill;
+}
+
+// ============================================
+// SANITIZATION HELPERS
+// ============================================
+
+/**
+ * Sanitize text input (trim, normalize whitespace)
+ */
+function sanitizeText(text) {
+  if (typeof text !== 'string') return text;
+  return text.trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Sanitize job input data
+ */
+function sanitizeJobInput(input) {
+  if (typeof input === 'string') {
+    return sanitizeText(input);
+  }
+  if (typeof input === 'object' && input !== null) {
+    const sanitized = {};
+    for (const [key, value] of Object.entries(input)) {
+      if (typeof value === 'string') {
+        sanitized[key] = sanitizeText(value);
+      } else {
+        sanitized[key] = value;
+      }
+    }
+    return sanitized;
+  }
+  return input;
+}
+
+/**
+ * Validate and sanitize webhook URL
+ */
+function sanitizeWebhookUrl(url) {
+  if (!url) return null;
+
+  // Ensure HTTPS
+  if (!url.startsWith('https://')) {
+    throw new Error('Webhook URL must use HTTPS protocol');
+  }
+
+  // Validate URL format
+  try {
+    const parsed = new URL(url);
+
+    // Don't allow localhost/private IPs in production
+    if (process.env.NODE_ENV === 'production') {
+      const hostname = parsed.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
+        throw new Error('Webhook URL cannot use private/local addresses');
+      }
+    }
+
+    return url.trim();
+  } catch (error) {
+    throw new Error('Invalid webhook URL format');
+  }
+}
+
+// ============================================
 // EXPORTS
 // ============================================
 
@@ -243,5 +378,17 @@ module.exports = {
   isValidEthereumAddress,
   isValidPrice,
   isValidTxHash,
-  isValidUuid
+  isValidUuid,
+
+  // Database validators
+  validateAgentExists,
+  validateSkillExists,
+  validateUserExists,
+  validateSkillBelongsToAgent,
+  validateSkillPrice,
+
+  // Sanitization helpers
+  sanitizeText,
+  sanitizeJobInput,
+  sanitizeWebhookUrl
 };
