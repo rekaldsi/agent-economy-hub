@@ -57,7 +57,65 @@ async function seed() {
       });
     }
 
-    // Task 4 will add skills seeding here
+    // 3. Create or update skills from services.js
+    logger.info('Seeding skills from services.js...');
+    const services = getAllServices();
+    logger.info(`Found ${services.length} services to seed`);
+
+    // Get existing skills for this agent
+    const existingSkills = await db.getSkillsByAgent(agent.id);
+    const existingServiceKeys = new Set(existingSkills.map(s => s.service_key));
+
+    let created = 0;
+    let skipped = 0;
+
+    for (const service of services) {
+      if (existingServiceKeys.has(service.key)) {
+        logger.info(`Skill already exists: ${service.key}`, {
+          name: service.name,
+          category: service.category,
+          price: service.price
+        });
+        skipped++;
+      } else {
+        logger.info(`Creating skill: ${service.key}`, {
+          name: service.name,
+          category: service.category,
+          price: service.price
+        });
+
+        const skill = await db.createSkill(
+          agent.id,
+          service.name,
+          service.description,
+          service.category,
+          service.price,
+          service.estimatedTime
+        );
+
+        // Update service_key for mapping
+        await db.query(
+          'UPDATE skills SET service_key = $1 WHERE id = $2',
+          [service.key, skill.id]
+        );
+
+        created++;
+      }
+    }
+
+    logger.info('Skills seeding complete', {
+      total: services.length,
+      created,
+      skipped,
+      categories: {
+        creative: services.filter(s => s.category === 'creative').length,
+        research: services.filter(s => s.category === 'research').length,
+        technical: services.filter(s => s.category === 'technical').length,
+        documents: services.filter(s => s.category === 'documents').length,
+        productivity: services.filter(s => s.category === 'productivity').length,
+        visual: services.filter(s => s.category === 'visual').length
+      }
+    });
 
     logger.info('Database seed complete!');
   } catch (error) {
