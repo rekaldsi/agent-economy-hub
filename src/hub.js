@@ -104,7 +104,17 @@ function errorHandler(err, req, res, next) {
 // HUB LANDING PAGE
 // ============================================
 const HUB_STYLES = `
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  /* Smooth Scroll */
+  html {
+    scroll-behavior: smooth;
+  }
+
   :root {
     --bg: #09090b;
     --bg-card: #18181b;
@@ -737,6 +747,174 @@ const HUB_STYLES = `
   }
 
   /* ============================================
+     TRANSITIONS & ANIMATIONS
+     ============================================ */
+
+  /* Fade In Animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .fade-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  /* Slide In Animation */
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+
+  /* Pulse Animation (for status indicators) */
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Scale on Hover (for interactive elements) */
+  .scale-on-hover {
+    transition: transform 0.2s ease;
+  }
+
+  .scale-on-hover:hover {
+    transform: scale(1.05);
+  }
+
+  /* Focus Animations */
+  @keyframes focusRing {
+    0% {
+      box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.5);
+    }
+    100% {
+      box-shadow: 0 0 0 4px rgba(249, 115, 22, 0);
+    }
+  }
+
+  *:focus-visible {
+    animation: focusRing 0.6s ease-out;
+  }
+
+  /* Skeleton Loading (for slow-loading content) */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--bg-input) 25%,
+      var(--bg-card) 50%,
+      var(--bg-input) 75%
+    );
+    background-size: 200% 100%;
+    animation: loading 1.5s ease-in-out infinite;
+    border-radius: 4px;
+  }
+
+  @keyframes loading {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  .skeleton-text {
+    height: 16px;
+    margin-bottom: 8px;
+  }
+
+  .skeleton-title {
+    height: 24px;
+    width: 60%;
+    margin-bottom: 12px;
+  }
+
+  .skeleton-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+  }
+
+  /* Modal Animations */
+  .modal {
+    animation: modalFadeIn 0.3s ease-out;
+  }
+
+  @keyframes modalFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .modal-content {
+    animation: modalSlideUp 0.3s ease-out;
+  }
+
+  @keyframes modalSlideUp {
+    from {
+      transform: translateY(50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* Accessibility - Respect user's motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Skip to main content link (accessibility) */
+  .skip-to-main {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--accent);
+    color: white;
+    padding: 8px 16px;
+    text-decoration: none;
+    z-index: 10001;
+  }
+
+  .skip-to-main:focus {
+    top: 0;
+  }
+
+  /* ============================================
      RESPONSIVE - TABLET (768px - 1199px)
      ============================================ */
   @media (max-width: 1199px) {
@@ -1112,6 +1290,27 @@ const HUB_SCRIPTS = `
 
   // Check connection on load
   window.addEventListener('load', checkConnection);
+
+  // Animate elements with stagger effect
+  function animateList(selector, delay = 50) {
+    const elements = document.querySelectorAll(selector);
+    elements.forEach((el, index) => {
+      el.style.animationDelay = \`\${index * delay}ms\`;
+      el.classList.add('fade-in');
+    });
+  }
+
+  // Apply animations on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    // Animate agent cards
+    animateList('.agent-card', 100);
+
+    // Animate skill tags
+    animateList('.skill-tag', 30);
+
+    // Animate job cards (if they exist)
+    animateList('.job-card', 80);
+  });
 
   // Mobile menu toggle
   function toggleMobileMenu() {
