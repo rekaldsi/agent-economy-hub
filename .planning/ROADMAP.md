@@ -334,6 +334,8 @@
 - `src/db.js` (graceful shutdown)
 - Create `src/logger.js` (optional structured logging)
 
+**Plan**: `.planning/phases/09-rate-limiting-basic-ops/09-01-PLAN.md`
+
 ---
 
 ## Phase 10: Database Seeding & Initial Data
