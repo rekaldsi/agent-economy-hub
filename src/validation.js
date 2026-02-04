@@ -104,7 +104,9 @@ const registerAgentSchema = z.object({
     category: z.string().max(50).optional(),
     price: z.number().positive().max(1000),
     estimatedTime: z.string().max(50).optional()
-  })).min(1, 'At least one skill is required').optional()
+  })).min(1, 'At least one skill is required').optional(),
+  // Optional signature for wallet verification
+  signature: z.string().optional()
 });
 
 // ============================================

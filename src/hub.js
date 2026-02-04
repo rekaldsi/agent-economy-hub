@@ -1,8 +1,12 @@
 // The Botique - Routes and UI
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { ethers } = require('ethers');
 const db = require('./db');
 const blockchain = require('./blockchain');
+
+// In-memory challenge store (TODO: move to Redis for production)
+const challengeStore = new Map();
 const { generateWithAI } = require('./ai');
 const { generateImage } = require('./replicate');
 const { getService } = require('./services');
@@ -551,6 +555,22 @@ const HUB_STYLES = `
     border-radius: 6px;
     font-size: 0.8rem;
     color: var(--text-muted);
+    border: 1px solid transparent;
+    cursor: default;
+  }
+  .skill-tag.skill-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border);
+  }
+  .skill-tag.skill-clickable:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+  }
+  .skill-tag.skill-clickable:hover .price {
+    color: rgba(255,255,255,0.9);
   }
   .skill-tag .price {
     color: var(--green);
@@ -1530,6 +1550,64 @@ const HUB_SCRIPTS = `
 
     return toast;
   }
+
+  // Quick request from homepage skill click
+  function openQuickRequest(button) {
+    const agentId = button.dataset.agentId;
+    const agentName = button.dataset.agentName;
+    const skill = button.dataset.skill;
+    const price = button.dataset.price;
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = \`
+      <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+          <h2>Request: \${skill}</h2>
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+        </div>
+        <div class="modal-body">
+          <p style="color: var(--text-muted); margin-bottom: 16px;">
+            From <strong>\${agentName}</strong> • <span style="color: var(--green);">$\${Number(price).toFixed(2)} USDC</span>
+          </p>
+          <div class="form-group">
+            <label>What do you need?</label>
+            <textarea id="quick-request-input" rows="4" placeholder="Describe your request..." style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-input); color: var(--text); resize: vertical;"></textarea>
+          </div>
+          <div style="display: flex; gap: 12px; margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()" style="flex: 1;">Cancel</button>
+            <button class="btn btn-primary" onclick="submitQuickRequest('\${agentId}', '\${skill}', \${price})" style="flex: 1;">
+              \${connected ? 'Submit Request' : 'Connect Wallet'}
+            </button>
+          </div>
+        </div>
+      </div>
+    \`;
+    document.body.appendChild(modal);
+    document.getElementById('quick-request-input').focus();
+  }
+
+  // Submit quick request
+  async function submitQuickRequest(agentId, skill, price) {
+    if (!connected) {
+      await connectWallet();
+      if (!connected) return;
+    }
+
+    const input = document.getElementById('quick-request-input').value.trim();
+    if (!input) {
+      showToast('Please describe your request', 'error');
+      return;
+    }
+
+    // Navigate to agent page with pre-filled request
+    const params = new URLSearchParams({
+      skill: skill,
+      request: input
+    });
+    window.location.href = \`/agent/\${agentId}?\${params.toString()}\`;
+  }
 `;
 
 // Hub landing page
@@ -1555,7 +1633,14 @@ router.get('/', async (req, res) => {
         </div>
         <div class="skills-list">
           ${(agent.skills || []).map(s => `
-            <span class="skill-tag">${s.name}<span class="price">$${Number(s.price_usdc).toFixed(2)}</span></span>
+            <button class="skill-tag skill-clickable" 
+                    data-agent-id="${agent.id}" 
+                    data-agent-name="${agent.name || 'Agent'}"
+                    data-skill="${s.name}" 
+                    data-price="${s.price_usdc}"
+                    onclick="openQuickRequest(this)">
+              ${s.name}<span class="price">$${Number(s.price_usdc).toFixed(2)}</span>
+            </button>
           `).join('')}
         </div>
         <a href="/agent/${agent.id}" class="btn btn-primary" style="display: block; text-align: center; text-decoration: none;">
@@ -3376,9 +3461,74 @@ router.get('/api/users/:wallet/jobs', async (req, res) => {
 });
 
 // Register a new agent
+// Generate wallet verification challenge
+router.post('/api/auth/challenge', async (req, res) => {
+  try {
+    const { wallet } = req.body;
+    if (!wallet || !ethers.isAddress(wallet)) {
+      return res.status(400).json({ error: 'Valid wallet address required' });
+    }
+
+    // Generate challenge
+    const nonce = uuidv4();
+    const timestamp = Date.now();
+    const message = `Sign this message to verify your wallet for The Botique.\n\nWallet: ${wallet}\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
+    
+    // Store challenge (expires in 5 minutes)
+    challengeStore.set(wallet.toLowerCase(), {
+      nonce,
+      timestamp,
+      message,
+      expiresAt: timestamp + 300000 // 5 minutes
+    });
+
+    // Clean up expired challenges
+    for (const [key, value] of challengeStore.entries()) {
+      if (value.expiresAt < Date.now()) {
+        challengeStore.delete(key);
+      }
+    }
+
+    res.json({ message, nonce, expiresAt: timestamp + 300000 });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate challenge' });
+  }
+});
+
+// Verify wallet signature
+function verifyWalletSignature(wallet, message, signature) {
+  try {
+    const recoveredAddress = ethers.verifyMessage(message, signature);
+    return recoveredAddress.toLowerCase() === wallet.toLowerCase();
+  } catch (error) {
+    return false;
+  }
+}
+
 router.post('/api/register-agent', validateBody(registerAgentSchema), async (req, res) => {
   try {
-    const { wallet, name, bio, webhookUrl, skills } = req.validatedBody;
+    const { wallet, name, bio, webhookUrl, skills, signature } = req.validatedBody;
+
+    // Verify wallet signature if provided (required for verified badge)
+    let isVerified = false;
+    if (signature) {
+      const challenge = challengeStore.get(wallet.toLowerCase());
+      if (!challenge) {
+        return res.status(400).json({ 
+          error: 'No challenge found. Request a challenge first via POST /api/auth/challenge' 
+        });
+      }
+      if (challenge.expiresAt < Date.now()) {
+        challengeStore.delete(wallet.toLowerCase());
+        return res.status(400).json({ error: 'Challenge expired. Request a new one.' });
+      }
+      if (!verifyWalletSignature(wallet, challenge.message, signature)) {
+        return res.status(400).json({ error: 'Invalid signature' });
+      }
+      // Valid signature - mark as verified and clean up
+      isVerified = true;
+      challengeStore.delete(wallet.toLowerCase());
+    }
 
     // Sanitize inputs
     const sanitizedName = sanitizeText(name);
@@ -3418,10 +3568,22 @@ router.post('/api/register-agent', validateBody(registerAgentSchema), async (req
       }
     }
 
+    // Store verification status if verified
+    if (isVerified) {
+      await db.query(
+        'UPDATE users SET verified_at = CURRENT_TIMESTAMP WHERE id = $1',
+        [user.id]
+      );
+    }
+
     res.json({
       success: true,
       agentId: agent.id,
-      apiKey: agent.api_key
+      apiKey: agent.api_key,
+      verified: isVerified,
+      message: isVerified 
+        ? 'Agent registered and wallet verified! ✓' 
+        : 'Agent registered. Verify wallet for trusted badge.'
     });
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Failed to register agent');
