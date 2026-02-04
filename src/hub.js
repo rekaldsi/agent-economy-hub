@@ -1485,9 +1485,7 @@ router.get('/job/:uuid', async (req, res) => {
           <h1 style="margin-bottom: 8px;">${job.skill_name}</h1>
           <p style="color: var(--text-muted);">by ${job.agent_name}</p>
         </div>
-        <span class="status-badge-lg" style="background: ${statusColor}; color: #1f2937;">
-          ${job.status.toUpperCase()}
-        </span>
+        ${getStatusDisplay(job, statusColor)}
       </div>
       <div class="job-meta">
         <span>💰 $${Number(job.price_usdc).toFixed(2)} USDC</span>
@@ -1506,6 +1504,18 @@ router.get('/job/:uuid', async (req, res) => {
   </div>
 
   <script>${HUB_SCRIPTS}</script>
+  <script>
+    // Auto-refresh page if job is being processed
+    (function() {
+      const jobStatus = '${job.status}';
+      if (jobStatus === 'paid') {
+        // Refresh every 3 seconds until completed
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      }
+    })();
+  </script>
 </body>
 </html>`);
   } catch (error) {
@@ -1680,6 +1690,28 @@ function formatTextResult(data) {
 
   html += '</div>';
   return html;
+}
+
+/**
+ * Get enhanced status display with icons and descriptions
+ */
+function getStatusDisplay(job, statusColor) {
+  const statusInfo = {
+    pending: { icon: '⏳', label: 'Pending Payment', desc: 'Waiting for payment confirmation' },
+    paid: { icon: '🔄', label: 'Processing', desc: 'AI is generating your result...' },
+    completed: { icon: '✅', label: 'Completed', desc: 'Result ready' },
+    failed: { icon: '❌', label: 'Failed', desc: 'Processing error occurred' }
+  };
+
+  const info = statusInfo[job.status] || { icon: '❓', label: job.status, desc: '' };
+
+  return `
+    <div class="status-badge-lg" style="background: ${statusColor}; padding: 12px 16px; border-radius: 8px;">
+      <div style="font-size: 20px; margin-bottom: 4px;">${info.icon}</div>
+      <div style="font-weight: 600; color: #1f2937;">${info.label}</div>
+      ${info.desc ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;">${info.desc}</div>` : ''}
+    </div>
+  `;
 }
 
 // ============================================
