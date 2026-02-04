@@ -7,6 +7,7 @@ const { generateWithAI } = require('./ai');
 const { generateImage } = require('./replicate');
 const { getService } = require('./services');
 const { notifyAgent } = require('./webhooks');
+const { sendEmail } = require('./email');
 const {
   validateBody,
   validateUuidParam,
@@ -2898,6 +2899,29 @@ function getStatusDisplay(job, statusColor) {
 // ============================================
 // API ROUTES
 // ============================================
+
+// Send email via Gmail SMTP
+router.post('/api/send-email', async (req, res) => {
+  try {
+    const { to, subject, body, html, cc, bcc, apiKey } = req.body;
+
+    // Simple API key auth (optional - can be removed for internal use)
+    const validKey = process.env.EMAIL_API_KEY;
+    if (validKey && apiKey !== validKey) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+
+    if (!to || !subject || !body) {
+      return res.status(400).json({ error: 'Missing required fields: to, subject, body' });
+    }
+
+    const result = await sendEmail({ to, subject, body, html, cc, bcc });
+    res.json(result);
+  } catch (error) {
+    console.error('Email send error:', error);
+    res.status(500).json({ error: error.message || 'Failed to send email' });
+  }
+});
 
 // Register/update user
 router.post('/api/users', validateBody(createUserSchema), async (req, res) => {
