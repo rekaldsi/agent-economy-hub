@@ -568,14 +568,84 @@ See [TESTING-ISSUES.md](TESTING-ISSUES.md) for detailed issue tracking.
 ## Testing Notes
 
 ### Environment Setup
-[Document any setup steps or configuration needed]
+
+**Prerequisites**:
+1. PostgreSQL running locally or Railway dev database configured
+2. Environment variables set in `.env`:
+   - `DATABASE_URL`
+   - `ANTHROPIC_API_KEY`
+   - `REPLICATE_API_TOKEN`
+   - `ALCHEMY_API_KEY`
+   - `HUB_WALLET_ADDRESS`
+3. Dependencies installed: `npm install`
+4. Database seeded: `npm run seed`
+5. Server started: `npm start`
+
+**Required Tools**:
+- MetaMask wallet configured for Base network
+- Test USDC on Base (testnet or minimal mainnet amounts)
+- Modern browser (Chrome, Firefox, Safari)
+- Mobile device or responsive mode in DevTools
 
 ### Test Data
-[Document test wallets, amounts, etc.]
+
+**Test Wallet**: Use your MetaMask wallet address
+**Hub Wallet**: 0xA1936cB91FE218a1117e109dBfAA02e3c5 (from seed script)
+**Test Amounts**:
+- Brainstorm: $0.10 USDC
+- Research: $0.50 USDC
+- Image Generation: $0.50 USDC
+
+**Test Inputs**:
+- Text: "Marketing ideas for a sustainable fashion brand"
+- Research: "Market trends for plant-based meat alternatives"
+- Image: "A futuristic city at sunset with flying cars"
+
+### Testing Status
+
+**Manual Testing Required**: This testing documentation has been prepared and is ready for human testers to execute. The 21 test cases documented above require:
+
+1. **Browser Interaction**: Opening pages, clicking buttons, filling forms
+2. **Wallet Integration**: MetaMask transactions on Base network
+3. **Payment Verification**: Sending USDC and submitting transaction hashes
+4. **Mobile Device Testing**: Physical devices or browser responsive mode
+5. **Visual Inspection**: UI/UX quality, responsiveness, error messages
+
+**To Execute Tests**:
+1. Follow the Quick Start instructions at the top of this document
+2. Work through each test case sequentially
+3. Document actual results in the "Actual Results" section
+4. Mark status as ✅ Pass or ❌ Fail
+5. Log any issues found in [TESTING-ISSUES.md](TESTING-ISSUES.md)
+6. Update the Test Summary table with final counts
+
+**Recommended Testing Order**:
+1. Start with API Endpoints (5.1, 5.2, 5.3) - can be tested via curl
+2. Test Web UI (1.1, 1.2, 1.3, 1.4, 1.5) - browser navigation
+3. Test core flow: Text Service (2.1) + Payment (4.1) - end-to-end
+4. Test Image Service (3.1) if Replicate API is configured
+5. Test error cases (4.2, 4.3, 7.1, 7.2)
+6. Test security (8.1, 8.2) - should be built-in protections
+7. Test mobile (6.1, 6.2) - requires device or responsive mode
+8. Test performance (9.1) - use DevTools Network tab
 
 ### Observations
-[General observations during testing]
+
+**Framework Readiness**: All 21 test cases are documented and ready for execution. The testing framework provides:
+- Clear test case structure (URL, steps, expected results, actual results, status)
+- Coverage across 9 categories (Web UI, Services, Payment, API, Mobile, Errors, Security, Performance)
+- Issue tracking system (TESTING-ISSUES.md)
+- Known limitations documentation (KNOWN-ISSUES.md)
+- Testing summary template (TESTING-SUMMARY.md)
+
+**Next Steps for Testers**:
+1. Set up local development environment
+2. Execute test cases systematically
+3. Document all findings
+4. Update summary report with pass/fail counts
+5. Assess launch readiness based on results
 
 ---
 
-*Last updated: 2026-02-03*
+*Testing framework created: 2026-02-03*
+*Manual testing to be performed by human testers*
