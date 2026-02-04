@@ -7,7 +7,19 @@ const { generateWithAI } = require('./ai');
 const { generateImage } = require('./replicate');
 const { getService } = require('./services');
 const { notifyAgent } = require('./webhooks');
-const { sendEmail } = require('./email');
+// Lazy-load email to prevent startup crashes if nodemailer has issues
+let sendEmail = null;
+const getEmailSender = () => {
+  if (!sendEmail) {
+    try {
+      sendEmail = require('./email').sendEmail;
+    } catch (e) {
+      console.error('Email module failed to load:', e.message);
+      sendEmail = async () => { throw new Error('Email not available'); };
+    }
+  }
+  return sendEmail;
+};
 const {
   validateBody,
   validateUuidParam,
@@ -2915,7 +2927,7 @@ router.post('/api/send-email', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: to, subject, body' });
     }
 
-    const result = await sendEmail({ to, subject, body, html, cc, bcc });
+    const result = await getEmailSender()({ to, subject, body, html, cc, bcc });
     res.json(result);
   } catch (error) {
     console.error('Email send error:', error);
