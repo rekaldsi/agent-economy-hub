@@ -286,7 +286,7 @@ const HUB_SCRIPTS = `
                 chainId: '0x2105',
                 chainName: 'Base',
                 nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-                rpcUrls: ['https://base-mainnet.g.alchemy.com/v2/GMcDISyWWgpZWJai3DjVZ', 'https://mainnet.base.org'],
+                rpcUrls: ['https://mainnet.base.org'],
                 blockExplorerUrls: ['https://basescan.org']
               }]
             });
