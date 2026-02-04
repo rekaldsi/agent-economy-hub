@@ -1831,6 +1831,19 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
     if (!agent) return res.status(404).send('Agent not found');
 
     const skills = await db.getSkillsByAgent(agent.id);
+    const reviews = await db.getAgentReviews(agent.id, 5);
+    const reviewStats = await db.getAgentReviewStats(agent.id);
+    
+    // Trust tier badge
+    const tierBadges = {
+      'unknown': '',
+      'new': '🆕 New',
+      'emerging': '⬆️ Emerging',
+      'established': '✅ Established',
+      'trusted': '🏆 Trusted',
+      'verified': '🔒 Verified'
+    };
+    const trustBadge = tierBadges[agent.trust_tier] || tierBadges['new'];
 
     const skillCards = skills.map(s => `
       <div class="skill-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
@@ -1929,14 +1942,32 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
             <div class="agent-info">
               <h1 style="font-size: 1.5rem;">${agent.name}</h1>
               <p style="font-family: monospace;">${agent.wallet_address.slice(0,10)}...${agent.wallet_address.slice(-8)}</p>
+              ${trustBadge ? `<span style="display: inline-block; background: var(--orange); color: var(--bg); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-top: 8px;">${trustBadge}</span>` : ''}
             </div>
           </div>
           <p style="color: var(--text-muted); margin-bottom: 16px;">${agent.bio || 'AI-powered creative services.'}</p>
-          <div class="agent-stats">
-            <span>⭐ ${agent.rating || '5.0'}</span>
-            <span>📦 ${agent.total_jobs || 0} jobs</span>
+          <div class="agent-stats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <div style="text-align: center; padding: 12px; background: var(--bg); border-radius: 8px;">
+              <div style="font-size: 1.25rem; font-weight: 700; color: var(--orange);">⭐ ${Number(agent.rating || 0).toFixed(1)}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${agent.review_count || 0} reviews</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: var(--bg); border-radius: 8px;">
+              <div style="font-size: 1.25rem; font-weight: 700; color: var(--green);">${agent.total_jobs || 0}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">jobs completed</div>
+            </div>
           </div>
-          <div id="wallet-status" style="margin-top: 16px;">
+          ${agent.completion_rate ? `
+            <div style="margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+                <span style="color: var(--text-muted);">Completion Rate</span>
+                <span style="color: var(--green); font-weight: 600;">${Number(agent.completion_rate).toFixed(0)}%</span>
+              </div>
+              <div style="background: var(--bg); border-radius: 4px; height: 6px; overflow: hidden;">
+                <div style="background: var(--green); height: 100%; width: ${agent.completion_rate}%;"></div>
+              </div>
+            </div>
+          ` : ''}
+          <div id="wallet-status">
             <button class="btn btn-secondary" style="width: 100%;" onclick="connectWallet()">Connect Wallet to Pay</button>
           </div>
         </div>
@@ -1944,6 +1975,70 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
       <div>
         <h2 class="section-title">Available Services</h2>
         ${skillsHtml}
+        
+        <!-- Reviews Section -->
+        <div style="margin-top: 48px;">
+          <h2 class="section-title">Reviews ${reviewStats.total_reviews > 0 ? `(${reviewStats.total_reviews})` : ''}</h2>
+          
+          ${reviewStats.total_reviews > 0 ? `
+            <!-- Rating Summary -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+              <div style="display: flex; gap: 32px; flex-wrap: wrap;">
+                <div style="text-align: center;">
+                  <div style="font-size: 3rem; font-weight: 700; color: var(--orange);">${Number(reviewStats.avg_rating).toFixed(1)}</div>
+                  <div style="color: var(--text-muted);">Overall Rating</div>
+                  <div style="margin-top: 4px;">
+                    ${'⭐'.repeat(Math.round(Number(reviewStats.avg_rating)))}${'☆'.repeat(5 - Math.round(Number(reviewStats.avg_rating)))}
+                  </div>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span>Quality</span>
+                    <span style="color: var(--green);">${Number(reviewStats.avg_quality).toFixed(1)}/5</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span>Speed</span>
+                    <span style="color: var(--green);">${Number(reviewStats.avg_speed).toFixed(1)}/5</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span>Communication</span>
+                    <span style="color: var(--green);">${Number(reviewStats.avg_communication).toFixed(1)}/5</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Individual Reviews -->
+            ${reviews.map(r => `
+              <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                  <div>
+                    <span style="font-weight: 600;">${r.reviewer_name || r.reviewer_wallet.slice(0, 6) + '...' + r.reviewer_wallet.slice(-4)}</span>
+                    <span style="color: var(--text-muted); margin-left: 8px; font-size: 0.85rem;">for ${r.skill_name}</span>
+                  </div>
+                  <div style="color: var(--orange);">${'⭐'.repeat(r.rating)}</div>
+                </div>
+                ${r.comment ? `<p style="color: var(--text-secondary); margin: 0 0 12px 0; line-height: 1.5;">${r.comment}</p>` : ''}
+                ${r.agent_response ? `
+                  <div style="background: var(--bg); border-left: 3px solid var(--orange); padding: 12px; margin-top: 12px;">
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">Agent Response:</div>
+                    <p style="margin: 0; color: var(--text-secondary);">${r.agent_response}</p>
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+            
+            ${reviewStats.total_reviews > 5 ? `
+              <a href="/agent/${agent.id}/reviews" class="btn btn-secondary" style="width: 100%; text-align: center; text-decoration: none;">
+                View All ${reviewStats.total_reviews} Reviews
+              </a>
+            ` : ''}
+          ` : `
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 32px; text-align: center; color: var(--text-muted);">
+              <p style="margin: 0;">No reviews yet. Be the first to try this agent!</p>
+            </div>
+          `}
+        </div>
       </div>
     </div>
   </div>
@@ -3705,6 +3800,115 @@ router.get('/api/agents/:id/jobs', validateIdParam('id'), async (req, res) => {
     res.json(jobs);
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve agent jobs');
+    res.status(statusCode).json(body);
+  }
+});
+
+// ============= REVIEW ENDPOINTS =============
+
+// Submit a review for a completed job
+router.post('/api/reviews', async (req, res) => {
+  try {
+    const { jobUuid, rating, comment, qualityScore, speedScore, communicationScore, reviewerWallet } = req.body;
+    
+    if (!jobUuid || !rating || !reviewerWallet) {
+      return res.status(400).json({ error: 'Missing required fields: jobUuid, rating, reviewerWallet' });
+    }
+    
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    }
+    
+    // Get job and verify it's completed
+    const job = await db.getJob(jobUuid);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    if (job.status !== 'completed') {
+      return res.status(400).json({ error: 'Can only review completed jobs' });
+    }
+    if (job.requester_wallet.toLowerCase() !== reviewerWallet.toLowerCase()) {
+      return res.status(403).json({ error: 'Only the job requester can leave a review' });
+    }
+    
+    // Get or create user for reviewer
+    let user = await db.getUser(reviewerWallet);
+    if (!user) {
+      user = await db.createUser(reviewerWallet, 'human');
+    }
+    
+    const review = await db.createReview(
+      job.id,
+      user.id,
+      rating,
+      comment || null,
+      qualityScore || rating,
+      speedScore || rating,
+      communicationScore || rating
+    );
+    
+    // Update agent completion rate
+    await db.updateAgentCompletionRate(job.agent_id);
+    
+    res.json({ success: true, review });
+  } catch (error) {
+    if (error.message === 'Review already exists for this job') {
+      return res.status(400).json({ error: error.message });
+    }
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to create review');
+    res.status(statusCode).json(body);
+  }
+});
+
+// Get reviews for an agent
+router.get('/api/agents/:id/reviews', validateIdParam('id'), async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const reviews = await db.getAgentReviews(req.params.id, limit, offset);
+    const stats = await db.getAgentReviewStats(req.params.id);
+    
+    res.json({ reviews, stats });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve reviews');
+    res.status(statusCode).json(body);
+  }
+});
+
+// Agent responds to a review
+router.post('/api/reviews/:id/respond', validateIdParam('id'), async (req, res) => {
+  try {
+    const { response, agentWallet } = req.body;
+    
+    if (!response || !agentWallet) {
+      return res.status(400).json({ error: 'Missing required fields: response, agentWallet' });
+    }
+    
+    // Get agent by wallet
+    const agent = await db.getAgentByWallet(agentWallet);
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+    
+    const review = await db.addAgentResponse(req.params.id, agent.id, response);
+    res.json({ success: true, review });
+  } catch (error) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to add response');
+    res.status(statusCode).json(body);
+  }
+});
+
+// Get platform stats (for landing page)
+router.get('/api/stats', async (req, res) => {
+  try {
+    const stats = await db.getPlatformStats();
+    res.json(stats);
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve stats');
     res.status(statusCode).json(body);
   }
 });

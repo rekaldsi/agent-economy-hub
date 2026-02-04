@@ -125,6 +125,74 @@ async function initDB() {
       WHERE service_key IS NULL
     `);
 
+    // Migration: Enhanced reviews table with breakdown scores
+    await client.query(`
+      DO $$
+      BEGIN
+        -- Add quality_score column
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'reviews' AND column_name = 'quality_score'
+        ) THEN
+          ALTER TABLE reviews ADD COLUMN quality_score INTEGER CHECK (quality_score >= 1 AND quality_score <= 5);
+        END IF;
+        
+        -- Add speed_score column
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'reviews' AND column_name = 'speed_score'
+        ) THEN
+          ALTER TABLE reviews ADD COLUMN speed_score INTEGER CHECK (speed_score >= 1 AND speed_score <= 5);
+        END IF;
+        
+        -- Add communication_score column
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'reviews' AND column_name = 'communication_score'
+        ) THEN
+          ALTER TABLE reviews ADD COLUMN communication_score INTEGER CHECK (communication_score >= 1 AND communication_score <= 5);
+        END IF;
+        
+        -- Add agent_response column
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'reviews' AND column_name = 'agent_response'
+        ) THEN
+          ALTER TABLE reviews ADD COLUMN agent_response TEXT;
+        END IF;
+        
+        -- Add review_count to agents
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'review_count'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN review_count INTEGER DEFAULT 0;
+        END IF;
+        
+        -- Add completion_rate to agents
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'completion_rate'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN completion_rate DECIMAL(5,2) DEFAULT 100;
+        END IF;
+        
+        -- Add trust_tier to agents
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'trust_tier'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN trust_tier VARCHAR(20) DEFAULT 'new';
+        END IF;
+      END $$;
+    `);
+
+    // Create indexes for reviews
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_reviews_job ON reviews(job_id);
+      CREATE INDEX IF NOT EXISTS idx_reviews_reviewer ON reviews(reviewer_id);
+    `);
+
     logger.info('Database schema initialized');
   } catch (error) {
     logger.error('Database initialization failed', { error: error.message, stack: error.stack });
@@ -346,6 +414,173 @@ async function markJobInProgress(jobId) {
 }
 
 /**
+ * Create a review for a completed job
+ */
+async function createReview(jobId, reviewerId, rating, comment, qualityScore, speedScore, communicationScore) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Get the job to find the agent
+    const jobResult = await client.query('SELECT agent_id FROM jobs WHERE id = $1', [jobId]);
+    if (jobResult.rows.length === 0) {
+      throw new Error('Job not found');
+    }
+    const agentId = jobResult.rows[0].agent_id;
+
+    // Check if review already exists for this job
+    const existingReview = await client.query('SELECT id FROM reviews WHERE job_id = $1', [jobId]);
+    if (existingReview.rows.length > 0) {
+      throw new Error('Review already exists for this job');
+    }
+
+    // Create the review
+    const reviewResult = await client.query(
+      `INSERT INTO reviews (job_id, reviewer_id, rating, comment, quality_score, speed_score, communication_score)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [jobId, reviewerId, rating, comment, qualityScore, speedScore, communicationScore]
+    );
+
+    // Update agent's rating and review_count
+    await client.query(`
+      UPDATE agents SET 
+        review_count = review_count + 1,
+        rating = (
+          SELECT COALESCE(AVG(rating), 0)
+          FROM reviews r
+          JOIN jobs j ON r.job_id = j.id
+          WHERE j.agent_id = $1
+        )
+      WHERE id = $1
+    `, [agentId]);
+
+    await client.query('COMMIT');
+    return reviewResult.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Get reviews for an agent
+ */
+async function getAgentReviews(agentId, limit = 20, offset = 0) {
+  const result = await query(
+    `SELECT r.*, 
+            j.job_uuid, 
+            s.name as skill_name,
+            u.wallet_address as reviewer_wallet,
+            u.name as reviewer_name
+     FROM reviews r
+     JOIN jobs j ON r.job_id = j.id
+     JOIN skills s ON j.skill_id = s.id
+     JOIN users u ON r.reviewer_id = u.id
+     WHERE j.agent_id = $1
+     ORDER BY r.created_at DESC
+     LIMIT $2 OFFSET $3`,
+    [agentId, limit, offset]
+  );
+  return result.rows;
+}
+
+/**
+ * Get review stats for an agent
+ */
+async function getAgentReviewStats(agentId) {
+  const result = await query(
+    `SELECT 
+       COUNT(*) as total_reviews,
+       COALESCE(AVG(rating), 0) as avg_rating,
+       COALESCE(AVG(quality_score), 0) as avg_quality,
+       COALESCE(AVG(speed_score), 0) as avg_speed,
+       COALESCE(AVG(communication_score), 0) as avg_communication,
+       COUNT(CASE WHEN rating = 5 THEN 1 END) as five_star,
+       COUNT(CASE WHEN rating = 4 THEN 1 END) as four_star,
+       COUNT(CASE WHEN rating = 3 THEN 1 END) as three_star,
+       COUNT(CASE WHEN rating = 2 THEN 1 END) as two_star,
+       COUNT(CASE WHEN rating = 1 THEN 1 END) as one_star
+     FROM reviews r
+     JOIN jobs j ON r.job_id = j.id
+     WHERE j.agent_id = $1`,
+    [agentId]
+  );
+  return result.rows[0];
+}
+
+/**
+ * Add agent response to a review
+ */
+async function addAgentResponse(reviewId, agentId, response) {
+  // Verify the review belongs to this agent
+  const verifyResult = await query(
+    `SELECT r.id FROM reviews r
+     JOIN jobs j ON r.job_id = j.id
+     WHERE r.id = $1 AND j.agent_id = $2`,
+    [reviewId, agentId]
+  );
+  
+  if (verifyResult.rows.length === 0) {
+    throw new Error('Review not found or not owned by this agent');
+  }
+
+  const result = await query(
+    `UPDATE reviews SET agent_response = $1 WHERE id = $2 RETURNING *`,
+    [response, reviewId]
+  );
+  return result.rows[0];
+}
+
+/**
+ * Get agent by ID
+ */
+async function getAgentById(agentId) {
+  const result = await query(
+    `SELECT a.*, u.wallet_address, u.name, u.avatar_url, u.bio 
+     FROM agents a 
+     JOIN users u ON a.user_id = u.id 
+     WHERE a.id = $1`,
+    [agentId]
+  );
+  return result.rows[0];
+}
+
+/**
+ * Update agent completion rate
+ */
+async function updateAgentCompletionRate(agentId) {
+  await query(`
+    UPDATE agents SET completion_rate = (
+      SELECT CASE 
+        WHEN COUNT(*) = 0 THEN 100
+        ELSE (COUNT(CASE WHEN status = 'completed' THEN 1 END)::DECIMAL / COUNT(*)::DECIMAL) * 100
+      END
+      FROM jobs 
+      WHERE agent_id = $1 AND status IN ('completed', 'failed', 'refunded')
+    )
+    WHERE id = $1
+  `, [agentId]);
+}
+
+/**
+ * Get platform stats
+ */
+async function getPlatformStats() {
+  const result = await query(`
+    SELECT 
+      (SELECT COUNT(*) FROM agents WHERE is_active = true) as total_agents,
+      (SELECT COUNT(*) FROM skills WHERE is_active = true) as total_skills,
+      (SELECT COUNT(*) FROM jobs WHERE status = 'completed') as total_jobs_completed,
+      (SELECT COALESCE(SUM(price_usdc), 0) FROM jobs WHERE status = 'completed') as total_volume,
+      (SELECT COALESCE(AVG(a.rating), 0) FROM agents a WHERE a.review_count > 0) as avg_platform_rating
+  `);
+  return result.rows[0];
+}
+
+/**
  * Gracefully close database connection pool
  */
 async function closePool() {
@@ -366,6 +601,7 @@ module.exports = {
   getUser,
   createUser,
   getAgent,
+  getAgentById,
   getAgentByWallet,
   getAllAgents,
   createAgent,
@@ -378,5 +614,12 @@ module.exports = {
   getJobsByUser,
   getJobsByAgent,
   logWebhookDelivery,
-  markJobInProgress
+  markJobInProgress,
+  // Review functions
+  createReview,
+  getAgentReviews,
+  getAgentReviewStats,
+  addAgentResponse,
+  updateAgentCompletionRate,
+  getPlatformStats
 };
