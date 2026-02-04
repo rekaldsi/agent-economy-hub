@@ -1458,14 +1458,19 @@ router.get('/job/:uuid', async (req, res) => {
     const statusColor = statusColors[job.status] || '#f3f4f6';
     const outputHtml = formatJobResult(job.output_data, job);
 
-    const paymentHtml = job.payment_tx_hash 
-      ? '<div class="job-section"><h3>💳 Payment</h3><a href="https://basescan.org/tx/' + job.payment_tx_hash + '" target="_blank" style="color: var(--accent); word-break: break-all;">' + job.payment_tx_hash + '</a></div>'
+    const paymentHtml = job.payment_tx_hash
+      ? '<div class="job-section"><h3>💳 Payment</h3><a href="https://basescan.org/tx/' + escapeHtml(job.payment_tx_hash) + '" target="_blank" style="color: var(--accent); word-break: break-all;">' + escapeHtml(job.payment_tx_hash) + '</a></div>'
       : '';
+
+    // Escape user-controlled fields for security
+    const safeSkillName = escapeHtml(job.skill_name);
+    const safeAgentName = escapeHtml(job.agent_name);
+    const safeInputPrompt = escapeHtml(job.input_data?.prompt || 'No input provided');
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Job ${job.job_uuid.slice(0,8)} | Agent Hub</title>
+  <title>Job ${escapeHtml(job.job_uuid.slice(0,8))} | Agent Hub</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
@@ -1514,8 +1519,8 @@ router.get('/job/:uuid', async (req, res) => {
     <div class="job-header">
       <div style="display: flex; justify-content: space-between; align-items: start;">
         <div>
-          <h1 style="margin-bottom: 8px;">${job.skill_name}</h1>
-          <p style="color: var(--text-muted);">by ${job.agent_name}</p>
+          <h1 style="margin-bottom: 8px;">${safeSkillName}</h1>
+          <p style="color: var(--text-muted);">by ${safeAgentName}</p>
         </div>
         ${getStatusDisplay(job, statusColor)}
       </div>
@@ -1528,7 +1533,7 @@ router.get('/job/:uuid', async (req, res) => {
 
     <div class="job-section">
       <h3>📝 Request</h3>
-      <p>${job.input_data?.prompt || 'No input provided'}</p>
+      <p>${safeInputPrompt}</p>
     </div>
 
     ${outputHtml}
