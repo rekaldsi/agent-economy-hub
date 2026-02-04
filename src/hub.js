@@ -30,6 +30,77 @@ const {
 const router = express.Router();
 
 // ============================================
+// ERROR HANDLING
+// ============================================
+
+/**
+ * Format error response consistently
+ */
+function formatErrorResponse(error, defaultMessage = 'An error occurred') {
+  // Don't expose internal errors in production
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // Known error types
+  if (error.message.includes('not found')) {
+    return {
+      statusCode: 404,
+      body: {
+        error: error.message,
+        code: 'NOT_FOUND'
+      }
+    };
+  }
+
+  if (error.message.includes('Invalid') || error.message.includes('mismatch') || error.message.includes('does not belong')) {
+    return {
+      statusCode: 400,
+      body: {
+        error: error.message,
+        code: 'INVALID_INPUT'
+      }
+    };
+  }
+
+  if (error.message.includes('unauthorized') || error.message.includes('API key')) {
+    return {
+      statusCode: 403,
+      body: {
+        error: 'Unauthorized',
+        code: 'UNAUTHORIZED'
+      }
+    };
+  }
+
+  if (error.message.includes('Already registered')) {
+    return {
+      statusCode: 409,
+      body: {
+        error: error.message,
+        code: 'CONFLICT'
+      }
+    };
+  }
+
+  // Generic errors
+  console.error('Unhandled error:', error);
+  return {
+    statusCode: 500,
+    body: {
+      error: isProduction ? defaultMessage : error.message,
+      code: 'INTERNAL_ERROR'
+    }
+  };
+}
+
+/**
+ * Express error handler middleware
+ */
+function errorHandler(err, req, res, next) {
+  const { statusCode, body } = formatErrorResponse(err);
+  res.status(statusCode).json(body);
+}
+
+// ============================================
 // HUB LANDING PAGE
 // ============================================
 const HUB_STYLES = `
@@ -1770,7 +1841,8 @@ router.post('/api/users', validateBody(createUserSchema), async (req, res) => {
     const user = await db.createUser(wallet, type || 'human', name);
     res.json(user);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to create user');
+    res.status(statusCode).json(body);
   }
 });
 
@@ -1809,11 +1881,8 @@ router.post('/api/jobs',
 
       res.json({ jobUuid: job.job_uuid, status: job.status });
     } catch (error) {
-      if (error.message.includes('not found') || error.message.includes('mismatch') || error.message.includes('does not belong')) {
-        return res.status(400).json({ error: error.message });
-      }
-      console.error('Job creation error:', error);
-      res.status(500).json({ error: 'Failed to create job' });
+      const { statusCode, body } = formatErrorResponse(error, 'Unable to create job. Please check your inputs and try again.');
+      res.status(statusCode).json(body);
     }
   });
 
@@ -1861,7 +1930,8 @@ router.post('/api/jobs/:uuid/pay',
     if (!verification.valid) {
       console.error('Payment verification failed:', verification.error);
       return res.status(400).json({
-        error: 'Payment verification failed',
+        error: 'Payment could not be verified. Please ensure you sent the correct amount to the right address.',
+        code: 'PAYMENT_VERIFICATION_FAILED',
         details: verification.error
       });
     }
@@ -2047,19 +2117,20 @@ router.post('/api/jobs/:uuid/pay',
       });
     }
   } catch (error) {
-    console.error('Payment endpoint error:', error);
-    res.status(500).json({ error: error.message });
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to process payment');
+    res.status(statusCode).json(body);
   }
 });
 
 // Get job status
-router.get('/api/jobs/:uuid', async (req, res) => {
+router.get('/api/jobs/:uuid', validateUuidParam('uuid'), async (req, res) => {
   try {
     const job = await db.getJob(req.params.uuid);
-    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (!job) return res.status(404).json({ error: 'Job not found', code: 'NOT_FOUND' });
     res.json(job);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve job');
+    res.status(statusCode).json(body);
   }
 });
 
@@ -2157,8 +2228,8 @@ router.post('/api/jobs/:uuid/complete',
     });
 
   } catch (error) {
-    console.error('Job completion error:', error);
-    res.status(500).json({ error: error.message });
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to complete job');
+    res.status(statusCode).json(body);
   }
 });
 
@@ -2168,7 +2239,8 @@ router.get('/api/agents', async (req, res) => {
     const agents = await db.getAllAgents();
     res.json(agents);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve agents');
+    res.status(statusCode).json(body);
   }
 });
 
@@ -2176,13 +2248,14 @@ router.get('/api/agents', async (req, res) => {
 router.get('/api/users/:wallet', async (req, res) => {
   try {
     const user = await db.getUser(req.params.wallet);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
+    if (!user) return res.status(404).json({ error: 'User not found', code: 'NOT_FOUND' });
+
     // Check if user is also an agent
     const agent = await db.getAgentByWallet(req.params.wallet);
     res.json({ ...user, agent: agent || null });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve user');
+    res.status(statusCode).json(body);
   }
 });
 
@@ -2191,11 +2264,12 @@ router.get('/api/users/:wallet/jobs', async (req, res) => {
   try {
     const user = await db.getUser(req.params.wallet);
     if (!user) return res.json([]);
-    
+
     const jobs = await db.getJobsByUser(user.id);
     res.json(jobs);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve jobs');
+    res.status(statusCode).json(body);
   }
 });
 
@@ -2248,8 +2322,8 @@ router.post('/api/register-agent', validateBody(registerAgentSchema), async (req
       apiKey: agent.api_key
     });
   } catch (error) {
-    console.error('Register agent error:', error);
-    res.status(500).json({ error: error.message });
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to register agent');
+    res.status(statusCode).json(body);
   }
 });
 
@@ -2259,8 +2333,12 @@ router.get('/api/agents/:id/jobs', validateIdParam('id'), async (req, res) => {
     const jobs = await db.getJobsByAgent(req.params.id);
     res.json(jobs);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve agent jobs');
+    res.status(statusCode).json(body);
   }
 });
+
+// Global error handler (catch-all for unhandled errors)
+router.use(errorHandler);
 
 module.exports = router;
