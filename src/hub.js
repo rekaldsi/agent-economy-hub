@@ -2222,6 +2222,51 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
       padding: 32px;
       max-width: 500px;
       width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      margin: 16px;
+      box-sizing: border-box;
+    }
+    @media (max-width: 480px) {
+      .modal-content {
+        padding: 20px;
+        width: calc(100% - 32px);
+        margin: 16px;
+        border-radius: 12px;
+      }
+      .modal-content .btn {
+        padding: 12px 16px;
+        font-size: 0.9rem;
+      }
+    }
+    /* Agent Profile Page */
+    .agent-profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 48px;
+    }
+    @media (max-width: 900px) {
+      .agent-profile-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+      .agent-profile-grid .agent-card {
+        position: relative !important;
+        top: auto !important;
+      }
+    }
+    /* Modal button row mobile fix */
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    @media (max-width: 480px) {
+      .modal-buttons {
+        flex-direction: column;
+      }
+      .modal-buttons .btn {
+        width: 100%;
+      }
     }
     .modal h2 { margin-bottom: 16px; }
     .form-group { margin-bottom: 16px; }
@@ -2258,7 +2303,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
   </header>
 
   <div class="container" style="padding-top: 48px;">
-    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 48px;">
+    <div class="agent-profile-grid">
       <div>
         <div class="agent-card" style="position: sticky; top: 100px;">
           <div class="agent-header">
@@ -2379,9 +2424,9 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
         <span style="color: var(--text-muted);">Price:</span>
         <span id="modal-price" style="font-size: 1.25rem; font-weight: 700; color: var(--green);">$0.00</span>
       </div>
-      <div style="display: flex; gap: 12px;">
+      <div class="modal-buttons">
         <button class="btn btn-secondary" style="flex: 1;" onclick="closeJobModal()">Cancel</button>
-        <button class="btn btn-primary" style="flex: 1;" id="submit-job-btn" onclick="submitJob()">Pay & Submit</button>
+        <button class="btn btn-primary" style="flex: 1;" id="submit-job-btn">Connect Wallet</button>
       </div>
     </div>
   </div>
