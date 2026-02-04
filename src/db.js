@@ -44,6 +44,7 @@ async function initDB() {
         category VARCHAR(50),
         price_usdc DECIMAL(18, 6) NOT NULL,
         estimated_time VARCHAR(50),
+        service_key TEXT,
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT NOW()
       );
@@ -55,7 +56,7 @@ async function initDB() {
         requester_id INTEGER REFERENCES users(id),
         agent_id INTEGER REFERENCES agents(id),
         skill_id INTEGER REFERENCES skills(id),
-        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'in_progress', 'delivered', 'completed', 'disputed', 'refunded')),
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'in_progress', 'delivered', 'completed', 'disputed', 'refunded', 'failed')),
         input_data JSONB,
         output_data JSONB,
         price_usdc DECIMAL(18, 6) NOT NULL,
@@ -85,6 +86,27 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_skills_agent ON skills(agent_id);
       CREATE INDEX IF NOT EXISTS idx_skills_category ON skills(category);
     `);
+
+    // Migration: Add service_key column if it doesn't exist
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'skills' AND column_name = 'service_key'
+        ) THEN
+          ALTER TABLE skills ADD COLUMN service_key TEXT;
+        END IF;
+      END $$;
+    `);
+
+    // Migration: Populate service_key for existing skills
+    await client.query(`
+      UPDATE skills
+      SET service_key = LOWER(REGEXP_REPLACE(name, '[^a-zA-Z0-9]', '', 'g'))
+      WHERE service_key IS NULL
+    `);
+
     console.log('✓ Database schema initialized');
   } catch (error) {
     console.error('Database init error:', error.message);
@@ -268,6 +290,14 @@ async function getJobsByAgent(agentId) {
   return result.rows;
 }
 
+async function getSkill(skillId) {
+  const result = await query(
+    'SELECT * FROM skills WHERE id = $1',
+    [skillId]
+  );
+  return result.rows[0];
+}
+
 module.exports = {
   pool,
   query,
@@ -280,6 +310,7 @@ module.exports = {
   createAgent,
   createSkill,
   getSkillsByAgent,
+  getSkill,
   createJob,
   updateJobStatus,
   getJob,
