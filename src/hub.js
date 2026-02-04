@@ -2066,6 +2066,83 @@ router.get('/api/jobs/:uuid', async (req, res) => {
   }
 });
 
+// Agent completes job (webhook callback)
+router.post('/api/jobs/:uuid/complete', async (req, res) => {
+  try {
+    const { apiKey, output } = req.body;
+
+    // Validate API key
+    if (!apiKey || typeof apiKey !== 'string') {
+      return res.status(401).json({ error: 'API key required' });
+    }
+
+    // Validate output
+    if (!output || typeof output !== 'object') {
+      return res.status(400).json({ error: 'Output data required' });
+    }
+
+    // Get job
+    const job = await db.getJob(req.params.uuid);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    // Get agent and verify API key
+    const agent = await db.getAgent(job.agent_id);
+    if (!agent) {
+      return res.status(500).json({ error: 'Agent not found' });
+    }
+
+    if (agent.api_key !== apiKey) {
+      console.error(JSON.stringify({
+        event: 'unauthorized_completion',
+        jobUuid: job.job_uuid,
+        agentId: agent.id,
+        providedKey: apiKey.substring(0, 8) + '...'
+      }));
+      return res.status(403).json({ error: 'Invalid API key' });
+    }
+
+    // Check job status (must be 'paid' or 'in_progress')
+    if (!['paid', 'in_progress'].includes(job.status)) {
+      return res.status(400).json({
+        error: `Job status is ${job.status}, cannot complete`
+      });
+    }
+
+    console.log(JSON.stringify({
+      event: 'agent_completion',
+      jobUuid: job.job_uuid,
+      agentId: agent.id,
+      status: job.status,
+      timestamp: new Date().toISOString()
+    }));
+
+    // Update job with agent's output
+    await db.updateJobStatus(job.id, 'completed', {
+      output_data: JSON.stringify(output),
+      completed_at: new Date()
+    });
+
+    // Update agent stats (total_jobs, total_earned)
+    await db.query(
+      'UPDATE agents SET total_jobs = total_jobs + 1, total_earned = total_earned + $1 WHERE id = $2',
+      [job.price_usdc, agent.id]
+    );
+
+    res.json({
+      success: true,
+      jobUuid: job.job_uuid,
+      status: 'completed',
+      message: 'Job completed successfully'
+    });
+
+  } catch (error) {
+    console.error('Job completion error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all agents
 router.get('/api/agents', async (req, res) => {
   try {
