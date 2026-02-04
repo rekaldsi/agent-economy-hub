@@ -903,6 +903,22 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Readiness check (for Railway health checks)
+app.get('/ready', async (req, res) => {
+  try {
+    // Test database connection
+    await db.query('SELECT 1');
+    res.json({ ready: true, timestamp: new Date().toISOString() });
+  } catch (error) {
+    logger.error('Readiness check failed', { error: error.message });
+    res.status(503).json({
+      ready: false,
+      error: 'Database connection failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // ============================================
 // API ENDPOINTS WITH REAL AI
 // ============================================
@@ -1024,23 +1040,58 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Start server
 async function start() {
-  // Validate required environment variables
-  const required = [
-    'DATABASE_URL',
-    'ANTHROPIC_API_KEY',
-    'ALCHEMY_API_KEY',
-    'REPLICATE_API_TOKEN'
-  ];
+  // Validate required environment variables with helpful messages
+  const required = {
+    DATABASE_URL: 'PostgreSQL connection string (e.g., postgresql://user:pass@host:5432/db)',
+    ANTHROPIC_API_KEY: 'Anthropic API key for Claude AI (starts with sk-ant-)',
+    ALCHEMY_API_KEY: 'Alchemy API key for blockchain RPC (get from alchemy.com)',
+    REPLICATE_API_TOKEN: 'Replicate API token for image generation (starts with r8_)'
+  };
 
-  const missing = required.filter(key => !process.env[key]);
-  if (missing.length > 0) {
-    logger.error('Missing required environment variables', { missing });
-    logger.error('Please check your .env file and ensure all required variables are set');
+  const errors = [];
+  for (const [key, description] of Object.entries(required)) {
+    if (!process.env[key]) {
+      errors.push(`  ✗ ${key}: ${description}`);
+    }
+  }
+
+  if (errors.length > 0) {
+    logger.error('Missing required environment variables:');
+    errors.forEach(err => logger.error(err));
+    logger.error('Please check your .env file. See .env.example for reference.');
     process.exit(1);
   }
 
+  // Check optional environment variables
+  const optional = {
+    PORT: process.env.PORT || 7378,
+    NODE_ENV: process.env.NODE_ENV || 'development',
+    LOG_LEVEL: process.env.LOG_LEVEL || 'info'
+  };
+
+  logger.info('Environment configuration', optional);
+
   try {
     await db.initDB();
+
+    // Test database connection
+    try {
+      await db.query('SELECT 1');
+      logger.info('Database connection verified');
+    } catch (error) {
+      logger.error('Database connection test failed', { error: error.message });
+      throw error;
+    }
+
+    // Verify AI service key format
+    if (!ANTHROPIC_API_KEY.startsWith('sk-ant-')) {
+      logger.warn('ANTHROPIC_API_KEY format unexpected (should start with sk-ant-)');
+    }
+
+    // Verify Replicate token format
+    if (!process.env.REPLICATE_API_TOKEN.startsWith('r8_')) {
+      logger.warn('REPLICATE_API_TOKEN format unexpected (should start with r8_)');
+    }
 
     server = app.listen(PORT, () => {
       logger.info('Agent Economy Hub started', {
