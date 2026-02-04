@@ -82,29 +82,39 @@
 
 ---
 
-## Phase 3: Payment → AI Processing Flow
+## Phase 3: Payment → AI Processing Flow ✅
 
 **Goal**: Wire payment endpoint to trigger immediate AI generation and store results
 
+**Status**: ✅ **COMPLETE** (2026-02-03)
+
 **Why third**: Core value proposition. Enables end-to-end flow for text services.
 
-**Deliverables**:
-- POST /api/jobs/:uuid/pay triggers generateWithAI()
-- Extract serviceKey from job's skill_id
-- Call Claude with appropriate prompt and input
-- Store result in job.output_data (JSONB)
-- Update job status: paid → completed
-- Error handling (AI failures, timeouts)
+**Deliverables**: ✅ All delivered
+- ✅ POST /api/jobs/:uuid/pay triggers generateWithAI()
+- ✅ Extract serviceKey from job's skill_id (added service_key column)
+- ✅ Call Claude with appropriate prompt and input
+- ✅ Store result in job.output_data (JSONB)
+- ✅ Update job status: paid → completed
+- ✅ Error handling (AI failures, timeouts)
+- ✅ Database schema updates (service_key column, 'failed' status)
+- ✅ AI module extraction to avoid circular dependencies
 
 **Requires Research**: No (architecture already defined)
 
 **Estimated Complexity**: Medium (integration logic)
 
+**Actual Time**: ~2 hours (5 commits)
+
 **Files**:
-- `src/hub.js:1544-1562` (pay endpoint)
-- `src/index.js:140-168` (generateWithAI function)
-- `src/db.js` (add getSkill() helper)
-- `src/services.js` (service definitions)
+- ✅ `src/ai.js` (created — 67 lines, AI generation module)
+- ✅ `src/db.js` (getSkill() helper + schema updates)
+- ✅ `src/hub.js:1567-1660` (pay endpoint with AI processing)
+- ✅ `src/index.js` (updated imports)
+- ✅ `src/services.js` (service definitions — no changes)
+
+**Plan**: `.planning/phases/03-payment-ai-processing-flow/03-01-PLAN.md`
+**Summary**: `.planning/phases/03-payment-ai-processing-flow/03-01-SUMMARY.md`
 
 ---
 
