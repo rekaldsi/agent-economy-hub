@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const logger = require('./logger');
+const stats = require('./stats');
 const db = require('./db');
 const hubRouter = require('./hub');
 const { SERVICES, getService, getAllServices } = require('./services');
@@ -28,13 +29,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Request logging
+// Request logging and stats
 app.use((req, res, next) => {
   const start = Date.now();
 
-  // Log after response is sent
   res.on('finish', () => {
     const duration = Date.now() - start;
+
+    // Track stats
+    stats.incrementRequestCount(req.method, req.path, res.statusCode);
+
     const logData = {
       method: req.method,
       path: req.path,
@@ -43,7 +47,6 @@ app.use((req, res, next) => {
       ip: req.ip
     };
 
-    // Log level based on status code
     if (res.statusCode >= 500) {
       logger.error('Request failed', logData);
     } else if (res.statusCode >= 400) {
@@ -883,24 +886,41 @@ function copyResults() {
 });
 
 // Health
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    agent: 'MrMagoochi',
-    version: '0.9.0',
-    ai: 'claude-sonnet-4',
-    services: Object.keys(PRICING),
-    pricing: PRICING,
-    rateLimits: {
-      htmlPages: '200 req/min per IP',
-      apiReads: '100 req/min per IP',
-      jobCreation: '10 req/min per IP',
-      payment: '5 req/min per IP',
-      agentRegistration: '5 req/min per IP',
-      jobCompletion: '20 req/min per IP',
-      userCreation: '10 req/min per IP'
-    }
-  });
+app.get('/health', async (req, res) => {
+  try {
+    // Test DB connection
+    await db.query('SELECT 1');
+
+    const uptime = stats.getStats().uptime;
+
+    res.json({
+      status: 'healthy',
+      uptime: `${uptime.hours}h ${uptime.minutes % 60}m ${uptime.seconds % 60}s`,
+      agent: 'MrMagoochi',
+      version: '0.9.0',
+      ai: 'claude-sonnet-4',
+      services: Object.keys(PRICING).length,
+      database: 'connected',
+      rateLimits: {
+        htmlPages: '200 req/min per IP',
+        apiReads: '100 req/min per IP',
+        jobCreation: '10 req/min per IP',
+        payment: '5 req/min per IP',
+        agentRegistration: '5 req/min per IP',
+        jobCompletion: '20 req/min per IP',
+        userCreation: '10 req/min per IP'
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error('Health check database connection failed', { error: error.message });
+    res.status(503).json({
+      status: 'unhealthy',
+      database: 'disconnected',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Readiness check (for Railway health checks)
@@ -916,6 +936,26 @@ app.get('/ready', async (req, res) => {
       error: 'Database connection failed',
       timestamp: new Date().toISOString()
     });
+  }
+});
+
+// Stats endpoint (for operational monitoring)
+app.get('/api/stats', async (req, res) => {
+  try {
+    const dbStats = await db.query('SELECT COUNT(*) as job_count FROM jobs');
+    const agentStats = await db.query('SELECT COUNT(*) as agent_count FROM agents WHERE is_active = true');
+
+    res.json({
+      system: stats.getStats(),
+      database: {
+        totalJobs: parseInt(dbStats.rows[0].job_count),
+        activeAgents: parseInt(agentStats.rows[0].agent_count)
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error('Stats endpoint error', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
 
