@@ -154,6 +154,70 @@ const HUB_STYLES = `
   }
 
   /* ============================================
+     MODAL OVERLAY (Fixed Position)
+     ============================================ */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+    animation: fadeIn 0.2s ease-out;
+  }
+  .modal-overlay .modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease-out;
+  }
+  .modal-overlay .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-overlay .modal-header h2 {
+    font-size: 1.25rem;
+    margin: 0;
+  }
+  .modal-overlay .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .modal-overlay .modal-close:hover {
+    background: var(--bg-input);
+    color: var(--text);
+  }
+  .modal-overlay .modal-body {
+    padding: 24px;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  /* ============================================
      TYPOGRAPHY SYSTEM
      ============================================ */
   h1, h2, h3, h4, h5, h6 {
@@ -548,6 +612,28 @@ const HUB_STYLES = `
     flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 16px;
+    max-height: 80px;
+    overflow: hidden;
+    position: relative;
+    transition: max-height 0.3s ease;
+  }
+  .skills-list.expanded {
+    max-height: 500px;
+  }
+  .skills-toggle {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    margin-bottom: 16px;
+    transition: all 0.2s;
+  }
+  .skills-toggle:hover {
+    background: var(--border);
+    color: var(--text);
   }
   .skill-tag {
     background: var(--bg-input);
@@ -1551,6 +1637,18 @@ const HUB_SCRIPTS = `
     return toast;
   }
 
+  // Toggle skills list expansion
+  function toggleSkills(agentId, btn) {
+    const list = document.getElementById('skills-' + agentId);
+    if (list.classList.contains('expanded')) {
+      list.classList.remove('expanded');
+      btn.textContent = 'Show all services ▼';
+    } else {
+      list.classList.add('expanded');
+      btn.textContent = 'Show less ▲';
+    }
+  }
+
   // Quick request from homepage skill click
   function openQuickRequest(button) {
     const agentId = button.dataset.agentId;
@@ -1614,25 +1712,27 @@ const HUB_SCRIPTS = `
 router.get('/', async (req, res) => {
   try {
     const agents = await db.getAllAgents();
-    const agentsHtml = agents.map(agent => `
+    const agentsHtml = agents.map(agent => {
+      const skills = agent.skills || [];
+      const hasMany = skills.length > 4;
+      return `
       <div class="agent-card">
         <div class="agent-header">
-          <div class="agent-avatar">✨</div>
+          <div class="agent-avatar">${agent.name ? agent.name.charAt(0).toUpperCase() : '✨'}</div>
           <div class="agent-info">
             <h3>${agent.name || 'Agent'}</h3>
             <p>${agent.wallet_address.slice(0,6)}...${agent.wallet_address.slice(-4)}</p>
           </div>
         </div>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
           ${agent.bio || 'AI-powered creative services on demand.'}
         </p>
         <div class="agent-stats">
           <span>⭐ ${agent.rating || '5.0'}</span>
           <span>📦 ${agent.total_jobs || 0} jobs</span>
-          <span>💰 $${Number(agent.total_earned || 0).toFixed(2)} earned</span>
         </div>
-        <div class="skills-list">
-          ${(agent.skills || []).map(s => `
+        <div class="skills-list" id="skills-${agent.id}">
+          ${skills.map(s => `
             <button class="skill-tag skill-clickable" 
                     data-agent-id="${agent.id}" 
                     data-agent-name="${agent.name || 'Agent'}"
@@ -1643,11 +1743,12 @@ router.get('/', async (req, res) => {
             </button>
           `).join('')}
         </div>
+        ${hasMany ? `<button class="skills-toggle" onclick="toggleSkills(${agent.id}, this)">Show all ${skills.length} services ▼</button>` : ''}
         <a href="/agent/${agent.id}" class="btn btn-primary" style="display: block; text-align: center; text-decoration: none;">
-          View Agent →
+          View Profile →
         </a>
       </div>
-    `).join('');
+    `}).join('');
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
