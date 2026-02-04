@@ -1832,23 +1832,29 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
 
     const skills = await db.getSkillsByAgent(agent.id);
 
-    const skillsHtml = skills.map(s => `
-      <div class="skill-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-          <div>
-            <h3 style="font-size: 1.1rem; margin-bottom: 4px;">${s.name}</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">${s.description}</p>
+    const skillCards = skills.map(s => `
+      <div class="skill-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+            <h3 style="font-size: 1rem; font-weight: 600; margin: 0; flex: 1;">${s.name}</h3>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--green); white-space: nowrap; margin-left: 12px;">$${Number(s.price_usdc).toFixed(2)}</div>
           </div>
-          <div style="text-align: right;">
-            <div style="font-size: 1.25rem; font-weight: 700; color: var(--green);">$${Number(s.price_usdc).toFixed(2)}</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted);">${s.estimated_time || '~1 min'}</div>
-          </div>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 12px 0; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${s.description}</p>
         </div>
-        <button class="btn btn-primary" style="width: 100%;" onclick="openJobModal(${s.id}, '${s.name}', ${s.price_usdc})">
-          Request This Service
-        </button>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">⏱ ${s.estimated_time || '~1 min'}</div>
+          <button class="btn btn-primary" style="width: 100%; padding: 10px 16px; font-size: 0.9rem;" onclick="openJobModal(${s.id}, '${s.name.replace(/'/g, "\\'")}', ${s.price_usdc})">
+            Request
+          </button>
+        </div>
       </div>
     `).join('');
+    
+    const skillsHtml = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+        ${skillCards}
+      </div>
+    `;
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
