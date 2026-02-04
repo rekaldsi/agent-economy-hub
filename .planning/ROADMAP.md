@@ -372,6 +372,8 @@
 - `src/db.js` (use existing functions)
 - `package.json` (add seed script)
 
+**Plan**: `.planning/phases/10-database-seeding-initial-data/10-01-PLAN.md`
+
 ---
 
 ## Phase 11: Railway Deployment Configuration
