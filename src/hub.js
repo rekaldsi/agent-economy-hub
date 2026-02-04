@@ -1424,12 +1424,8 @@ router.get('/job/:uuid', async (req, res) => {
     };
 
     const statusColor = statusColors[job.status] || '#f3f4f6';
-    const outputHtml = job.output_data 
-      ? '<div class="job-section"><h3>✅ Result</h3><pre style="white-space: pre-wrap; font-family: inherit;">' + 
-        (typeof job.output_data === 'string' ? job.output_data : JSON.stringify(job.output_data, null, 2)) + 
-        '</pre></div>'
-      : '<div class="job-section" style="text-align: center; padding: 48px;"><p style="color: var(--text-muted);">⏳ Waiting for result...</p></div>';
-    
+    const outputHtml = formatJobResult(job.output_data, job);
+
     const paymentHtml = job.payment_tx_hash 
       ? '<div class="job-section"><h3>💳 Payment</h3><a href="https://basescan.org/tx/' + job.payment_tx_hash + '" target="_blank" style="color: var(--accent); word-break: break-all;">' + job.payment_tx_hash + '</a></div>'
       : '';
