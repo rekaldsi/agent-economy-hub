@@ -345,10 +345,24 @@ async function markJobInProgress(jobId) {
   });
 }
 
+/**
+ * Gracefully close database connection pool
+ */
+async function closePool() {
+  try {
+    await pool.end();
+    logger.info('Database connection pool closed');
+  } catch (error) {
+    logger.error('Error closing database pool', { error: error.message });
+    throw error;
+  }
+}
+
 module.exports = {
   pool,
   query,
   initDB,
+  closePool,
   getUser,
   createUser,
   getAgent,

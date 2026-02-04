@@ -982,6 +982,46 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Track server instance for graceful shutdown
+let server;
+
+// Graceful shutdown handler
+async function gracefulShutdown(signal) {
+  logger.info(`Received ${signal}, starting graceful shutdown`);
+
+  // Stop accepting new connections
+  if (server) {
+    server.close(() => {
+      logger.info('HTTP server closed');
+    });
+  }
+
+  // Close database pool
+  try {
+    await db.closePool();
+  } catch (error) {
+    logger.error('Error during shutdown', { error: error.message });
+  }
+
+  logger.info('Graceful shutdown complete');
+  process.exit(0);
+}
+
+// Register shutdown handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught errors
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception', { error: error.message, stack: error.stack });
+  gracefulShutdown('uncaughtException').then(() => process.exit(1));
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled rejection', { reason, promise });
+  gracefulShutdown('unhandledRejection').then(() => process.exit(1));
+});
+
 // Start server
 async function start() {
   // Validate required environment variables
@@ -1001,7 +1041,8 @@ async function start() {
 
   try {
     await db.initDB();
-    app.listen(PORT, () => {
+
+    server = app.listen(PORT, () => {
       logger.info('Agent Economy Hub started', {
         version: '0.9.0',
         port: PORT,
