@@ -14,7 +14,26 @@ async function seed() {
   try {
     logger.info('Starting database seed...');
 
-    // Task 2 will add user seeding here
+    // 1. Create or get MrMagoochi user
+    logger.info('Checking for MrMagoochi user...');
+    let user = await db.getUser(MRMAGOOCHI_WALLET);
+
+    if (user) {
+      logger.info('MrMagoochi user already exists', {
+        userId: user.id,
+        wallet: user.wallet_address,
+        name: user.name
+      });
+    } else {
+      logger.info('Creating MrMagoochi user...');
+      user = await db.createUser(MRMAGOOCHI_WALLET, 'agent', MRMAGOOCHI_NAME);
+      logger.info('MrMagoochi user created', {
+        userId: user.id,
+        wallet: user.wallet_address,
+        name: user.name
+      });
+    }
+
     // Task 3 will add agent seeding here
     // Task 4 will add skills seeding here
 
