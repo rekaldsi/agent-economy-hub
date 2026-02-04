@@ -318,6 +318,81 @@ const HUB_STYLES = `
   }
   .hidden { display: none; }
 
+  /* ============================================
+     LOADING SPINNERS
+     ============================================ */
+  .spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .spinner-lg {
+    width: 40px;
+    height: 40px;
+    border-width: 4px;
+  }
+
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(9, 9, 11, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 9999;
+  }
+
+  .loading-overlay .spinner {
+    width: 48px;
+    height: 48px;
+    border-width: 4px;
+  }
+
+  .loading-text {
+    color: var(--text-muted);
+    font-size: 1rem;
+  }
+
+  /* Button Loading State */
+  .btn.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+
+  .btn.loading::after {
+    content: '';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   /* Mobile menu toggle - hidden on desktop */
   .mobile-menu-toggle {
     display: none;
@@ -546,6 +621,11 @@ const HUB_SCRIPTS = `
       return;
     }
 
+    const btn = document.getElementById('connect-btn');
+    if (btn && !silent) {
+      setButtonLoading(btn, true);
+    }
+
     try {
       // Request accounts
       const accounts = await window.ethereum.request({ 
@@ -601,6 +681,11 @@ const HUB_SCRIPTS = `
     } catch (error) {
       console.error('Wallet connection error:', error);
       if (!silent) alert('Failed to connect wallet: ' + error.message);
+    } finally {
+      const btn = document.getElementById('connect-btn');
+      if (btn && !silent) {
+        setButtonLoading(btn, false, 'Connect Wallet');
+      }
     }
   }
 
@@ -639,6 +724,8 @@ const HUB_SCRIPTS = `
       if (!connected) return null;
     }
 
+    showLoading('Processing payment...');
+
     try {
       const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
       const decimals = await usdc.decimals();
@@ -646,10 +733,12 @@ const HUB_SCRIPTS = `
 
       const tx = await usdc.transfer(agentWallet, amount);
       const receipt = await tx.wait();
-      
+
+      hideLoading();
       return receipt.hash;
     } catch (error) {
       console.error('Payment error:', error);
+      hideLoading();
       alert('Payment failed: ' + error.message);
       return null;
     }
@@ -674,6 +763,39 @@ const HUB_SCRIPTS = `
     const nav = document.querySelector('nav');
     if (nav) {
       nav.classList.toggle('mobile-menu-open');
+    }
+  }
+
+  // Loading overlay functions
+  function showLoading(message = 'Processing...') {
+    const overlay = document.createElement('div');
+    overlay.className = 'loading-overlay';
+    overlay.id = 'loading-overlay';
+    overlay.innerHTML = \`
+      <div class="spinner"></div>
+      <div class="loading-text">\${message}</div>
+    \`;
+    document.body.appendChild(overlay);
+  }
+
+  function hideLoading() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+      overlay.remove();
+    }
+  }
+
+  // Button loading state
+  function setButtonLoading(button, loading, originalText) {
+    if (loading) {
+      button.classList.add('loading');
+      button.disabled = true;
+      button.dataset.originalText = originalText || button.textContent;
+      button.textContent = 'Loading...';
+    } else {
+      button.classList.remove('loading');
+      button.disabled = false;
+      button.textContent = button.dataset.originalText || originalText;
     }
   }
 `;
@@ -954,8 +1076,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
       }
 
       const btn = document.getElementById('submit-job-btn');
-      btn.textContent = 'Processing...';
-      btn.disabled = true;
+      setButtonLoading(btn, true);
 
       try {
         // Create job first
@@ -979,13 +1100,11 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
         const txHash = await payForJob(agentWallet, selectedPrice, job.jobUuid);
         
         if (!txHash) {
-          btn.textContent = 'Pay & Submit';
-          btn.disabled = false;
+          setButtonLoading(btn, false, 'Pay & Submit');
           return;
         }
 
         // Update job with payment
-        btn.textContent = 'Processing job...';
         const updateRes = await fetch('/api/jobs/' + job.jobUuid + '/pay', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1000,8 +1119,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
       } catch (error) {
         console.error('Job submission error:', error);
         alert('Error: ' + error.message);
-        btn.textContent = 'Pay & Submit';
-        btn.disabled = false;
+        setButtonLoading(btn, false, 'Pay & Submit');
       }
     }
   </script>
