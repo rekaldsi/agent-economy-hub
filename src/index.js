@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const db = require('./db');
 const hubRouter = require('./hub');
 const { SERVICES, getService, getAllServices } = require('./services');
@@ -28,6 +29,94 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 7378;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+
+// ============================================
+// RATE LIMITING
+// ============================================
+
+// HTML pages - very generous (200 req/min per IP)
+const htmlPageLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200,
+  message: 'Too many requests from this IP, please try again later',
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false // Disable `X-RateLimit-*` headers
+});
+
+// Read-only API endpoints - generous (100 req/min per IP)
+const apiReadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: { error: 'Too many API requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Job creation - moderate (10 req/min per IP)
+const jobCreationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many job creation requests, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false // Count all requests
+});
+
+// Payment processing - strict (5 req/min per IP)
+const paymentLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { error: 'Too many payment attempts, please wait before retrying' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false
+});
+
+// Agent registration - strict (5 req/min per IP)
+const agentRegistrationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { error: 'Too many registration attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Job completion (webhook callbacks) - allow higher rate (20 req/min per IP)
+const jobCompletionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { error: 'Too many completion requests, please retry later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// User creation - moderate (10 req/min per IP)
+const userCreationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many user creation requests, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Apply HTML page rate limiter to GET routes
+app.use('/', (req, res, next) => {
+  // Only apply to HTML pages (GET requests to non-API routes)
+  if (req.method === 'GET' && !req.path.startsWith('/api')) {
+    return htmlPageLimiter(req, res, next);
+  }
+  next();
+});
+
+// Apply rate limiters to specific API endpoints
+app.use('/api/jobs/:uuid/pay', paymentLimiter);
+app.use('/api/jobs', jobCreationLimiter);
+app.use('/api/register-agent', agentRegistrationLimiter);
+app.use('/api/users', userCreationLimiter);
+app.use('/api/jobs/:uuid/complete', jobCompletionLimiter);
+
+// Apply read limiter to all other API endpoints
+app.use('/api', apiReadLimiter);
 
 // Mount Hub routes
 app.use(hubRouter);
@@ -766,13 +855,22 @@ function copyResults() {
 
 // Health
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
-    agent: 'MrMagoochi', 
-    version: '0.8.0',
+  res.json({
+    status: 'healthy',
+    agent: 'MrMagoochi',
+    version: '0.9.0',
     ai: 'claude-sonnet-4',
-    services: Object.keys(PRICING), 
-    pricing: PRICING 
+    services: Object.keys(PRICING),
+    pricing: PRICING,
+    rateLimits: {
+      htmlPages: '200 req/min per IP',
+      apiReads: '100 req/min per IP',
+      jobCreation: '10 req/min per IP',
+      payment: '5 req/min per IP',
+      agentRegistration: '5 req/min per IP',
+      jobCompletion: '20 req/min per IP',
+      userCreation: '10 req/min per IP'
+    }
   });
 });
 
