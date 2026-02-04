@@ -7,21 +7,27 @@ const { generateWithAI } = require('./ai');
 const { generateImage } = require('./replicate');
 const { getService } = require('./services');
 const { notifyAgent } = require('./webhooks');
+const {
+  validateBody,
+  validateUuidParam,
+  validateIdParam,
+  validateRequestSize,
+  createUserSchema,
+  createJobSchema,
+  payJobSchema,
+  completeJobSchema,
+  registerAgentSchema,
+  validateAgentExists,
+  validateSkillExists,
+  validateUserExists,
+  validateSkillBelongsToAgent,
+  validateSkillPrice,
+  sanitizeText,
+  sanitizeJobInput,
+  sanitizeWebhookUrl
+} = require('./validation');
 
 const router = express.Router();
-
-// ============================================
-// VALIDATION HELPERS
-// ============================================
-
-function isValidEthereumAddress(address) {
-  return /^0x[a-fA-F0-9]{40}$/.test(address);
-}
-
-function isValidPrice(price) {
-  const num = Number(price);
-  return !isNaN(num) && num > 0 && num < 1000; // Max $1000 per job
-}
 
 // ============================================
 // HUB LANDING PAGE
@@ -497,7 +503,7 @@ router.get('/', async (req, res) => {
 });
 
 // Agent profile page
-router.get('/agent/:id', async (req, res) => {
+router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
   try {
     const result = await db.query(
       `SELECT a.*, u.wallet_address, u.name, u.avatar_url, u.bio 
@@ -1439,7 +1445,7 @@ router.get('/dashboard', async (req, res) => {
 });
 
 // Job detail page
-router.get('/job/:uuid', async (req, res) => {
+router.get('/job/:uuid', validateUuidParam('uuid'), async (req, res) => {
   try {
     const job = await db.getJob(req.params.uuid);
     if (!job) {
@@ -1757,11 +1763,10 @@ function getStatusDisplay(job, statusColor) {
 // ============================================
 
 // Register/update user
-router.post('/api/users', async (req, res) => {
+router.post('/api/users', validateBody(createUserSchema), async (req, res) => {
   try {
-    const { wallet, type, name } = req.body;
-    if (!wallet) return res.status(400).json({ error: 'Wallet required' });
-    
+    const { wallet, type, name } = req.validatedBody;
+
     const user = await db.createUser(wallet, type || 'human', name);
     res.json(user);
   } catch (error) {
@@ -1770,66 +1775,58 @@ router.post('/api/users', async (req, res) => {
 });
 
 // Create job
-router.post('/api/jobs', async (req, res) => {
-  try {
-    const { wallet, agentId, skillId, input, price } = req.body;
+router.post('/api/jobs',
+  validateRequestSize(50),
+  validateBody(createJobSchema),
+  async (req, res) => {
+    try {
+      const { wallet, agentId, skillId, input, price } = req.validatedBody;
 
-    // Validate required fields
-    if (!wallet || !agentId || !skillId || !input) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+      // Sanitize input before storing
+      const sanitizedInput = sanitizeJobInput(input);
 
-    // Validate wallet address format
-    if (!isValidEthereumAddress(wallet)) {
-      return res.status(400).json({ error: 'Invalid wallet address format' });
-    }
+      // Validate user exists (or create if not)
+      let user = await db.getUser(wallet);
+      if (!user) {
+        user = await db.createUser(wallet, 'human');
+      }
 
-    // Validate price
-    if (!isValidPrice(price)) {
-      return res.status(400).json({ error: 'Invalid price (must be positive number < $1000)' });
-    }
+      // Validate agent exists and is active
+      const agent = await validateAgentExists(agentId);
+      if (!agent.is_active) {
+        return res.status(404).json({ error: 'Agent not found or inactive' });
+      }
 
-    // Validate IDs are positive integers
-    if (!Number.isInteger(agentId) || agentId <= 0) {
-      return res.status(400).json({ error: 'Invalid agent ID' });
-    }
-    if (!Number.isInteger(skillId) || skillId <= 0) {
-      return res.status(400).json({ error: 'Invalid skill ID' });
-    }
+      // Validate skill exists and belongs to agent
+      await validateSkillBelongsToAgent(skillId, agentId);
 
-    // Verify agent exists and is active
-    const agent = await db.getAgent(agentId);
-    if (!agent || !agent.is_active) {
-      return res.status(404).json({ error: 'Agent not found or inactive' });
-    }
+      // Validate price matches skill price
+      await validateSkillPrice(skillId, price);
 
-    // Get or create user
-    let user = await db.getUser(wallet);
-    if (!user) {
-      user = await db.createUser(wallet, 'human');
-    }
+      // Create job
+      const jobUuid = uuidv4();
+      const job = await db.createJob(jobUuid, user.id, agentId, skillId, { prompt: sanitizedInput }, price);
 
-    const jobUuid = uuidv4();
-    const job = await db.createJob(jobUuid, user.id, agentId, skillId, { prompt: input }, price);
-    
-    res.json({ jobUuid: job.job_uuid, status: job.status });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+      res.json({ jobUuid: job.job_uuid, status: job.status });
+    } catch (error) {
+      if (error.message.includes('not found') || error.message.includes('mismatch') || error.message.includes('does not belong')) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error('Job creation error:', error);
+      res.status(500).json({ error: 'Failed to create job' });
+    }
+  });
 
 // Update job payment
-router.post('/api/jobs/:uuid/pay', async (req, res) => {
-  try {
-    const { txHash } = req.body;
+router.post('/api/jobs/:uuid/pay',
+  validateUuidParam('uuid'),
+  validateBody(payJobSchema),
+  async (req, res) => {
+    try {
+      const { txHash } = req.validatedBody;
 
-    // Validate transaction hash format
-    if (!txHash || typeof txHash !== 'string' || !txHash.startsWith('0x')) {
-      return res.status(400).json({ error: 'Invalid transaction hash format' });
-    }
-
-    const job = await db.getJob(req.params.uuid);
-    if (!job) return res.status(404).json({ error: 'Job not found' });
+      const job = await db.getJob(req.params.uuid);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
 
     if (job.status !== 'pending') {
       return res.status(400).json({
@@ -2067,17 +2064,16 @@ router.get('/api/jobs/:uuid', async (req, res) => {
 });
 
 // Agent completes job (webhook callback)
-router.post('/api/jobs/:uuid/complete', async (req, res) => {
-  try {
-    const { apiKey, output, status } = req.body;
+router.post('/api/jobs/:uuid/complete',
+  validateRequestSize(500),
+  validateUuidParam('uuid'),
+  validateBody(completeJobSchema),
+  async (req, res) => {
+    try {
+      const { apiKey, output, status } = req.validatedBody;
 
-    // Validate API key
-    if (!apiKey || typeof apiKey !== 'string') {
-      return res.status(401).json({ error: 'API key required' });
-    }
-
-    // Agent can optionally POST { apiKey, status: 'in_progress' } to mark job as in-progress
-    if (status === 'in_progress' && !output) {
+      // Agent can optionally POST { apiKey, status: 'in_progress' } to mark job as in-progress
+      if (status === 'in_progress' && !output) {
       // Get job
       const job = await db.getJob(req.params.uuid);
       if (!job) {
@@ -2104,12 +2100,7 @@ router.post('/api/jobs/:uuid/complete', async (req, res) => {
       });
     }
 
-    // Validate output
-    if (!output || typeof output !== 'object') {
-      return res.status(400).json({ error: 'Output data required' });
-    }
-
-    // Get job
+    // Get job (output already validated by middleware)
     const job = await db.getJob(req.params.uuid);
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
@@ -2209,22 +2200,23 @@ router.get('/api/users/:wallet/jobs', async (req, res) => {
 });
 
 // Register a new agent
-router.post('/api/register-agent', async (req, res) => {
+router.post('/api/register-agent', validateBody(registerAgentSchema), async (req, res) => {
   try {
-    const { wallet, name, bio, webhookUrl, skills } = req.body;
-    
-    if (!wallet || !name || !skills || skills.length === 0) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+    const { wallet, name, bio, webhookUrl, skills } = req.validatedBody;
+
+    // Sanitize inputs
+    const sanitizedName = sanitizeText(name);
+    const sanitizedBio = bio ? sanitizeText(bio) : null;
+    const sanitizedWebhookUrl = webhookUrl ? sanitizeWebhookUrl(webhookUrl) : null;
 
     // Create or get user
     let user = await db.getUser(wallet);
     if (!user) {
-      user = await db.createUser(wallet, 'agent', name);
+      user = await db.createUser(wallet, 'agent', sanitizedName);
     } else {
       // Update user type and name
-      await db.query('UPDATE users SET user_type = $1, name = $2, bio = $3 WHERE id = $4', 
-        ['agent', name, bio, user.id]);
+      await db.query('UPDATE users SET user_type = $1, name = $2, bio = $3 WHERE id = $4',
+        ['agent', sanitizedName, sanitizedBio, user.id]);
     }
 
     // Check if already an agent
@@ -2234,18 +2226,20 @@ router.post('/api/register-agent', async (req, res) => {
     }
 
     // Create agent
-    agent = await db.createAgent(user.id, webhookUrl);
+    agent = await db.createAgent(user.id, sanitizedWebhookUrl);
 
-    // Add skills
-    for (const skill of skills) {
-      await db.createSkill(
-        agent.id,
-        skill.name,
-        skill.description || '',
-        skill.category || 'general',
-        skill.price,
-        skill.estimatedTime || '1 minute'
-      );
+    // Add skills (if provided)
+    if (skills && skills.length > 0) {
+      for (const skill of skills) {
+        await db.createSkill(
+          agent.id,
+          sanitizeText(skill.name),
+          skill.description ? sanitizeText(skill.description) : '',
+          skill.category || 'general',
+          skill.price,
+          skill.estimatedTime || '1 minute'
+        );
+      }
     }
 
     res.json({
@@ -2260,7 +2254,7 @@ router.post('/api/register-agent', async (req, res) => {
 });
 
 // Get agent's received jobs
-router.get('/api/agents/:id/jobs', async (req, res) => {
+router.get('/api/agents/:id/jobs', validateIdParam('id'), async (req, res) => {
   try {
     const jobs = await db.getJobsByAgent(req.params.id);
     res.json(jobs);
