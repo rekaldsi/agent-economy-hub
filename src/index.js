@@ -1,10 +1,10 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const Anthropic = require('@anthropic-ai/sdk');
 const db = require('./db');
 const hubRouter = require('./hub');
 const { SERVICES, getService, getAllServices } = require('./services');
+const { generateWithAI } = require('./ai');
 
 const app = express();
 app.use(cors());
@@ -18,9 +18,6 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 7378;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-
-// Initialize Anthropic
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 // Mount Hub routes
 app.use(hubRouter);
@@ -139,39 +136,6 @@ Respond in this exact JSON format:
   "success_metrics": ["...", "...", "..."]
 }`
 };
-
-// ============================================
-// AI GENERATION (uses services.js prompts)
-// ============================================
-async function generateWithAI(serviceKey, userMessage) {
-  // Get service config - try new services first, fall back to legacy
-  const service = getService(serviceKey);
-  const systemPrompt = service ? service.systemPrompt : SYSTEM_PROMPTS[serviceKey];
-  
-  if (!systemPrompt) {
-    throw new Error(`Unknown service: ${serviceKey}`);
-  }
-  
-  try {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      system: systemPrompt,
-      messages: [
-        { role: 'user', content: userMessage }
-      ]
-    });
-    
-    const content = response.content[0].text;
-    // Extract JSON from response (Claude may wrap in markdown)
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON found in response');
-    return JSON.parse(jsonMatch[0]);
-  } catch (error) {
-    console.error('AI generation error:', error.message);
-    throw error;
-  }
-}
 
 // Generic service endpoint - works for any service in services.js
 app.post('/api/service/:serviceKey', async (req, res) => {
