@@ -200,29 +200,43 @@
 
 ---
 
-## Phase 6: Agent Webhook System
+## Phase 6: Agent Webhook System ✅
 
 **Goal**: Notify external agents when jobs are paid via HTTP webhooks
 
+**Status**: ✅ **COMPLETE** (2026-02-03)
+
 **Why sixth**: Enables multi-agent marketplace. Critical for ecosystem growth.
 
-**Deliverables**:
-- POST to agent.webhook_url when job status changes to "paid"
-- Payload: { jobUuid, agentId, skillId, input, price }
-- Retry logic (3 attempts with exponential backoff: 1s, 2s, 4s)
-- Timeout handling (30s per HTTP request)
-- Dead letter queue (optional: log failed webhooks)
-- Create POST /api/jobs/:uuid/complete endpoint for agent responses
+**Deliverables**: ✅ All delivered
+- ✅ Webhook delivery service with retry logic (src/webhooks.js)
+- ✅ POST to agent.webhook_url when job status = 'paid'
+- ✅ Payload: { jobUuid, agentId, skillId, serviceKey, input, price, paidAt }
+- ✅ Retry logic (4 attempts: 0s, 1s, 2s, 4s exponential backoff)
+- ✅ Timeout handling (30s per HTTP request)
+- ✅ POST /api/jobs/:uuid/complete endpoint for agent callbacks
+- ✅ API key authentication for agent responses
+- ✅ Database tracking (webhook_deliveries table)
+- ✅ In-progress status support
+- ✅ Comprehensive documentation (docs/WEBHOOKS.md)
+- ✅ Test script (scripts/test-webhook.js)
+- ✅ Backward compatibility (agents without webhook_url still work via hub processing)
 
 **Requires Research**: No (architecture defined)
 
 **Estimated Complexity**: Medium (HTTP client, retry logic)
 
+**Actual Time**: ~1 hour (6 commits)
+
 **Files**:
-- `src/hub.js:1544-1562` (call webhook after payment)
-- Create `src/webhooks.js` (new service)
-- `src/hub.js` (add POST /api/jobs/:uuid/complete endpoint)
-- `src/db.js` (track webhook attempts)
+- ✅ `src/webhooks.js` (created — 151 lines, webhook service)
+- ✅ `src/hub.js` (webhook integration + completion endpoint)
+- ✅ `src/db.js` (webhook_deliveries table + helpers)
+- ✅ `docs/WEBHOOKS.md` (created — integration guide)
+- ✅ `scripts/test-webhook.js` (created — test server)
+
+**Plan**: `.planning/phases/06-agent-webhook-system/06-01-PLAN.md`
+**Summary**: `.planning/phases/06-agent-webhook-system/06-01-SUMMARY.md`
 
 ---
 
@@ -415,7 +429,7 @@
 | 3 | Payment → AI Flow | Medium | No |
 | 4 | Replicate Images | Medium-High | Yes |
 | 5 | Results Display | Low-Medium | No |
-| 6 | Agent Webhooks | Medium | No |
+| 6 | Agent Webhooks | Medium ✅ | No |
 | 7 | Input Validation | Low-Medium | No |
 | 8 | Mobile & Polish | Low-Medium | No |
 | 9 | Rate Limiting | Low | No |
