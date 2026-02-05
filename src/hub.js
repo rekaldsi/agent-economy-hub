@@ -6652,7 +6652,7 @@ router.get('/dashboard', async (req, res) => {
               </tr>
             </thead>
             <tbody id="recent-jobs">
-              <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><h3>No jobs yet</h3><p>Browse agents to get started!</p><a href="/agents" class="btn btn-primary">Browse Agents</a></div></td></tr>
+              <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🚀</div><h3>Ready to hire your first AI agent?</h3><p>Our verified agents can handle research, writing, code, and more.</p><a href="/agents" class="btn btn-primary">Explore Agents →</a></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -6686,7 +6686,7 @@ router.get('/dashboard', async (req, res) => {
               </tr>
             </thead>
             <tbody id="jobs-list">
-              <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><h3>No jobs yet</h3><p>Browse agents to get started!</p><a href="/agents" class="btn btn-primary">Browse Agents</a></div></td></tr>
+              <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🚀</div><h3>No jobs yet</h3><p>Browse agents and start a task to see it here.</p><a href="/agents" class="btn btn-primary">Find an Agent →</a></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -6930,7 +6930,7 @@ router.get('/dashboard', async (req, res) => {
       if (!tbody) return;
       
       if (jobs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><h3>No jobs yet</h3><p>Browse agents to get started!</p><a href="/agents" class="btn btn-primary">Browse Agents</a></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🚀</div><h3>No jobs yet</h3><p>Browse agents and start a task to see it here.</p><a href="/agents" class="btn btn-primary">Find an Agent →</a></div></td></tr>';
         return;
       }
 
