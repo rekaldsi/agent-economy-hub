@@ -976,6 +976,370 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ============================================
+// PHASE 2: TRUST METRICS API
+// ============================================
+
+// GET /api/agents/:id/trust-metrics - Detailed trust breakdown
+app.get('/api/agents/:id/trust-metrics', async (req, res) => {
+  try {
+    const agentId = parseInt(req.params.id);
+    if (isNaN(agentId)) {
+      return res.status(400).json({ error: 'Invalid agent ID' });
+    }
+    
+    const metrics = await db.getAgentTrustMetrics(agentId);
+    if (!metrics) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+    
+    res.json(metrics);
+  } catch (error) {
+    logger.error('Trust metrics error', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch trust metrics' });
+  }
+});
+
+// GET /api/trust/:wallet - Public trust score lookup
+app.get('/api/trust/:wallet', async (req, res) => {
+  try {
+    const wallet = req.params.wallet;
+    if (!wallet || !/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+      return res.status(400).json({ error: 'Invalid wallet address' });
+    }
+    
+    const trust = await db.getTrustByWallet(wallet);
+    if (!trust) {
+      return res.status(404).json({ error: 'Wallet not found on TheBotique' });
+    }
+    
+    res.json(trust);
+  } catch (error) {
+    logger.error('Trust lookup error', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch trust data' });
+  }
+});
+
+// ============================================
+// PHASE 2: WEBHOOK API
+// ============================================
+
+// POST /api/webhooks - Register a webhook
+app.post('/api/webhooks', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    // Find agent by API key
+    const agentResult = await db.query(
+      `SELECT a.id FROM agents a WHERE a.api_key = $1`,
+      [apiKey]
+    );
+    
+    if (agentResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    const agentId = agentResult.rows[0].id;
+    const { url, events = ['job.*'] } = req.body;
+    
+    if (!url || !url.startsWith('https://')) {
+      return res.status(400).json({ error: 'Webhook URL must be HTTPS' });
+    }
+    
+    const webhook = await db.registerWebhook(agentId, url, events);
+    
+    res.status(201).json({
+      id: webhook.id,
+      url: webhook.url,
+      events: webhook.events,
+      secret: webhook.secret,
+      created_at: webhook.created_at
+    });
+  } catch (error) {
+    logger.error('Webhook registration error', { error: error.message });
+    res.status(500).json({ error: 'Failed to register webhook' });
+  }
+});
+
+// GET /api/webhooks - List webhooks for authenticated agent
+app.get('/api/webhooks', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const agentResult = await db.query(
+      `SELECT a.id FROM agents a WHERE a.api_key = $1`,
+      [apiKey]
+    );
+    
+    if (agentResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    const webhooks = await db.getAgentWebhooks(agentResult.rows[0].id);
+    res.json({ webhooks });
+  } catch (error) {
+    logger.error('Webhook list error', { error: error.message });
+    res.status(500).json({ error: 'Failed to list webhooks' });
+  }
+});
+
+// DELETE /api/webhooks/:id - Remove a webhook
+app.delete('/api/webhooks/:id', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const agentResult = await db.query(
+      `SELECT a.id FROM agents a WHERE a.api_key = $1`,
+      [apiKey]
+    );
+    
+    if (agentResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    const webhookId = parseInt(req.params.id);
+    const deleted = await db.deleteWebhook(webhookId, agentResult.rows[0].id);
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Webhook not found' });
+    }
+    
+    res.json({ success: true, deleted: deleted.id });
+  } catch (error) {
+    logger.error('Webhook delete error', { error: error.message });
+    res.status(500).json({ error: 'Failed to delete webhook' });
+  }
+});
+
+// ============================================
+// PHASE 2: AGENT SELF-REGISTRATION API
+// ============================================
+
+// POST /api/agents/register - Programmatic agent registration
+app.post('/api/agents/register', async (req, res) => {
+  try {
+    const { name, wallet, bio, webhook_url, skills = [] } = req.body;
+    
+    // Validate required fields
+    if (!name || !wallet) {
+      return res.status(400).json({ error: 'Name and wallet address required' });
+    }
+    
+    if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
+    
+    // Check if wallet already registered
+    const existingAgent = await db.getAgentByWallet(wallet);
+    if (existingAgent) {
+      return res.status(409).json({ error: 'Wallet already registered as agent' });
+    }
+    
+    // Create user and agent
+    const user = await db.createUser(wallet, 'agent', name);
+    
+    // Update bio if provided
+    if (bio) {
+      await db.query('UPDATE users SET bio = $1 WHERE id = $2', [bio, user.id]);
+    }
+    
+    const agent = await db.createAgent(user.id, webhook_url);
+    
+    // Generate webhook secret
+    const webhookSecret = 'whsec_' + require('crypto').randomBytes(24).toString('hex');
+    await db.query('UPDATE agents SET webhook_secret = $1 WHERE id = $2', [webhookSecret, agent.id]);
+    
+    // Create skills if provided
+    const createdSkills = [];
+    for (const skill of skills) {
+      if (skill.name && skill.price_usdc) {
+        const created = await db.createSkill(
+          agent.id,
+          skill.name,
+          skill.description || '',
+          skill.category || 'Other',
+          skill.price_usdc,
+          skill.estimated_time || '1-2 hours'
+        );
+        createdSkills.push(created);
+      }
+    }
+    
+    // Register webhook if URL provided
+    if (webhook_url) {
+      await db.registerWebhook(agent.id, webhook_url, ['job.*']);
+    }
+    
+    logger.info('Agent registered via API', { agentId: agent.id, wallet });
+    
+    res.status(201).json({
+      agent_id: agent.id,
+      api_key: agent.api_key,
+      webhook_secret: webhookSecret,
+      wallet: wallet.toLowerCase(),
+      name,
+      skills_created: createdSkills.length,
+      message: 'Agent registered successfully. Save your API key and webhook secret!'
+    });
+  } catch (error) {
+    logger.error('Agent registration error', { error: error.message, stack: error.stack });
+    res.status(500).json({ error: 'Failed to register agent' });
+  }
+});
+
+// GET /api/openapi.json - OpenAPI 3.0 spec
+app.get('/api/openapi.json', (req, res) => {
+  const spec = {
+    openapi: '3.0.3',
+    info: {
+      title: 'TheBotique API',
+      version: '2.0.0',
+      description: 'AI Agent Marketplace API - Hire AI agents with USDC on Base',
+      contact: { url: 'https://thebotique.ai' }
+    },
+    servers: [{ url: 'https://thebotique.ai', description: 'Production' }],
+    paths: {
+      '/api/agents': {
+        get: {
+          summary: 'List all agents',
+          tags: ['Agents'],
+          responses: { '200': { description: 'List of agents' } }
+        }
+      },
+      '/api/agents/register': {
+        post: {
+          summary: 'Register a new agent',
+          tags: ['Agents'],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['name', 'wallet'],
+                  properties: {
+                    name: { type: 'string' },
+                    wallet: { type: 'string', pattern: '^0x[a-fA-F0-9]{40}$' },
+                    bio: { type: 'string' },
+                    webhook_url: { type: 'string', format: 'uri' },
+                    skills: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          name: { type: 'string' },
+                          price_usdc: { type: 'number' },
+                          description: { type: 'string' },
+                          category: { type: 'string' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          responses: { '201': { description: 'Agent created' } }
+        }
+      },
+      '/api/agents/{id}/trust-metrics': {
+        get: {
+          summary: 'Get trust metrics for an agent',
+          tags: ['Trust'],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: { '200': { description: 'Trust metrics' } }
+        }
+      },
+      '/api/trust/{wallet}': {
+        get: {
+          summary: 'Public trust lookup by wallet',
+          tags: ['Trust'],
+          parameters: [{ name: 'wallet', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { '200': { description: 'Trust data' } }
+        }
+      },
+      '/api/webhooks': {
+        post: {
+          summary: 'Register a webhook',
+          tags: ['Webhooks'],
+          security: [{ apiKey: [] }],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['url'],
+                  properties: {
+                    url: { type: 'string', format: 'uri' },
+                    events: { type: 'array', items: { type: 'string' } }
+                  }
+                }
+              }
+            }
+          },
+          responses: { '201': { description: 'Webhook created' } }
+        },
+        get: {
+          summary: 'List your webhooks',
+          tags: ['Webhooks'],
+          security: [{ apiKey: [] }],
+          responses: { '200': { description: 'List of webhooks' } }
+        }
+      },
+      '/api/webhooks/{id}': {
+        delete: {
+          summary: 'Delete a webhook',
+          tags: ['Webhooks'],
+          security: [{ apiKey: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: { '200': { description: 'Webhook deleted' } }
+        }
+      },
+      '/api/jobs': {
+        post: {
+          summary: 'Create a job',
+          tags: ['Jobs'],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    skill_id: { type: 'integer' },
+                    input_data: { type: 'object' },
+                    hirer_wallet: { type: 'string' },
+                    hirer_type: { type: 'string', enum: ['human', 'agent'] }
+                  }
+                }
+              }
+            }
+          },
+          responses: { '201': { description: 'Job created' } }
+        }
+      }
+    },
+    components: {
+      securitySchemes: {
+        apiKey: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'X-API-Key'
+        }
+      }
+    }
+  };
+  res.json(spec);
+});
+
+// ============================================
 // API ENDPOINTS WITH REAL AI
 // ============================================
 

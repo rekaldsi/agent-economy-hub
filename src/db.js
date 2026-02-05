@@ -640,6 +640,58 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_api_subs_wallet ON api_subscriptions(subscriber_wallet);
     `);
 
+    // Phase 2: Webhooks registration table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS webhooks (
+        id SERIAL PRIMARY KEY,
+        agent_id INTEGER REFERENCES agents(id) ON DELETE CASCADE,
+        url TEXT NOT NULL,
+        secret TEXT NOT NULL,
+        events TEXT[] DEFAULT ARRAY['job.*'],
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        last_triggered_at TIMESTAMP,
+        failure_count INTEGER DEFAULT 0
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_webhooks_agent ON webhooks(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_webhooks_active ON webhooks(is_active);
+    `);
+
+    // Phase 2: Add on_time_rate and dispute_rate to agents
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'on_time_rate'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN on_time_rate DECIMAL(5,2) DEFAULT 100;
+        END IF;
+        
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'dispute_rate'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN dispute_rate DECIMAL(5,2) DEFAULT 0;
+        END IF;
+        
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'repeat_client_rate'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN repeat_client_rate DECIMAL(5,2) DEFAULT 0;
+        END IF;
+        
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'webhook_secret'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN webhook_secret TEXT;
+        END IF;
+      END $$;
+    `);
+
     // Migration: Messages table for in-app communication
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (
@@ -1172,6 +1224,227 @@ async function closePool() {
   }
 }
 
+/**
+ * Phase 2: Calculate enhanced trust metrics for an agent
+ */
+async function calculateTrustMetrics(agentId) {
+  const result = await query(`
+    WITH job_stats AS (
+      SELECT 
+        COUNT(*) as total_jobs,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_jobs,
+        COUNT(CASE WHEN status = 'disputed' THEN 1 END) as disputed_jobs,
+        COUNT(CASE WHEN status = 'completed' AND delivered_at <= created_at + INTERVAL '24 hours' THEN 1 END) as on_time_jobs,
+        AVG(EXTRACT(EPOCH FROM (COALESCE(paid_at, NOW()) - created_at))) as avg_response_seconds
+      FROM jobs WHERE agent_id = $1
+    ),
+    repeat_clients AS (
+      SELECT COUNT(DISTINCT requester_id) as unique_clients,
+             COUNT(*) as total_requests,
+             COUNT(DISTINCT CASE WHEN job_count > 1 THEN requester_id END) as repeat_clients
+      FROM (
+        SELECT requester_id, COUNT(*) as job_count
+        FROM jobs WHERE agent_id = $1 AND status = 'completed'
+        GROUP BY requester_id
+      ) sub
+    )
+    SELECT 
+      js.*,
+      rc.unique_clients,
+      rc.repeat_clients,
+      CASE WHEN rc.unique_clients > 0 
+           THEN (rc.repeat_clients::DECIMAL / rc.unique_clients::DECIMAL) * 100 
+           ELSE 0 END as repeat_rate
+    FROM job_stats js, repeat_clients rc
+  `, [agentId]);
+  
+  const stats = result.rows[0];
+  const totalJobs = parseInt(stats.total_jobs) || 0;
+  const completedJobs = parseInt(stats.completed_jobs) || 0;
+  const disputedJobs = parseInt(stats.disputed_jobs) || 0;
+  const onTimeJobs = parseInt(stats.on_time_jobs) || 0;
+  
+  const onTimeRate = completedJobs > 0 ? (onTimeJobs / completedJobs) * 100 : 100;
+  const disputeRate = totalJobs > 0 ? (disputedJobs / totalJobs) * 100 : 0;
+  const repeatClientRate = parseFloat(stats.repeat_rate) || 0;
+  const avgResponseTime = stats.avg_response_seconds ? Math.round(stats.avg_response_seconds) : 0;
+  
+  // Update agent with calculated metrics
+  await query(`
+    UPDATE agents SET 
+      on_time_rate = $2,
+      dispute_rate = $3,
+      repeat_client_rate = $4,
+      response_time_avg = $5
+    WHERE id = $1
+  `, [agentId, onTimeRate, disputeRate, repeatClientRate, avgResponseTime]);
+  
+  return {
+    on_time_rate: Math.round(onTimeRate * 100) / 100,
+    dispute_rate: Math.round(disputeRate * 100) / 100,
+    repeat_client_rate: Math.round(repeatClientRate * 100) / 100,
+    avg_response_time_seconds: avgResponseTime,
+    jobs_completed: completedJobs,
+    total_jobs: totalJobs
+  };
+}
+
+/**
+ * Phase 2: Get full trust metrics for API
+ */
+async function getAgentTrustMetrics(agentId) {
+  const agent = await getAgentById(agentId);
+  if (!agent) return null;
+  
+  // Calculate fresh metrics
+  const metrics = await calculateTrustMetrics(agentId);
+  
+  // Get review stats
+  const reviewStats = await getAgentReviewStats(agentId);
+  
+  // Format response time
+  const avgResponseHours = metrics.avg_response_time_seconds / 3600;
+  let responseTimeFormatted;
+  if (avgResponseHours < 1) {
+    responseTimeFormatted = `${Math.round(metrics.avg_response_time_seconds / 60)}m`;
+  } else if (avgResponseHours < 24) {
+    responseTimeFormatted = `${avgResponseHours.toFixed(1)}h`;
+  } else {
+    responseTimeFormatted = `${Math.round(avgResponseHours / 24)}d`;
+  }
+  
+  return {
+    trust_score: agent.trust_score || 0,
+    trust_tier: agent.trust_tier || 'new',
+    jobs_completed: metrics.jobs_completed,
+    on_time_rate: metrics.on_time_rate / 100,
+    dispute_rate: metrics.dispute_rate / 100,
+    avg_response_time: responseTimeFormatted,
+    repeat_client_rate: metrics.repeat_client_rate / 100,
+    rating: parseFloat(reviewStats.avg_rating) || 0,
+    review_count: parseInt(reviewStats.total_reviews) || 0,
+    verification_level: getVerificationLevel(agent),
+    platform_since: agent.created_at
+  };
+}
+
+/**
+ * Get verification level string
+ */
+function getVerificationLevel(agent) {
+  const verifications = [];
+  if (agent.wallet_address) verifications.push('wallet');
+  if (agent.webhook_verified_at) verifications.push('webhook');
+  if (agent.x_verified_at) verifications.push('twitter');
+  if (agent.security_audit_status === 'passed') verifications.push('security_audit');
+  return verifications.length > 0 ? verifications.join(',') : 'none';
+}
+
+/**
+ * Phase 2: Register a webhook for an agent
+ */
+async function registerWebhook(agentId, url, events = ['job.*']) {
+  const secret = 'whsec_' + require('crypto').randomBytes(24).toString('hex');
+  
+  const result = await query(`
+    INSERT INTO webhooks (agent_id, url, secret, events)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT DO NOTHING
+    RETURNING *
+  `, [agentId, url, secret, events]);
+  
+  // Also update agent's webhook_secret for backwards compatibility
+  await query(`UPDATE agents SET webhook_secret = $1 WHERE id = $2`, [secret, agentId]);
+  
+  return result.rows[0];
+}
+
+/**
+ * Phase 2: Get webhooks for an agent
+ */
+async function getAgentWebhooks(agentId) {
+  const result = await query(
+    `SELECT id, url, events, is_active, created_at, last_triggered_at, failure_count
+     FROM webhooks WHERE agent_id = $1`,
+    [agentId]
+  );
+  return result.rows;
+}
+
+/**
+ * Phase 2: Delete a webhook
+ */
+async function deleteWebhook(webhookId, agentId) {
+  const result = await query(
+    `DELETE FROM webhooks WHERE id = $1 AND agent_id = $2 RETURNING *`,
+    [webhookId, agentId]
+  );
+  return result.rows[0];
+}
+
+/**
+ * Phase 2: Get webhooks to trigger for an event
+ */
+async function getWebhooksForEvent(agentId, eventType) {
+  const result = await query(`
+    SELECT * FROM webhooks 
+    WHERE agent_id = $1 
+      AND is_active = true 
+      AND (events @> ARRAY[$2] OR events @> ARRAY['job.*'])
+  `, [agentId, eventType]);
+  return result.rows;
+}
+
+/**
+ * Phase 2: Update webhook after delivery attempt
+ */
+async function updateWebhookStatus(webhookId, success) {
+  if (success) {
+    await query(`
+      UPDATE webhooks SET 
+        last_triggered_at = NOW(),
+        failure_count = 0
+      WHERE id = $1
+    `, [webhookId]);
+  } else {
+    await query(`
+      UPDATE webhooks SET 
+        failure_count = failure_count + 1,
+        is_active = CASE WHEN failure_count >= 4 THEN false ELSE is_active END
+      WHERE id = $1
+    `, [webhookId]);
+  }
+}
+
+/**
+ * Phase 2: Public trust lookup by wallet
+ */
+async function getTrustByWallet(walletAddress) {
+  const result = await query(`
+    SELECT a.*, u.wallet_address, u.created_at as platform_since
+    FROM agents a
+    JOIN users u ON a.user_id = u.id
+    WHERE u.wallet_address = $1
+  `, [walletAddress.toLowerCase()]);
+  
+  if (result.rows.length === 0) return null;
+  
+  const agent = result.rows[0];
+  const verifications = [];
+  if (agent.wallet_address) verifications.push('wallet');
+  if (agent.webhook_verified_at) verifications.push('webhook');
+  if (agent.x_verified_at) verifications.push('twitter');
+  
+  return {
+    wallet: agent.wallet_address,
+    trust_score: agent.trust_score || 0,
+    tier: agent.trust_tier || 'new',
+    jobs_completed: agent.total_jobs || 0,
+    platform_since: agent.platform_since,
+    verification: verifications
+  };
+}
+
 module.exports = {
   pool,
   query,
@@ -1203,5 +1476,17 @@ module.exports = {
   // Trust tier functions
   calculateTrustTier,
   getTrustTierDisplay,
-  getPlatformStats
+  getPlatformStats,
+  // Phase 2: Trust metrics
+  calculateTrustMetrics,
+  getAgentTrustMetrics,
+  getVerificationLevel,
+  // Phase 2: Webhooks
+  registerWebhook,
+  getAgentWebhooks,
+  deleteWebhook,
+  getWebhooksForEvent,
+  updateWebhookStatus,
+  // Phase 2: Public trust lookup
+  getTrustByWallet
 };
