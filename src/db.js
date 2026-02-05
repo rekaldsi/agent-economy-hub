@@ -708,6 +708,19 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_wallet);
     `);
 
+    // One-time API key rotation (set ROTATE_API_KEY=agentId in Railway to trigger)
+    if (process.env.ROTATE_API_KEY) {
+      const agentId = parseInt(process.env.ROTATE_API_KEY) || 1;
+      const newKey = 'hub_' + require('crypto').randomBytes(24).toString('hex');
+      await client.query('UPDATE agents SET api_key = $1 WHERE id = $2', [newKey, agentId]);
+      logger.info('🔑 API KEY ROTATED', { agentId, newKey });
+      console.log('\n' + '='.repeat(60));
+      console.log('🔑 NEW API KEY FOR AGENT ' + agentId);
+      console.log('   ' + newKey);
+      console.log('='.repeat(60) + '\n');
+      console.log('⚠️  REMOVE ROTATE_API_KEY env var after copying the key!\n');
+    }
+
     logger.info('Database schema initialized');
   } catch (error) {
     logger.error('Database initialization failed', { error: error.message, stack: error.stack });
