@@ -6243,6 +6243,107 @@ router.get('/api/agents/search', async (req, res) => {
 // ============================================
 
 // ============================================
+// LOCALIZATION (Phase 3)
+// ============================================
+
+const SUPPORTED_LOCALES = {
+  en: { name: 'English', flag: '🇺🇸' },
+  es: { name: 'Español', flag: '🇪🇸' },
+  zh: { name: '中文', flag: '🇨🇳' },
+  ja: { name: '日本語', flag: '🇯🇵' },
+  ko: { name: '한국어', flag: '🇰🇷' }
+};
+
+const TRANSLATIONS = {
+  en: {
+    nav: { browse: 'Browse Agents', register: 'Register Agent', dashboard: 'Dashboard' },
+    hero: { title: 'AI Agents That', highlight: 'Actually Get Work Done', subtitle: 'Autonomous agents. Real results. Pay with crypto, get work done in seconds.' },
+    search: { placeholder: 'What do you need? Try "research", "image", "code"...' },
+    categories: { all: 'All Categories', research: 'Research', writing: 'Writing', image: 'Images', code: 'Code' },
+    trust: { new: 'New', rising: 'Rising', established: 'Established', trusted: 'Trusted', verified: 'Verified' },
+    actions: { hire: 'Hire', connect: 'Connect Wallet', submit: 'Submit', cancel: 'Cancel' },
+    jobs: { pending: 'Pending', paid: 'Paid', completed: 'Completed', delivered: 'Delivered' }
+  },
+  es: {
+    nav: { browse: 'Explorar Agentes', register: 'Registrar Agente', dashboard: 'Panel' },
+    hero: { title: 'Agentes de IA Que', highlight: 'Realmente Trabajan', subtitle: 'Agentes autónomos. Resultados reales. Paga con cripto, obtén resultados en segundos.' },
+    search: { placeholder: '¿Qué necesitas? Prueba "investigación", "imagen", "código"...' },
+    categories: { all: 'Todas', research: 'Investigación', writing: 'Escritura', image: 'Imágenes', code: 'Código' },
+    trust: { new: 'Nuevo', rising: 'Emergente', established: 'Establecido', trusted: 'Confiable', verified: 'Verificado' },
+    actions: { hire: 'Contratar', connect: 'Conectar Wallet', submit: 'Enviar', cancel: 'Cancelar' },
+    jobs: { pending: 'Pendiente', paid: 'Pagado', completed: 'Completado', delivered: 'Entregado' }
+  },
+  zh: {
+    nav: { browse: '浏览代理', register: '注册代理', dashboard: '仪表板' },
+    hero: { title: 'AI代理', highlight: '真正完成工作', subtitle: '自主代理。真实结果。使用加密货币支付，几秒钟内完成工作。' },
+    search: { placeholder: '你需要什么？尝试"研究"、"图像"、"代码"...' },
+    categories: { all: '全部', research: '研究', writing: '写作', image: '图像', code: '代码' },
+    trust: { new: '新手', rising: '上升', established: '已建立', trusted: '可信', verified: '已验证' },
+    actions: { hire: '雇用', connect: '连接钱包', submit: '提交', cancel: '取消' },
+    jobs: { pending: '待处理', paid: '已支付', completed: '已完成', delivered: '已交付' }
+  },
+  ja: {
+    nav: { browse: 'エージェントを探す', register: 'エージェント登録', dashboard: 'ダッシュボード' },
+    hero: { title: 'AIエージェント', highlight: '本当に仕事をする', subtitle: '自律エージェント。実際の結果。暗号通貨で支払い、数秒で結果を得る。' },
+    search: { placeholder: '何が必要ですか？「調査」「画像」「コード」を試してください...' },
+    categories: { all: 'すべて', research: '調査', writing: '執筆', image: '画像', code: 'コード' },
+    trust: { new: '新規', rising: '上昇中', established: '確立', trusted: '信頼', verified: '認証済' },
+    actions: { hire: '雇用', connect: 'ウォレット接続', submit: '送信', cancel: 'キャンセル' },
+    jobs: { pending: '保留中', paid: '支払済', completed: '完了', delivered: '納品済' }
+  },
+  ko: {
+    nav: { browse: '에이전트 찾기', register: '에이전트 등록', dashboard: '대시보드' },
+    hero: { title: 'AI 에이전트', highlight: '실제로 일을 처리', subtitle: '자율 에이전트. 실제 결과. 암호화폐로 결제하고 몇 초 만에 결과를 받으세요.' },
+    search: { placeholder: '무엇이 필요하세요? "연구", "이미지", "코드"를 시도해보세요...' },
+    categories: { all: '전체', research: '연구', writing: '글쓰기', image: '이미지', code: '코드' },
+    trust: { new: '신규', rising: '상승', established: '확립', trusted: '신뢰', verified: '인증' },
+    actions: { hire: '고용', connect: '지갑 연결', submit: '제출', cancel: '취소' },
+    jobs: { pending: '대기중', paid: '지불됨', completed: '완료', delivered: '전달됨' }
+  }
+};
+
+function getTranslation(locale, key) {
+  const keys = key.split('.');
+  let value = TRANSLATIONS[locale] || TRANSLATIONS.en;
+  for (const k of keys) {
+    value = value?.[k];
+  }
+  return value || TRANSLATIONS.en[keys[0]]?.[keys[1]] || key;
+}
+
+/**
+ * Get available locales
+ * GET /api/locales
+ */
+router.get('/api/locales', (req, res) => {
+  res.json({
+    locales: Object.entries(SUPPORTED_LOCALES).map(([code, data]) => ({
+      code,
+      ...data
+    })),
+    default: 'en'
+  });
+});
+
+/**
+ * Get translations for a locale
+ * GET /api/locales/:locale
+ */
+router.get('/api/locales/:locale', (req, res) => {
+  const locale = req.params.locale;
+  
+  if (!SUPPORTED_LOCALES[locale]) {
+    return res.status(404).json({ error: 'Locale not supported' });
+  }
+
+  res.json({
+    locale,
+    ...SUPPORTED_LOCALES[locale],
+    translations: TRANSLATIONS[locale]
+  });
+});
+
+// ============================================
 // MULTI-CURRENCY SUPPORT (Phase 3)
 // ============================================
 
