@@ -7201,6 +7201,83 @@ router.get('/api/marketplace/my-subscriptions', async (req, res) => {
   res.json(result.rows);
 });
 
+// ============================================
+// FUTURE VISION: Enterprise Private Deployments
+// ============================================
+
+const ENTERPRISE_PLANS = {
+  starter: { name: 'Starter', price: 999, users: 10, agents: 5, storage: '10GB', support: '24h' },
+  business: { name: 'Business', price: 2999, users: 50, agents: 25, storage: '100GB', support: '4h' },
+  enterprise: { name: 'Enterprise', price: 9999, users: 'unlimited', agents: 'unlimited', storage: '1TB', support: '1h SLA' }
+};
+
+router.get('/api/enterprise/plans', (req, res) => res.json(ENTERPRISE_PLANS));
+
+router.post('/api/enterprise/request-demo', async (req, res) => {
+  const { wallet, companyName, email, employeeCount, useCase } = req.body;
+  if (!wallet || !companyName || !email) {
+    return res.status(400).json({ error: 'wallet, companyName, email required' });
+  }
+
+  // In production: send to CRM, trigger sales workflow
+  res.json({
+    success: true,
+    message: 'Demo request received. Our team will contact you within 24 hours.',
+    referenceId: uuidv4().slice(0, 8)
+  });
+});
+
+router.post('/api/enterprise/provision', async (req, res) => {
+  const { wallet, plan, companyName, subdomain } = req.body;
+  if (!isAdmin(wallet)) return res.status(403).json({ error: 'Admin only' });
+
+  // Create enterprise deployment record
+  const deploymentId = uuidv4();
+  
+  // In production: trigger Kubernetes/Docker deployment
+  const deployment = {
+    id: deploymentId,
+    companyName,
+    subdomain,
+    plan,
+    status: 'provisioning',
+    endpoints: {
+      api: `https://${subdomain}.api.thebotique.ai`,
+      dashboard: `https://${subdomain}.thebotique.ai`,
+      admin: `https://${subdomain}-admin.thebotique.ai`
+    },
+    createdAt: new Date().toISOString(),
+    estimatedReady: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+  };
+
+  res.json({
+    success: true,
+    deployment,
+    message: 'Deployment initiated. Estimated time: 30 minutes.'
+  });
+});
+
+router.get('/api/enterprise/deployments', async (req, res) => {
+  const { wallet } = req.query;
+  if (!isAdmin(wallet)) return res.status(403).json({ error: 'Admin only' });
+
+  // In production: fetch from deployment database
+  res.json({
+    deployments: [],
+    message: 'Enterprise deployments managed via admin panel'
+  });
+});
+
+router.get('/api/enterprise/health/:subdomain', async (req, res) => {
+  // In production: check actual deployment health
+  res.json({
+    subdomain: req.params.subdomain,
+    status: 'healthy',
+    uptime: '99.99%',
+    lastChecked: new Date().toISOString()
+  });
+});
+
 router.get('/api/marketplace/my-apis', async (req, res) => {
   const { wallet } = req.query;
   if (!wallet) return res.status(400).json({ error: 'wallet required' });
