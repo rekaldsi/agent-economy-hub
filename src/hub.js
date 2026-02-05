@@ -184,43 +184,89 @@ const HUB_STYLES = `
   }
 
   :root {
-    /* TheBotique brand palette - based on logo teal */
-    --bg: #0a0f0f;
-    --bg-card: #0f1717;
-    --bg-card-hover: #142020;
-    --bg-input: #1a2626;
-    --border: #243333;
-    --border-light: #2f4444;
-    --text: #f0f5f5;
-    --text-muted: #7a9999;
-    --text-secondary: #a0bfbf;
-    /* Brand colors from logo */
-    --teal: #4a8b8b;
-    --teal-dark: #2d5a5a;
-    --teal-light: #5da3a3;
-    --teal-glow: rgba(74, 139, 139, 0.25);
-    /* Accent kept for CTAs */
-    --accent: #4a8b8b;
-    --accent-light: #5da3a3;
-    --accent-glow: rgba(74, 139, 139, 0.2);
-    /* Supporting colors */
-    --green: #10b981;
-    --green-light: #34d399;
-    --blue: #3b82f6;
-    --purple: #6366f1;
-    --orange: #f97316;
-    --red: #ef4444;
-    --gold: #eab308;
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
-    --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
+    /* ========================================
+       REFINED FUTURISM - Design System v2.0
+       "High-end gallery meets modern marketplace"
+       ======================================== */
+    
+    /* Primary Brand */
+    --brand-primary: #0A0E27;
+    --brand-accent: #00F0FF;      /* Electric cyan - AI energy */
+    --brand-accent-warm: #FF6B35; /* Coral - human warmth */
+    
+    /* Backgrounds */
+    --bg: #0A0B0D;
+    --bg-card: #12141C;
+    --bg-card-hover: #1A1D29;
+    --bg-input: #1E2130;
+    --bg-elevated: #1A1D29;
+    
+    /* Borders */
+    --border: #2A2D3A;
+    --border-light: #3D4152;
+    --border-accent: rgba(0, 240, 255, 0.3);
+    
+    /* Text */
+    --text: #FAFBFD;
+    --text-muted: #9B9FB5;
+    --text-secondary: #C5C8D8;
+    
+    /* Legacy aliases */
+    --teal: #00F0FF;
+    --teal-dark: #00B8C4;
+    --teal-light: #4DF7FF;
+    --teal-glow: rgba(0, 240, 255, 0.25);
+    --accent: #00F0FF;
+    --accent-light: #4DF7FF;
+    --accent-glow: rgba(0, 240, 255, 0.2);
+    
+    /* Semantic Colors */
+    --success: #00E6B8;
+    --success-light: #4DFFDA;
+    --warning: #FFB800;
+    --error: #FF5C5C;
+    --info: #4D9FFF;
+    
+    /* Supporting */
+    --green: #00E6B8;
+    --green-light: #4DFFDA;
+    --blue: #4D9FFF;
+    --purple: #B794F6;
+    --orange: #FF6B35;
+    --red: #FF5C5C;
+    --gold: #FFB800;
+    --coral: #FF6B35;
+    
+    /* Trust Tier Colors */
+    --tier-new: #9B9FB5;
+    --tier-rising: #4D9FFF;
+    --tier-established: #00E6B8;
+    --tier-trusted: #FFB800;
+    --tier-verified: #B794F6;
+    
+    /* Shadows - Refined */
+    --shadow-sm: 0 1px 2px rgba(10, 14, 39, 0.15);
+    --shadow-md: 0 4px 6px rgba(10, 14, 39, 0.2), 0 2px 4px rgba(10, 14, 39, 0.15);
+    --shadow-lg: 0 10px 15px rgba(10, 14, 39, 0.25), 0 4px 6px rgba(10, 14, 39, 0.1);
+    --shadow-xl: 0 20px 25px rgba(10, 14, 39, 0.3), 0 8px 10px rgba(10, 14, 39, 0.15);
+    --shadow-2xl: 0 25px 50px rgba(10, 14, 39, 0.4);
     --shadow-glow: 0 0 30px var(--teal-glow);
+    --glow-cyan: 0 0 20px rgba(0, 240, 255, 0.3);
+    --glow-coral: 0 0 20px rgba(255, 107, 53, 0.3);
+    
     /* Spacing */
     --radius-sm: 6px;
-    --radius-md: 10px;
+    --radius-md: 12px;
     --radius-lg: 16px;
     --radius-xl: 24px;
+    --radius-full: 9999px;
+    
+    /* Animation */
+    --duration-fast: 150ms;
+    --duration-normal: 300ms;
+    --duration-slow: 500ms;
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -2737,256 +2783,674 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
     const reviews = await db.getAgentReviews(agent.id, 5);
     const reviewStats = await db.getAgentReviewStats(agent.id);
     
-    // Trust tier badge
-    const tierBadges = {
-      'unknown': '',
-      'new': '🆕 New',
-      'emerging': '⬆️ Emerging',
-      'established': '✅ Established',
-      'trusted': '🏆 Trusted',
-      'verified': '🔒 Verified'
+    // Trust tier config with Refined Futurism colors
+    const tierConfig = {
+      'unknown': { icon: '◇', label: 'New', color: 'var(--tier-new)', bg: 'rgba(155, 159, 181, 0.1)' },
+      'new': { icon: '◇', label: 'New', color: 'var(--tier-new)', bg: 'rgba(155, 159, 181, 0.1)' },
+      'rising': { icon: '↗', label: 'Rising', color: 'var(--tier-rising)', bg: 'rgba(77, 159, 255, 0.1)' },
+      'emerging': { icon: '↗', label: 'Rising', color: 'var(--tier-rising)', bg: 'rgba(77, 159, 255, 0.1)' },
+      'established': { icon: '◆', label: 'Established', color: 'var(--tier-established)', bg: 'rgba(0, 230, 184, 0.1)' },
+      'trusted': { icon: '★', label: 'Trusted', color: 'var(--tier-trusted)', bg: 'rgba(255, 184, 0, 0.1)' },
+      'verified': { icon: '✓', label: 'Verified', color: 'var(--tier-verified)', bg: 'rgba(183, 148, 246, 0.1)' }
     };
-    const trustBadge = tierBadges[agent.trust_tier] || tierBadges['new'];
-
-    const skillCards = skills.map(s => `
-      <div class="skill-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
-        <div>
-          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-            <h3 style="font-size: 1rem; font-weight: 600; margin: 0; flex: 1;">${s.name}</h3>
-            <div style="font-size: 1.1rem; font-weight: 700; color: var(--green); white-space: nowrap; margin-left: 12px;">$${Number(s.price_usdc).toFixed(2)}</div>
-          </div>
-          <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 12px 0; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${s.description}</p>
-        </div>
-        <div>
-          <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">⏱ ${s.estimated_time || '~1 min'}</div>
-          <button class="btn btn-primary" style="width: 100%; padding: 10px 16px; font-size: 0.9rem;" onclick="openJobModal(${s.id}, '${s.name.replace(/'/g, "\\'")}', ${s.price_usdc})">
-            Request
-          </button>
-        </div>
-      </div>
-    `).join('');
+    const tier = tierConfig[agent.trust_tier] || tierConfig['new'];
     
-    const skillsHtml = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-        ${skillCards}
-      </div>
-    `;
+    // Group skills by category (or create default category)
+    const skillCategories = {};
+    skills.forEach(s => {
+      const cat = s.category || 'General';
+      if (!skillCategories[cat]) skillCategories[cat] = [];
+      skillCategories[cat].push(s);
+    });
+    
+    // Get min price
+    const minPrice = skills.length > 0 ? Math.min(...skills.map(s => Number(s.price_usdc))) : 0;
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>${agent.name} | The Botique</title>
+  <title>${agent.name} | TheBotique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="${(agent.bio || 'AI Agent').slice(0, 160)}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+  ${PWA_HEAD}
   <style>${HUB_STYLES}
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.8);
-      z-index: 100;
+    /* ========================================
+       AGENT PROFILE - REFINED FUTURISM v2
+       ======================================== */
+    
+    .agent-hero {
+      background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 48px 0 32px;
+    }
+    
+    .agent-hero-content {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 48px;
+      align-items: start;
+    }
+    
+    .agent-identity {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    
+    .agent-avatar-lg {
+      width: 120px;
+      height: 120px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 48px;
+      flex-shrink: 0;
+      box-shadow: var(--glow-cyan);
     }
-    .modal.active { display: flex; }
-    .modal-content {
+    
+    .agent-meta h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      line-height: 1.2;
+    }
+    
+    .agent-tagline {
+      color: var(--text-secondary);
+      font-size: 1.125rem;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    
+    .trust-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    
+    .agent-stats-row {
+      display: flex;
+      gap: 32px;
+      margin-top: 24px;
+    }
+    
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    
+    /* Sticky Pricing Card */
+    .pricing-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 32px;
-      max-width: 500px;
-      width: 90%;
-      max-height: 90vh;
-      overflow-y: auto;
-      margin: 16px;
-      box-sizing: border-box;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      position: sticky;
+      top: 90px;
     }
-    @media (max-width: 520px) {
-      .modal-content {
-        padding: 16px;
-        width: calc(100vw - 32px) !important;
-        max-width: calc(100vw - 32px) !important;
-        margin: 16px;
-        border-radius: 12px;
-      }
-      .modal-content h2 {
-        font-size: 1.1rem;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-      }
-      .modal-content .btn {
-        padding: 12px 16px;
-        font-size: 0.9rem;
-      }
-      .modal-content .price-row {
-        flex-direction: column;
-        align-items: flex-start !important;
-        gap: 4px;
-      }
-    }
-    /* Agent Profile Page */
-    .agent-profile-grid {
-      display: grid;
-      grid-template-columns: 1fr 2fr;
-      gap: 48px;
-    }
-    @media (max-width: 900px) {
-      .agent-profile-grid {
-        grid-template-columns: 1fr;
-        gap: 24px;
-      }
-      .agent-profile-grid .agent-card {
-        position: relative !important;
-        top: auto !important;
-      }
-    }
-    /* Modal button row mobile fix */
-    .modal-buttons {
+    
+    .pricing-header {
       display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .starting-price {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    
+    .starting-price strong {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--success);
+    }
+    
+    .pricing-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .pricing-stat {
+      text-align: center;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: var(--radius-md);
+    }
+    
+    .pricing-stat .value {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    
+    .pricing-stat .label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    
+    /* Tab Navigation */
+    .profile-tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .profile-tab {
+      padding: 16px 24px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all var(--duration-fast);
+      white-space: nowrap;
+      background: none;
+      border: none;
+      font-size: 0.95rem;
+    }
+    
+    .profile-tab:hover {
+      color: var(--text);
+    }
+    
+    .profile-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    /* Service Category Accordion */
+    .service-category {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    
+    .category-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      cursor: pointer;
+      transition: background var(--duration-fast);
+    }
+    
+    .category-header:hover {
+      background: var(--bg-card-hover);
+    }
+    
+    .category-title {
+      font-weight: 600;
+      font-size: 1.125rem;
+      display: flex;
+      align-items: center;
       gap: 12px;
     }
-    @media (max-width: 480px) {
-      .modal-buttons {
-        flex-direction: column;
-      }
-      .modal-buttons .btn {
-        width: 100%;
-      }
+    
+    .category-count {
+      background: var(--bg);
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.875rem;
+      color: var(--text-muted);
     }
-    .modal h2 { margin-bottom: 16px; }
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-muted); }
-    .form-group textarea {
-      width: 100%;
-      padding: 12px;
-      background: var(--bg-input);
+    
+    .category-toggle {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-full);
+      background: var(--bg);
+      color: var(--text-muted);
+      transition: transform var(--duration-normal);
+    }
+    
+    .category-header.expanded .category-toggle {
+      transform: rotate(180deg);
+    }
+    
+    .category-services {
+      display: none;
+      padding: 0 24px 24px;
+    }
+    
+    .category-header.expanded + .category-services {
+      display: block;
+    }
+    
+    /* Service Card */
+    .service-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      background: var(--bg);
+      border-radius: var(--radius-md);
+      margin-bottom: 12px;
+      transition: all var(--duration-fast);
+    }
+    
+    .service-card:last-child {
+      margin-bottom: 0;
+    }
+    
+    .service-card:hover {
+      background: var(--bg-card-hover);
+      transform: translateX(4px);
+    }
+    
+    .service-info h4 {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .service-info p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin: 0;
+    }
+    
+    .service-info .meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+    
+    .service-action {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .service-price {
+      font-weight: 700;
+      font-size: 1.125rem;
+      color: var(--success);
+    }
+    
+    /* Reviews Section */
+    .reviews-summary {
+      display: flex;
+      gap: 48px;
+      padding: 32px;
+      background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-family: inherit;
-      font-size: 0.95rem;
-      resize: vertical;
-      min-height: 100px;
+      border-radius: var(--radius-lg);
+      margin-bottom: 24px;
     }
-    .form-group textarea:focus { outline: none; border-color: var(--accent); }
+    
+    .reviews-score {
+      text-align: center;
+    }
+    
+    .reviews-score .big-number {
+      font-size: 3.5rem;
+      font-weight: 700;
+      color: var(--warning);
+      line-height: 1;
+    }
+    
+    .reviews-breakdown {
+      flex: 1;
+    }
+    
+    .breakdown-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .breakdown-row:last-child {
+      margin-bottom: 0;
+    }
+    
+    .breakdown-label {
+      width: 120px;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+    
+    .breakdown-bar {
+      flex: 1;
+      height: 8px;
+      background: var(--bg);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+    
+    .breakdown-fill {
+      height: 100%;
+      background: var(--success);
+      border-radius: var(--radius-full);
+    }
+    
+    .breakdown-value {
+      width: 40px;
+      text-align: right;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    
+    .review-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    
+    .reviewer-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .reviewer-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-full);
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+    
+    .reviewer-name {
+      font-weight: 600;
+    }
+    
+    .reviewer-task {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    
+    .review-rating {
+      color: var(--warning);
+      font-size: 1.125rem;
+    }
+    
+    .review-text {
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    
+    /* Modal */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center; }
+    .modal.active { display: flex; }
+    .modal-content { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+    
+    /* Responsive */
+    @media (max-width: 900px) {
+      .agent-hero-content { grid-template-columns: 1fr; }
+      .pricing-card { position: static; margin-top: 24px; }
+      .agent-identity { flex-direction: column; align-items: center; text-align: center; }
+      .agent-stats-row { justify-content: center; }
+      .reviews-summary { flex-direction: column; gap: 24px; }
+    }
+    
+    @media (max-width: 480px) {
+      .agent-avatar-lg { width: 80px; height: 80px; font-size: 32px; border-radius: 16px; }
+      .agent-meta h1 { font-size: 1.5rem; }
+      .profile-tab { padding: 12px 16px; }
+    }
   </style>
 </head>
 <body>
   ${HUB_HEADER}
-      <button id="connect-btn" class="btn btn-primary" onclick="connectWallet()">Connect Wallet</button>
-    </nav>
-  </header>
 
-  <div class="container" style="padding-top: 48px;">
-    <div class="agent-profile-grid">
-      <div>
-        <div class="agent-card" style="position: sticky; top: 100px;">
-          <div class="agent-header">
-            <div class="agent-avatar" style="width: 80px; height: 80px; font-size: 2rem;">✨</div>
-            <div class="agent-info">
-              <h1 style="font-size: 1.5rem;">${agent.name}</h1>
-              <p style="font-family: monospace;">${agent.wallet_address.slice(0,10)}...${agent.wallet_address.slice(-8)}</p>
-              ${trustBadge ? `<span style="display: inline-block; background: var(--orange); color: var(--bg); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-top: 8px;">${trustBadge}</span>` : ''}
+  <!-- Agent Hero Section -->
+  <section class="agent-hero">
+    <div class="container">
+      <div class="agent-hero-content">
+        <div>
+          <div class="agent-identity">
+            <div class="agent-avatar-lg">
+              ${agent.avatar_url ? `<img src="${agent.avatar_url}" style="width: 100%; height: 100%; border-radius: 24px; object-fit: cover;">` : '🤖'}
+            </div>
+            <div class="agent-meta">
+              <h1>${escapeHtml(agent.name)}</h1>
+              <p class="agent-tagline">${escapeHtml(agent.bio || 'AI-powered agent ready to help you accomplish tasks efficiently.')}</p>
+              <span class="trust-badge" style="background: ${tier.bg}; color: ${tier.color}; border: 1px solid ${tier.color};">
+                ${tier.icon} ${tier.label}
+              </span>
             </div>
           </div>
-          <p style="color: var(--text-muted); margin-bottom: 16px;">${agent.bio || 'AI-powered creative services.'}</p>
-          <div class="agent-stats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-            <div style="text-align: center; padding: 12px; background: var(--bg); border-radius: 8px;">
-              <div style="font-size: 1.25rem; font-weight: 700; color: var(--orange);">⭐ ${Number(agent.rating || 0).toFixed(1)}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">${agent.review_count || 0} reviews</div>
+          
+          <div class="agent-stats-row">
+            <div class="stat-item">
+              <span class="stat-value" style="color: var(--warning);">⭐ ${Number(agent.rating || 0).toFixed(1)}</span>
+              <span class="stat-label">${agent.review_count || 0} reviews</span>
             </div>
-            <div style="text-align: center; padding: 12px; background: var(--bg); border-radius: 8px;">
-              <div style="font-size: 1.25rem; font-weight: 700; color: var(--green);">${agent.total_jobs || 0}</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted);">jobs completed</div>
+            <div class="stat-item">
+              <span class="stat-value" style="color: var(--success);">${agent.total_jobs || 0}</span>
+              <span class="stat-label">Tasks completed</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">${agent.completion_rate ? Number(agent.completion_rate).toFixed(0) + '%' : '—'}</span>
+              <span class="stat-label">Success rate</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value">${agent.avg_response_time || '<2h'}</span>
+              <span class="stat-label">Avg. response</span>
             </div>
           </div>
-          ${agent.completion_rate ? `
-            <div style="margin-bottom: 16px;">
-              <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
-                <span style="color: var(--text-muted);">Completion Rate</span>
-                <span style="color: var(--green); font-weight: 600;">${Number(agent.completion_rate).toFixed(0)}%</span>
-              </div>
-              <div style="background: var(--bg); border-radius: 4px; height: 6px; overflow: hidden;">
-                <div style="background: var(--green); height: 100%; width: ${agent.completion_rate}%;"></div>
-              </div>
+        </div>
+        
+        <!-- Sticky Pricing Card -->
+        <div class="pricing-card">
+          <div class="pricing-header">
+            <div class="starting-price">
+              Starting at <strong>$${minPrice.toFixed(0)}</strong>
             </div>
-          ` : ''}
+          </div>
+          
+          <div class="pricing-stats">
+            <div class="pricing-stat">
+              <div class="value" style="color: var(--warning);">⭐ ${Number(agent.rating || 0).toFixed(1)}</div>
+              <div class="label">${agent.review_count || 0} reviews</div>
+            </div>
+            <div class="pricing-stat">
+              <div class="value" style="color: var(--success);">${agent.total_jobs || 0}</div>
+              <div class="label">tasks done</div>
+            </div>
+          </div>
+          
           <div id="wallet-status">
-            <button class="btn btn-secondary" style="width: 100%;" onclick="connectWallet()">Connect Wallet to Pay</button>
+            <button class="btn btn-primary" style="width: 100%; padding: 16px; font-size: 1rem;" onclick="connectWallet()">
+              Connect Wallet
+            </button>
+          </div>
+          
+          <div style="margin-top: 16px; display: flex; gap: 12px;">
+            <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="window.location.href='/compare?ids=${agent.id}'">
+              Compare
+            </button>
+            <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="saveAgent(${agent.id})">
+              Save
+            </button>
+          </div>
+          
+          <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); text-align: center;">
+            <div style="display: flex; justify-content: center; gap: 16px; font-size: 0.75rem; color: var(--text-muted);">
+              <span>✓ Escrow protected</span>
+              <span>✓ Verified wallet</span>
+            </div>
           </div>
         </div>
       </div>
-      <div>
-        <h2 class="section-title">Available Services</h2>
-        ${skillsHtml}
-        
-        <!-- Reviews Section -->
-        <div style="margin-top: 48px;">
-          <h2 class="section-title">Reviews ${reviewStats.total_reviews > 0 ? `(${reviewStats.total_reviews})` : ''}</h2>
-          
-          ${reviewStats.total_reviews > 0 ? `
-            <!-- Rating Summary -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-              <div style="display: flex; gap: 32px; flex-wrap: wrap;">
-                <div style="text-align: center;">
-                  <div style="font-size: 3rem; font-weight: 700; color: var(--orange);">${Number(reviewStats.avg_rating).toFixed(1)}</div>
-                  <div style="color: var(--text-muted);">Overall Rating</div>
-                  <div style="margin-top: 4px;">
-                    ${'⭐'.repeat(Math.round(Number(reviewStats.avg_rating)))}${'☆'.repeat(5 - Math.round(Number(reviewStats.avg_rating)))}
-                  </div>
-                </div>
-                <div style="flex: 1; min-width: 200px;">
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span>Quality</span>
-                    <span style="color: var(--green);">${Number(reviewStats.avg_quality).toFixed(1)}/5</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span>Speed</span>
-                    <span style="color: var(--green);">${Number(reviewStats.avg_speed).toFixed(1)}/5</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between;">
-                    <span>Communication</span>
-                    <span style="color: var(--green);">${Number(reviewStats.avg_communication).toFixed(1)}/5</span>
-                  </div>
-                </div>
-              </div>
+    </div>
+  </section>
+
+  <!-- Profile Content -->
+  <div class="container" style="padding-top: 32px;">
+    <!-- Tab Navigation -->
+    <div class="profile-tabs">
+      <button class="profile-tab active" onclick="showTab('services')">Services</button>
+      <button class="profile-tab" onclick="showTab('reviews')">Reviews ${reviewStats.total_reviews > 0 ? `(${reviewStats.total_reviews})` : ''}</button>
+      <button class="profile-tab" onclick="showTab('about')">About</button>
+    </div>
+    
+    <!-- Services Tab -->
+    <div id="services-tab" class="tab-content active">
+      ${Object.entries(skillCategories).map(([category, categorySkills]) => `
+        <div class="service-category">
+          <div class="category-header expanded" onclick="toggleCategory(this)">
+            <div class="category-title">
+              ${category}
+              <span class="category-count">${categorySkills.length} service${categorySkills.length > 1 ? 's' : ''}</span>
             </div>
-            
-            <!-- Individual Reviews -->
-            ${reviews.map(r => `
-              <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-                  <div>
-                    <span style="font-weight: 600;">${r.reviewer_name || r.reviewer_wallet.slice(0, 6) + '...' + r.reviewer_wallet.slice(-4)}</span>
-                    <span style="color: var(--text-muted); margin-left: 8px; font-size: 0.85rem;">for ${r.skill_name}</span>
-                  </div>
-                  <div style="color: var(--orange);">${'⭐'.repeat(r.rating)}</div>
+            <div class="category-toggle">▼</div>
+          </div>
+          <div class="category-services">
+            ${categorySkills.map(s => `
+              <div class="service-card">
+                <div class="service-info">
+                  <h4>${escapeHtml(s.name)}</h4>
+                  <p>${escapeHtml(s.description || '')}</p>
+                  <div class="meta">⏱ ${s.estimated_time || '~1 min'}</div>
                 </div>
-                ${r.comment ? `<p style="color: var(--text-secondary); margin: 0 0 12px 0; line-height: 1.5;">${r.comment}</p>` : ''}
-                ${r.agent_response ? `
-                  <div style="background: var(--bg); border-left: 3px solid var(--orange); padding: 12px; margin-top: 12px;">
-                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">Agent Response:</div>
-                    <p style="margin: 0; color: var(--text-secondary);">${r.agent_response}</p>
-                  </div>
-                ` : ''}
+                <div class="service-action">
+                  <span class="service-price">$${Number(s.price_usdc).toFixed(2)}</span>
+                  <button class="btn btn-primary btn-sm" onclick="openJobModal(${s.id}, '${escapeHtml(s.name).replace(/'/g, "\\'")}', ${s.price_usdc})">
+                    Request
+                  </button>
+                </div>
               </div>
             `).join('')}
-            
-            ${reviewStats.total_reviews > 5 ? `
-              <a href="/agent/${agent.id}/reviews" class="btn btn-secondary" style="width: 100%; text-align: center; text-decoration: none;">
-                View All ${reviewStats.total_reviews} Reviews
-              </a>
-            ` : ''}
-          ` : `
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 32px; text-align: center; color: var(--text-muted);">
-              <p style="margin: 0;">No reviews yet. Be the first to try this agent!</p>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    
+    <!-- Reviews Tab -->
+    <div id="reviews-tab" class="tab-content">
+      ${reviewStats.total_reviews > 0 ? `
+        <div class="reviews-summary">
+          <div class="reviews-score">
+            <div class="big-number">${Number(reviewStats.avg_rating).toFixed(1)}</div>
+            <div style="color: var(--warning); margin: 8px 0;">★★★★★</div>
+            <div style="color: var(--text-muted); font-size: 0.875rem;">${reviewStats.total_reviews} reviews</div>
+          </div>
+          <div class="reviews-breakdown">
+            <div class="breakdown-row">
+              <span class="breakdown-label">Quality</span>
+              <div class="breakdown-bar"><div class="breakdown-fill" style="width: ${(reviewStats.avg_quality / 5) * 100}%"></div></div>
+              <span class="breakdown-value">${Number(reviewStats.avg_quality).toFixed(1)}</span>
             </div>
-          `}
+            <div class="breakdown-row">
+              <span class="breakdown-label">Speed</span>
+              <div class="breakdown-bar"><div class="breakdown-fill" style="width: ${(reviewStats.avg_speed / 5) * 100}%"></div></div>
+              <span class="breakdown-value">${Number(reviewStats.avg_speed).toFixed(1)}</span>
+            </div>
+            <div class="breakdown-row">
+              <span class="breakdown-label">Communication</span>
+              <div class="breakdown-bar"><div class="breakdown-fill" style="width: ${(reviewStats.avg_communication / 5) * 100}%"></div></div>
+              <span class="breakdown-value">${Number(reviewStats.avg_communication).toFixed(1)}</span>
+            </div>
+          </div>
+        </div>
+        
+        ${reviews.map(r => `
+          <div class="review-card">
+            <div class="review-header">
+              <div class="reviewer-info">
+                <div class="reviewer-avatar">${(r.reviewer_name || 'A').charAt(0).toUpperCase()}</div>
+                <div>
+                  <div class="reviewer-name">${escapeHtml(r.reviewer_name || r.reviewer_wallet.slice(0, 6) + '...' + r.reviewer_wallet.slice(-4))}</div>
+                  <div class="reviewer-task">for ${escapeHtml(r.skill_name)}</div>
+                </div>
+              </div>
+              <div class="review-rating">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
+            </div>
+            ${r.comment ? `<p class="review-text">${escapeHtml(r.comment)}</p>` : ''}
+          </div>
+        `).join('')}
+      ` : `
+        <div style="text-align: center; padding: 64px 32px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);">
+          <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+          <h3 style="margin-bottom: 8px;">No reviews yet</h3>
+          <p style="color: var(--text-muted);">Be the first to hire this agent and leave a review!</p>
+        </div>
+      `}
+    </div>
+    
+    <!-- About Tab -->
+    <div id="about-tab" class="tab-content">
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px;">
+        <h3 style="margin-bottom: 16px;">About ${escapeHtml(agent.name)}</h3>
+        <p style="color: var(--text-secondary); line-height: 1.7; margin-bottom: 24px;">
+          ${escapeHtml(agent.bio || 'This AI agent is ready to help you accomplish tasks efficiently and professionally.')}
+        </p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-top: 24px;">
+          <div>
+            <h4 style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 8px;">Trust Tier</h4>
+            <span class="trust-badge" style="background: ${tier.bg}; color: ${tier.color}; border: 1px solid ${tier.color};">
+              ${tier.icon} ${tier.label}
+            </span>
+          </div>
+          <div>
+            <h4 style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 8px;">Wallet Address</h4>
+            <code style="font-size: 0.875rem; background: var(--bg); padding: 8px 12px; border-radius: 6px; display: inline-block;">
+              ${agent.wallet_address.slice(0, 10)}...${agent.wallet_address.slice(-8)}
+            </code>
+          </div>
+          <div>
+            <h4 style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 8px;">Member Since</h4>
+            <span>${new Date(agent.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+          </div>
+          <div>
+            <h4 style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 8px;">Services Offered</h4>
+            <span>${skills.length} service${skills.length !== 1 ? 's' : ''}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -2995,19 +3459,25 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
   <!-- Job Request Modal -->
   <div id="job-modal" class="modal">
     <div class="modal-content">
-      <h2 id="modal-title" style="word-wrap: break-word; overflow-wrap: break-word; font-size: 1.25rem;">Request Service</h2>
-      <div class="form-group">
-        <label>What do you need?</label>
-        <textarea id="job-input" placeholder="Describe your request..." style="box-sizing: border-box;"></textarea>
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;">
+        <h2 id="modal-title" style="margin: 0; font-size: 1.25rem;">Request Service</h2>
+        <button onclick="closeJobModal()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem; line-height: 1;">&times;</button>
       </div>
-      <div class="price-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
-        <span style="color: var(--text-muted);">Price:</span>
-        <span id="modal-price" style="font-size: 1.1rem; font-weight: 700; color: var(--green);">$0.00</span>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-size: 0.875rem; color: var(--text-muted);">Describe what you need</label>
+        <textarea id="job-input" placeholder="Be specific about your requirements..." style="width: 100%; padding: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text); font-family: inherit; font-size: 0.95rem; resize: vertical; min-height: 120px; box-sizing: border-box;"></textarea>
       </div>
-      <div class="modal-buttons">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: var(--bg); border-radius: var(--radius-md); margin-bottom: 24px;">
+        <span style="color: var(--text-muted);">Total Price</span>
+        <span id="modal-price" style="font-size: 1.5rem; font-weight: 700; color: var(--success);">$0.00</span>
+      </div>
+      <div style="display: flex; gap: 12px;">
         <button class="btn btn-secondary" style="flex: 1;" onclick="closeJobModal()">Cancel</button>
         <button class="btn btn-primary" style="flex: 1;" id="submit-job-btn">Connect Wallet</button>
       </div>
+      <p style="text-align: center; margin-top: 16px; font-size: 0.75rem; color: var(--text-muted);">
+        🔒 Payment held in escrow until task completion
+      </p>
     </div>
   </div>
 
@@ -3019,12 +3489,40 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
     const agentWallet = '${agent.wallet_address}';
     const agentId = ${agent.id};
 
+    // Tab switching
+    function showTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(tabName + '-tab').classList.add('active');
+      event.target.classList.add('active');
+    }
+    
+    // Service category accordion
+    function toggleCategory(header) {
+      header.classList.toggle('expanded');
+    }
+    
+    // Save agent (placeholder)
+    function saveAgent(id) {
+      showToast('Agent saved to your favorites!', 'success');
+    }
+
     function openJobModal(skillId, skillName, price) {
       selectedSkillId = skillId;
       selectedPrice = price;
       document.getElementById('modal-title').textContent = 'Request: ' + skillName;
       document.getElementById('modal-price').textContent = '$' + price.toFixed(2) + ' USDC';
       document.getElementById('job-modal').classList.add('active');
+      
+      // Update submit button based on wallet connection
+      const btn = document.getElementById('submit-job-btn');
+      if (connected) {
+        btn.textContent = 'Pay $' + price.toFixed(2) + ' & Submit';
+        btn.onclick = submitJob;
+      } else {
+        btn.textContent = 'Connect Wallet';
+        btn.onclick = connectWallet;
+      }
     }
 
     function closeJobModal() {
@@ -3082,7 +3580,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
         const result = await updateRes.json();
 
         closeJobModal();
-        showToast('Job submitted successfully! Redirecting to results...', 'success');
+        showToast('Job submitted! Redirecting...', 'success');
         setTimeout(() => {
           window.location.href = '/job/' + job.jobUuid;
         }, 1000);
@@ -3093,6 +3591,19 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
         setButtonLoading(btn, false, 'Pay & Submit');
       }
     }
+    
+    // Update wallet status display on connection
+    window.addEventListener('walletConnected', () => {
+      const walletStatus = document.getElementById('wallet-status');
+      if (walletStatus && userAddress) {
+        walletStatus.innerHTML = \`
+          <div style="text-align: center; padding: 12px; background: var(--bg); border-radius: var(--radius-md); margin-bottom: 12px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Connected</div>
+            <div style="font-family: monospace; font-size: 0.875rem;">\${userAddress.slice(0,6)}...\${userAddress.slice(-4)}</div>
+          </div>
+        \`;
+      }
+    });
   </script>
   ${HUB_FOOTER}
 </body>
