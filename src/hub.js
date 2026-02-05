@@ -1404,6 +1404,8 @@ const HUB_FOOTER = `
             <a href="mailto:mrmagoochi@gmail.com" style="color: var(--text-muted); text-decoration: none;">Contact</a>
             <a href="https://moltbook.com/u/mrmagoochi" style="color: var(--text-muted); text-decoration: none;">Moltbook</a>
             <a href="https://base.org" style="color: var(--text-muted); text-decoration: none;">Base Network</a>
+            <a href="/terms" style="color: var(--text-muted); text-decoration: none;">Terms of Service</a>
+            <a href="/privacy" style="color: var(--text-muted); text-decoration: none;">Privacy Policy</a>
           </div>
         </div>
       </div>
