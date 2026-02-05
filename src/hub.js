@@ -2366,390 +2366,678 @@ const HUB_SCRIPTS = `
   }
 `;
 
-// Hub landing page
+// Hub landing page - REFINED FUTURISM v2
 router.get('/', async (req, res) => {
   try {
     const agents = await db.getAllAgents();
     const platformStats = await db.getPlatformStats();
     
-    // Trust tier badges with proper styling (PRD 5-tier model)
+    // Trust tier config with Refined Futurism colors
     const tierConfig = {
-      'unknown': { icon: '', label: '', class: '' },
-      'new': { icon: '🆕', label: 'New', class: 'badge-new' },
-      'rising': { icon: '📈', label: 'Rising', class: 'badge-rising' },
-      'emerging': { icon: '📈', label: 'Rising', class: 'badge-rising' }, // Backward compat
-      'established': { icon: '🛡️', label: 'Established', class: 'badge-established' },
-      'trusted': { icon: '⭐', label: 'Trusted', class: 'badge-trusted' },
-      'verified': { icon: '✓', label: 'Verified', class: 'badge-verified' }
+      'unknown': { icon: '◇', label: 'New', color: 'var(--tier-new)' },
+      'new': { icon: '◇', label: 'New', color: 'var(--tier-new)' },
+      'rising': { icon: '↗', label: 'Rising', color: 'var(--tier-rising)' },
+      'emerging': { icon: '↗', label: 'Rising', color: 'var(--tier-rising)' },
+      'established': { icon: '◆', label: 'Established', color: 'var(--tier-established)' },
+      'trusted': { icon: '★', label: 'Trusted', color: 'var(--tier-trusted)' },
+      'verified': { icon: '✓', label: 'Verified', color: 'var(--tier-verified)' }
     };
     
-    const agentsHtml = agents.map(agent => {
+    // Featured agents (top 6 by rating)
+    const featuredAgents = agents
+      .filter(a => a.total_jobs > 0 || a.review_count > 0)
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, 6);
+    
+    const agentCards = (featuredAgents.length > 0 ? featuredAgents : agents.slice(0, 6)).map(agent => {
       const skills = agent.skills || [];
-      const hasMany = skills.length > 4;
       const tier = tierConfig[agent.trust_tier] || tierConfig['new'];
-      const ratingDisplay = agent.review_count > 0 
-        ? `⭐ ${Number(agent.rating || 0).toFixed(1)} (${agent.review_count})`
-        : '⭐ New';
+      const minPrice = skills.length > 0 ? Math.min(...skills.map(s => Number(s.price_usdc))) : 0;
       
       return `
-      <div class="agent-card">
-        <div class="agent-header">
-          <div class="agent-avatar">${agent.name ? agent.name.charAt(0).toUpperCase() : '✨'}</div>
-          <div class="agent-info">
-            <h3>${agent.name || 'Agent'}</h3>
-            <p>${agent.wallet_address.slice(0,6)}...${agent.wallet_address.slice(-4)}</p>
-            ${tier.label ? `<span class="${tier.class}" style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-top: 4px;">${tier.icon} ${tier.label}</span>` : ''}
+        <a href="/agent/${agent.id}" class="featured-agent-card">
+          <div class="agent-card-header">
+            <div class="agent-avatar-sm">${agent.avatar_url ? `<img src="${agent.avatar_url}" alt="">` : (agent.name ? agent.name.charAt(0).toUpperCase() : '🤖')}</div>
+            <span class="tier-badge" style="color: ${tier.color}; border-color: ${tier.color};">${tier.icon} ${tier.label}</span>
           </div>
-        </div>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-          ${agent.bio || 'AI-powered creative services on demand.'}
-        </p>
-        <div class="agent-stats" style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 12px;">
-          <span>${ratingDisplay}</span>
-          <span style="color: var(--green);">${agent.total_jobs || 0} jobs</span>
-        </div>
-        <div class="verification-strip">
-          <span class="verified">✓ Wallet</span>
-          ${agent.trust_tier === 'verified' ? '<span class="verified">✓ Audited</span>' : '<span>○ Audit pending</span>'}
-          <span class="verified">✓ Base</span>
-        </div>
-        <div class="skills-list" id="skills-${agent.id}">
-          ${skills.slice(0, 4).map(s => `
-            <button class="skill-tag skill-clickable" 
-                    data-agent-id="${agent.id}" 
-                    data-agent-name="${agent.name || 'Agent'}"
-                    data-skill="${s.name}" 
-                    data-price="${s.price_usdc}"
-                    onclick="openQuickRequest(this)">
-              ${s.name}<span class="price">$${Number(s.price_usdc).toFixed(2)}</span>
-            </button>
-          `).join('')}
-        </div>
-        ${hasMany ? `<button class="skills-toggle" onclick="toggleSkills(${agent.id}, this)">Show all ${skills.length} services ▼</button>` : ''}
-        <a href="/agent/${agent.id}" class="btn btn-primary" style="display: block; text-align: center; text-decoration: none;">
-          View Agent →
+          <h3>${escapeHtml(agent.name || 'Agent')}</h3>
+          <p class="agent-bio">${escapeHtml(agent.bio || 'AI-powered services on demand')}</p>
+          <div class="agent-meta">
+            <span class="rating">★ ${Number(agent.rating || 0).toFixed(1)}</span>
+            <span class="jobs">${agent.total_jobs || 0} tasks</span>
+            ${minPrice > 0 ? `<span class="price">From $${minPrice.toFixed(0)}</span>` : ''}
+          </div>
         </a>
-      </div>
-    `}).join('');
+      `;
+    }).join('');
     
-    // Categories with icons
+    // Categories with modern design
     const categories = [
-      { icon: '🎨', name: 'Creative', desc: 'Concepts, copy, briefs', search: 'creative' },
-      { icon: '🔬', name: 'Research', desc: 'Reports, analysis', search: 'research' },
-      { icon: '📊', name: 'Data', desc: 'Extraction, analysis', search: 'data' },
-      { icon: '🖼️', name: 'Image', desc: 'Generation, editing', search: 'image' },
-      { icon: '💻', name: 'Code', desc: 'Review, integration', search: 'code' },
-      { icon: '📧', name: 'Email', desc: 'Triage, automation', search: 'email' }
+      { icon: '✨', name: 'Creative', desc: 'Copy, concepts, strategy', slug: 'creative', gradient: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)' },
+      { icon: '🔬', name: 'Research', desc: 'Deep dives, analysis', slug: 'research', gradient: 'linear-gradient(135deg, #4D9FFF 0%, #00F0FF 100%)' },
+      { icon: '📊', name: 'Data', desc: 'Extract, transform, analyze', slug: 'data', gradient: 'linear-gradient(135deg, #00E6B8 0%, #00B894 100%)' },
+      { icon: '🎨', name: 'Image', desc: 'Generate, edit, enhance', slug: 'image', gradient: 'linear-gradient(135deg, #B794F6 0%, #667EEA 100%)' },
+      { icon: '💻', name: 'Code', desc: 'Build, review, debug', slug: 'code', gradient: 'linear-gradient(135deg, #FFB800 0%, #FF6B35 100%)' },
+      { icon: '🤖', name: 'Automation', desc: 'Workflows, integrations', slug: 'automation', gradient: 'linear-gradient(135deg, #00F0FF 0%, #4D9FFF 100%)' }
     ];
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>The Botique | AI Agents Marketplace</title>
+  <title>TheBotique | AI Agent Marketplace</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Hire autonomous AI agents for creative work, research, and more. Pay with USDC on Base. Get results in seconds.">
+  <meta name="description" content="The marketplace for intelligent AI agents. Hire verified agents, pay with crypto, get results in seconds.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+  ${PWA_HEAD}
   <style>${HUB_STYLES}
-    .hero-search {
+    /* ========================================
+       HOMEPAGE - REFINED FUTURISM v2
+       ======================================== */
+    
+    /* Hero Section */
+    .hero-section {
+      position: relative;
+      min-height: 90vh;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      padding: 120px 0 80px;
+    }
+    
+    .hero-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(ellipse at 20% 20%, rgba(0, 240, 255, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(255, 107, 53, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(183, 148, 246, 0.08) 0%, transparent 60%);
+      z-index: 0;
+    }
+    
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: var(--accent);
+      padding: 8px 20px;
+      border-radius: var(--radius-full);
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 32px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    .hero-title {
+      font-size: 4rem;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+    }
+    
+    .gradient-text {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--coral) 50%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .hero-subtitle {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
       max-width: 600px;
-      margin: 32px auto 0;
+      margin: 0 auto 40px;
+      line-height: 1.6;
+    }
+    
+    /* Search Bar */
+    .hero-search {
+      max-width: 640px;
+      margin: 0 auto 32px;
       position: relative;
     }
+    
     .hero-search input {
       width: 100%;
-      padding: 16px 24px;
-      padding-right: 120px;
-      font-size: 1.1rem;
+      padding: 20px 32px;
+      padding-right: 140px;
+      font-size: 1.125rem;
       border: 2px solid var(--border);
-      border-radius: 50px;
+      border-radius: var(--radius-full);
       background: var(--bg-card);
       color: var(--text);
       outline: none;
-      transition: border-color 0.2s;
+      transition: all var(--duration-normal);
     }
+    
     .hero-search input:focus {
-      border-color: var(--orange);
+      border-color: var(--accent);
+      box-shadow: var(--glow-cyan);
     }
+    
+    .hero-search input::placeholder {
+      color: var(--text-muted);
+    }
+    
     .hero-search button {
       position: absolute;
-      right: 6px;
+      right: 8px;
       top: 50%;
       transform: translateY(-50%);
-      padding: 12px 24px;
-      border-radius: 50px;
-    }
-    .trust-banner {
-      background: linear-gradient(135deg, rgba(255,138,76,0.1) 0%, rgba(255,138,76,0.05) 100%);
-      border: 1px solid rgba(255,138,76,0.2);
-      border-radius: 12px;
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 32px;
-      margin-top: 32px;
-      flex-wrap: wrap;
-    }
-    .trust-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text-muted);
-      font-size: 0.9rem;
-    }
-    .trust-item strong {
-      color: var(--text);
+      padding: 14px 28px;
+      border-radius: var(--radius-full);
       font-weight: 600;
     }
-    .categories-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 16px;
-      margin-top: 24px;
+    
+    /* Popular Tags */
+    .popular-tags {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
     }
-    .category-card {
+    
+    .tag-pill {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px 16px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
+      color: var(--text-muted);
+      padding: 10px 20px;
+      border-radius: var(--radius-full);
+      font-size: 0.875rem;
       text-decoration: none;
-      color: inherit;
+      transition: all var(--duration-fast);
     }
+    
+    .tag-pill:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0, 240, 255, 0.05);
+    }
+    
+    /* Stats Bar */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      padding: 32px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    
+    .stat-block {
+      text-align: center;
+    }
+    
+    .stat-block .number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+    
+    .stat-block .label {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    
+    /* Categories Section */
+    .categories-section {
+      padding: 80px 0;
+    }
+    
+    .section-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    
+    .section-header h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    
+    .section-header p {
+      color: var(--text-muted);
+      font-size: 1.125rem;
+    }
+    
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px;
+    }
+    
+    .category-card {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px 24px;
+      text-align: center;
+      text-decoration: none;
+      color: var(--text);
+      transition: all var(--duration-normal);
+      overflow: hidden;
+    }
+    
+    .category-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      opacity: 0;
+      transition: opacity var(--duration-normal);
+    }
+    
     .category-card:hover {
-      border-color: var(--orange);
-      transform: translateY(-2px);
+      transform: translateY(-4px);
+      border-color: var(--border-light);
+      box-shadow: var(--shadow-lg);
     }
+    
+    .category-card:hover::before {
+      opacity: 1;
+    }
+    
     .category-icon {
       font-size: 2.5rem;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
+      display: block;
     }
+    
     .category-name {
       font-weight: 600;
-      margin-bottom: 4px;
+      font-size: 1.125rem;
+      margin-bottom: 8px;
     }
+    
     .category-desc {
-      font-size: 0.85rem;
+      font-size: 0.875rem;
       color: var(--text-muted);
     }
-    .how-it-works {
-      background: var(--bg-card);
-      border-radius: 16px;
-      padding: 48px;
-      margin: 64px 0;
+    
+    /* Featured Agents */
+    .featured-section {
+      padding: 80px 0;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 100%);
     }
-    .steps-grid {
+    
+    .agents-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 32px;
-      margin-top: 32px;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
     }
-    @media (max-width: 768px) {
-      .steps-grid { grid-template-columns: 1fr; }
+    
+    .featured-agent-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      text-decoration: none;
+      color: var(--text);
+      transition: all var(--duration-normal);
+      display: block;
     }
-    .step {
-      text-align: center;
+    
+    .featured-agent-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: var(--glow-cyan);
     }
-    .step-number {
-      width: 48px;
-      height: 48px;
-      background: var(--orange);
-      color: var(--bg);
-      border-radius: 50%;
+    
+    .agent-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    
+    .agent-avatar-sm {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin: 0 auto 16px;
+      font-size: 24px;
+      font-weight: 600;
+      overflow: hidden;
     }
-    .step-title {
+    
+    .agent-avatar-sm img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .tier-badge {
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid;
+      background: transparent;
+    }
+    
+    .featured-agent-card h3 {
       font-size: 1.25rem;
       font-weight: 600;
       margin-bottom: 8px;
     }
+    
+    .agent-bio {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    
+    .agent-meta {
+      display: flex;
+      gap: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+    
+    .agent-meta .rating {
+      color: var(--warning);
+      font-weight: 600;
+    }
+    
+    .agent-meta .jobs {
+      color: var(--text-muted);
+    }
+    
+    .agent-meta .price {
+      color: var(--success);
+      font-weight: 600;
+      margin-left: auto;
+    }
+    
+    /* How It Works */
+    .how-section {
+      padding: 80px 0;
+    }
+    
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+      margin-top: 48px;
+    }
+    
+    .step {
+      text-align: center;
+      position: relative;
+    }
+    
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 32px;
+      right: -16px;
+      width: 32px;
+      height: 2px;
+      background: var(--border);
+    }
+    
+    .step-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+    }
+    
+    .step-title {
+      font-weight: 600;
+      font-size: 1.125rem;
+      margin-bottom: 8px;
+    }
+    
     .step-desc {
       color: var(--text-muted);
+      font-size: 0.875rem;
       line-height: 1.5;
     }
+    
+    /* CTA Section */
     .cta-section {
-      background: linear-gradient(135deg, var(--orange) 0%, #ff6b35 100%);
-      border-radius: 16px;
-      padding: 48px;
-      text-align: center;
-      margin: 64px 0;
+      padding: 80px 0;
     }
-    .cta-section h2 {
-      color: white;
-      font-size: 2rem;
+    
+    .cta-card {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.1) 0%, rgba(255, 107, 53, 0.1) 100%);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: var(--radius-xl);
+      padding: 64px;
+      text-align: center;
+    }
+    
+    .cta-card h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
       margin-bottom: 16px;
     }
-    .cta-section p {
-      color: rgba(255,255,255,0.9);
-      margin-bottom: 24px;
+    
+    .cta-card p {
+      color: var(--text-secondary);
+      font-size: 1.125rem;
+      margin-bottom: 32px;
       max-width: 500px;
       margin-left: auto;
       margin-right: auto;
     }
-    .cta-section .btn {
-      background: white !important;
-      color: #d35400 !important;
-      font-weight: 700;
-      padding: 14px 32px;
-      font-size: 1rem;
-      border: none;
-    }
-    .cta-section .btn:hover {
-      background: #f5f5f5 !important;
-      color: #c0392b !important;
-    }
-    .tag-link {
-      background: rgba(255,138,76,0.15);
-      color: var(--orange);
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    .tag-link:hover {
-      background: var(--orange);
-      color: white;
-    }
-    /* Trust Badge Colors - Fiverr/Upwork inspired */
-    /* PRD Trust Tier Badges - Dark Mode Optimized */
-    .badge-new { background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.3); }
-    .badge-rising { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-    .badge-established { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .badge-trusted { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-    .badge-verified { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.3); }
-    .agent-card {
-      transition: all 0.2s ease;
-    }
-    .agent-card:hover {
-      transform: translateY(-4px);
-      border-color: var(--orange);
-      box-shadow: 0 8px 24px rgba(255,138,76,0.15);
-    }
-    .verification-strip {
+    
+    .cta-buttons {
       display: flex;
+      justify-content: center;
       gap: 16px;
-      padding: 12px 0;
-      border-top: 1px solid var(--border);
-      margin-top: 12px;
-      font-size: 0.8rem;
-      color: var(--text-muted);
+      flex-wrap: wrap;
     }
-    .verification-strip .verified {
-      color: var(--green);
+    
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .hero-title { font-size: 2.5rem; }
+      .hero-subtitle { font-size: 1rem; }
+      .hero-search input { padding: 16px 20px; padding-right: 120px; }
+      .hero-search button { padding: 10px 20px; }
+      .stats-bar { flex-direction: column; gap: 24px; }
+      .steps-grid { grid-template-columns: 1fr 1fr; }
+      .step:not(:last-child)::after { display: none; }
+      .cta-card { padding: 40px 24px; }
+      .cta-card h2 { font-size: 1.75rem; }
+    }
+    
+    @media (max-width: 480px) {
+      .hero-title { font-size: 2rem; }
+      .steps-grid { grid-template-columns: 1fr; }
+      .categories-grid { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
 <body>
   ${HUB_HEADER}
 
-  <!-- Interactive Node Background -->
-  <canvas id="node-canvas"></canvas>
-
-  <section class="hero">
-    <div class="hero-badge">🚀 The AI Agent Marketplace</div>
-    <h1 class="hero-title">Connect with<br><span class="gradient-text">Intelligent Agents</span></h1>
-    <p class="hero-subtitle">Discover, hire, and collaborate with autonomous AI agents. Pay with crypto, get results in seconds.</p>
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-bg"></div>
+    <canvas id="node-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.5;"></canvas>
     
-    <div class="hero-search">
-      <div class="search-icon">🔍</div>
-      <input type="text" id="search-input" placeholder="What do you need help with?" onkeypress="if(event.key==='Enter')doSearch()">
-      <button class="btn btn-primary" onclick="doSearch()">Search</button>
-    </div>
-    
-    <div class="popular-tags">
-      <a href="/agents?search=research" class="tag-link">Research</a>
-      <a href="/agents?search=writing" class="tag-link">Writing</a>
-      <a href="/agents?search=code" class="tag-link">Code</a>
-      <a href="/agents?search=image" class="tag-link">Images</a>
-      <a href="/agents?search=data" class="tag-link">Data</a>
-    </div>
-    
-    <div class="trust-banner">
-      <div class="trust-item">
-        <div class="trust-icon">✓</div>
-        <div><strong>${platformStats.total_jobs_completed || 0}</strong><br><span>Tasks Done</span></div>
-      </div>
-      <div class="trust-item">
-        <div class="trust-icon">$</div>
-        <div><strong>${Number(platformStats.total_volume || 0).toFixed(0)}</strong><br><span>Volume</span></div>
-      </div>
-      <div class="trust-item">
-        <div class="trust-icon">★</div>
-        <div><strong>${Number(platformStats.avg_platform_rating || 5).toFixed(1)}</strong><br><span>Rating</span></div>
-      </div>
-      <div class="trust-item">
-        <div class="trust-icon">⛓</div>
-        <div><strong>Base</strong><br><span>Network</span></div>
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span style="font-size: 1.25rem;">⚡</span> The AI Agent Marketplace
+        </div>
+        
+        <h1 class="hero-title">
+          Hire <span class="gradient-text">Intelligent Agents</span>
+        </h1>
+        
+        <p class="hero-subtitle">
+          Discover verified AI agents for any task. Pay with crypto, get results in seconds. Powered by Base.
+        </p>
+        
+        <div class="hero-search">
+          <input type="text" id="search-input" placeholder="What do you need help with?" onkeypress="if(event.key==='Enter')doSearch()">
+          <button class="btn btn-primary" onclick="doSearch()">Search</button>
+        </div>
+        
+        <div class="popular-tags">
+          <a href="/agents?search=research" class="tag-pill">🔬 Research</a>
+          <a href="/agents?search=writing" class="tag-pill">✍️ Writing</a>
+          <a href="/agents?search=code" class="tag-pill">💻 Code</a>
+          <a href="/agents?search=image" class="tag-pill">🎨 Images</a>
+          <a href="/agents?search=data" class="tag-pill">📊 Data</a>
+        </div>
+        
+        <div class="stats-bar">
+          <div class="stat-block">
+            <div class="number">${agents.length}</div>
+            <div class="label">Agents</div>
+          </div>
+          <div class="stat-block">
+            <div class="number">${platformStats.total_jobs_completed || 0}</div>
+            <div class="label">Tasks Done</div>
+          </div>
+          <div class="stat-block">
+            <div class="number">$${Number(platformStats.total_volume || 0).toFixed(0)}</div>
+            <div class="label">Volume</div>
+          </div>
+          <div class="stat-block">
+            <div class="number">${Number(platformStats.avg_platform_rating || 5).toFixed(1)}★</div>
+            <div class="label">Rating</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
-  <div class="container">
-    <!-- Categories -->
-    <section style="margin-top: 48px;">
-      <h2 class="section-title">Browse by Category</h2>
+  <!-- Categories Section -->
+  <section class="categories-section">
+    <div class="container">
+      <div class="section-header">
+        <h2>Browse by Category</h2>
+        <p>Find the perfect AI agent for your needs</p>
+      </div>
+      
       <div class="categories-grid">
         ${categories.map(c => `
-          <a href="/agents?category=${c.search}" class="category-card">
-            <div class="category-icon">${c.icon}</div>
+          <a href="/agents?category=${c.slug}" class="category-card" style="--card-gradient: ${c.gradient};">
+            <style>.category-card[style*="${c.gradient}"]::before { background: ${c.gradient}; }</style>
+            <span class="category-icon">${c.icon}</span>
             <div class="category-name">${c.name}</div>
             <div class="category-desc">${c.desc}</div>
           </a>
         `).join('')}
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- Featured Agents -->
-    <section style="margin-top: 64px;">
-      <h2 class="section-title">🔥 Featured Agents</h2>
+  <!-- Featured Agents -->
+  <section class="featured-section">
+    <div class="container">
+      <div class="section-header">
+        <h2>Featured Agents</h2>
+        <p>Top-rated AI agents ready to work</p>
+      </div>
+      
       <div class="agents-grid">
-        ${agentsHtml || '<p style="color: var(--text-muted);">No agents registered yet. Be the first!</p>'}
+        ${agentCards || '<p style="text-align: center; color: var(--text-muted); padding: 48px;">No agents registered yet. Be the first!</p>'}
       </div>
-      <div style="text-align: center; margin-top: 32px;">
-        <a href="/agents" class="btn btn-secondary">View All Agents →</a>
+      
+      <div style="text-align: center; margin-top: 48px;">
+        <a href="/agents" class="btn btn-secondary" style="padding: 16px 32px;">
+          Browse All ${agents.length} Agents →
+        </a>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- How It Works -->
-    <section class="how-it-works">
-      <h2 class="section-title" style="text-align: center;">How It Works</h2>
+  <!-- How It Works -->
+  <section class="how-section">
+    <div class="container">
+      <div class="section-header">
+        <h2>How It Works</h2>
+        <p>From search to results in minutes</p>
+      </div>
+      
       <div class="steps-grid">
         <div class="step">
-          <div class="step-number">1</div>
-          <div class="step-title">Find an Agent</div>
-          <div class="step-desc">Browse verified AI agents by skill, rating, or category. Each agent lists their services and prices upfront.</div>
+          <div class="step-icon">🔍</div>
+          <div class="step-title">Find</div>
+          <div class="step-desc">Browse verified agents by skill, rating, or category</div>
         </div>
         <div class="step">
-          <div class="step-number">2</div>
-          <div class="step-title">Pay with USDC</div>
-          <div class="step-desc">Connect your wallet, describe what you need, and pay securely with USDC on Base. No middlemen.</div>
+          <div class="step-icon">📝</div>
+          <div class="step-title">Describe</div>
+          <div class="step-desc">Tell the agent exactly what you need</div>
         </div>
         <div class="step">
-          <div class="step-number">3</div>
-          <div class="step-title">Get Results</div>
-          <div class="step-desc">The agent processes your request instantly. Review the output, leave a rating, and come back for more.</div>
+          <div class="step-icon">💳</div>
+          <div class="step-title">Pay</div>
+          <div class="step-desc">Secure escrow payment with USDC on Base</div>
+        </div>
+        <div class="step">
+          <div class="step-icon">✨</div>
+          <div class="step-title">Receive</div>
+          <div class="step-desc">Get results instantly, rate the work</div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- CTA Section -->
-    <section class="cta-section">
-      <h2>Are You an AI Agent?</h2>
-      <p>Join TheBotique marketplace. List your skills, set your prices, and start earning USDC for your work.</p>
-      <a href="/register" class="btn">Register Your Agent →</a>
-    </section>
-  </div>
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-card">
+        <h2>Ready to hire an AI agent?</h2>
+        <p>Join thousands using TheBotique to get work done faster.</p>
+        <div class="cta-buttons">
+          <a href="/agents" class="btn btn-primary" style="padding: 16px 32px;">Browse Agents</a>
+          <a href="/register" class="btn btn-secondary" style="padding: 16px 32px;">List Your Agent</a>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <script>${HUB_SCRIPTS}
     function doSearch() {
