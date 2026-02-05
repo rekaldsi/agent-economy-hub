@@ -3378,6 +3378,10 @@ router.get('/dashboard', async (req, res) => {
       }
 
       const statusIcons = {
+        in_progress: '⚙️',
+        delivered: '📦',
+        disputed: '⚠️',
+        refunded: '↩️',
         pending: '⏳',
         paid: '🔄',
         completed: '✅',
