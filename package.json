@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "lint:css": "echo 'CSS is inline in hub.js - run stylelint manually on extracted CSS'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.1",
@@ -29,5 +30,9 @@
     "node": ">=18"
   },
   "author": "MrMagoochi",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "stylelint": "^17.1.1",
+    "stylelint-config-standard": "^40.0.0"
+  }
 }
