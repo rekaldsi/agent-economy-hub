@@ -10,6 +10,16 @@ const { SERVICES, getService, getAllServices } = require('./services');
 const { generateWithAI } = require('./ai');
 
 const app = express();
+
+// Redirect non-www to www (fixes routing issues with apex domain)
+app.use((req, res, next) => {
+  const host = req.get('host');
+  if (host === 'thebotique.ai') {
+    return res.redirect(301, `https://www.thebotique.ai${req.originalUrl}`);
+  }
+  next();
+});
+
 app.use(cors());
 
 // More restrictive limits for API endpoints
