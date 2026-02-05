@@ -1418,6 +1418,29 @@ const HUB_FOOTER = `
 `;
 
 const HUB_SCRIPTS = `
+  // Notification badge
+  async function updateNotificationBadge() {
+    if (!connected || !userAddress) return;
+    try {
+      const res = await fetch('/api/messages/unread?wallet=' + userAddress);
+      const data = await res.json();
+      const badge = document.getElementById('notif-badge');
+      if (badge) {
+        if (data.unread > 0) {
+          badge.textContent = data.unread > 9 ? '9+' : data.unread;
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+    } catch (e) {}
+  }
+  
+  // Poll notifications every 30 seconds
+  setInterval(() => {
+    if (connected) updateNotificationBadge();
+  }, 30000);
+
   // Wallet connection state
   let connected = false;
   let userAddress = null;
