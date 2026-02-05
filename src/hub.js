@@ -7016,6 +7016,113 @@ router.post('/api/reputation/attest', async (req, res) => {
   });
 });
 
+// ============================================
+// FUTURE VISION: Vertical Marketplaces
+// ============================================
+
+const VERTICALS = {
+  legal: {
+    name: 'Legal AI',
+    slug: 'legal',
+    icon: '⚖️',
+    description: 'Contract review, legal research, compliance',
+    requiredCerts: ['security-audit'],
+    categories: ['contract-review', 'legal-research', 'compliance', 'ip-analysis'],
+    complianceLevel: 'high'
+  },
+  medical: {
+    name: 'Medical AI',
+    slug: 'medical',
+    icon: '🏥',
+    description: 'Medical research, clinical documentation, health analysis',
+    requiredCerts: ['security-audit', 'enterprise'],
+    categories: ['medical-research', 'clinical-docs', 'health-analysis'],
+    complianceLevel: 'hipaa'
+  },
+  finance: {
+    name: 'Finance AI',
+    slug: 'finance',
+    icon: '💰',
+    description: 'Financial analysis, trading signals, risk assessment',
+    requiredCerts: ['security-audit'],
+    categories: ['financial-analysis', 'trading', 'risk-assessment', 'reporting'],
+    complianceLevel: 'high'
+  },
+  education: {
+    name: 'Education AI',
+    slug: 'education',
+    icon: '📚',
+    description: 'Tutoring, course creation, assessment',
+    requiredCerts: [],
+    categories: ['tutoring', 'course-creation', 'assessment', 'research'],
+    complianceLevel: 'standard'
+  },
+  creative: {
+    name: 'Creative AI',
+    slug: 'creative',
+    icon: '🎨',
+    description: 'Design, content, video, music production',
+    requiredCerts: [],
+    categories: ['design', 'content', 'video', 'music', 'marketing'],
+    complianceLevel: 'standard'
+  }
+};
+
+router.get('/api/verticals', (req, res) => res.json(VERTICALS));
+
+router.get('/api/verticals/:slug', async (req, res) => {
+  const vertical = VERTICALS[req.params.slug];
+  if (!vertical) return res.status(404).json({ error: 'Vertical not found' });
+
+  // Get agents certified for this vertical
+  const agents = await db.query(`
+    SELECT DISTINCT a.*, 
+      (SELECT json_agg(c.slug) FROM agent_certifications ac 
+       JOIN certifications c ON ac.certification_id = c.id 
+       WHERE ac.agent_id = a.id AND ac.status = 'approved') as certifications
+    FROM agents a
+    JOIN skills s ON s.agent_id = a.id
+    WHERE s.category = ANY($1) AND a.status = 'active'
+    ORDER BY a.rating DESC
+  `, [vertical.categories]);
+
+  // Filter by required certs
+  const certified = agents.rows.filter(a => {
+    if (vertical.requiredCerts.length === 0) return true;
+    const certs = a.certifications || [];
+    return vertical.requiredCerts.every(rc => certs.includes(rc));
+  });
+
+  res.json({
+    vertical,
+    totalAgents: certified.length,
+    agents: certified.slice(0, 20),
+    complianceNote: vertical.complianceLevel === 'hipaa' 
+      ? 'All agents in this vertical are HIPAA-compliant certified'
+      : vertical.complianceLevel === 'high'
+      ? 'Enhanced security requirements apply'
+      : null
+  });
+});
+
+router.get('/api/verticals/:slug/featured', async (req, res) => {
+  const vertical = VERTICALS[req.params.slug];
+  if (!vertical) return res.status(404).json({ error: 'Vertical not found' });
+
+  const featured = await db.query(`
+    SELECT a.*, COUNT(j.id) as recent_jobs
+    FROM agents a
+    JOIN skills s ON s.agent_id = a.id
+    LEFT JOIN jobs j ON j.agent_id = a.id AND j.created_at > NOW() - INTERVAL '30 days'
+    WHERE s.category = ANY($1) AND a.trust_tier IN ('trusted', 'verified')
+    GROUP BY a.id
+    ORDER BY a.rating DESC, recent_jobs DESC
+    LIMIT 5
+  `, [vertical.categories]);
+
+  res.json(featured.rows);
+});
+
 router.get('/api/reputation/leaderboard', async (req, res) => {
   const result = await db.query(`
     SELECT a.id, a.name, a.trust_tier, a.rating, a.total_jobs, a.completion_rate,
