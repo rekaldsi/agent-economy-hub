@@ -2934,8 +2934,19 @@ router.get('/', async (req, res) => {
     
     .categories-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 500px) {
+      .categories-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
     }
     
     .category-card {
@@ -6527,15 +6538,13 @@ router.get('/dashboard', async (req, res) => {
 <body>
   ${HUB_HEADER}
 
-  <div id="connect-prompt" class="connect-prompt">
-    <div class="connect-card">
-      <div class="connect-icon">🔐</div>
-      <h2>Welcome to Your Dashboard</h2>
-      <p>Connect your wallet to manage jobs, track earnings, and monitor your agent's performance.</p>
-      <div id="wallet-status-debug" style="margin-bottom: 16px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 0.8rem; color: var(--text-muted);">
-        Checking wallet status...
-      </div>
-      <button id="connect-btn" class="btn btn-primary connect-btn" onclick="connectWallet()">Connect Wallet</button>
+  <div id="connect-prompt" class="connect-prompt" style="min-height: auto; padding: 48px 24px;">
+    <div class="connect-card" style="padding: 40px; max-width: 400px;">
+      <div class="connect-icon" style="width: 64px; height: 64px; font-size: 28px; margin-bottom: 20px;">🔐</div>
+      <h2 style="font-size: 1.5rem; margin-bottom: 8px;">Connect Wallet</h2>
+      <p style="font-size: 0.9rem; margin-bottom: 20px;">Access your dashboard to manage jobs and earnings.</p>
+      <button id="connect-btn" class="btn btn-primary" onclick="connectWallet()" style="width: 100%;">Connect Wallet</button>
+      <p id="wallet-status-debug" style="margin-top: 12px; font-size: 0.75rem; color: var(--text-muted);"></p>
     </div>
   </div>
 
@@ -6545,7 +6554,7 @@ router.get('/dashboard', async (req, res) => {
       <div class="sidebar-profile">
         <div class="profile-avatar" id="profile-avatar">👤</div>
         <div class="profile-info">
-          <div class="profile-name" id="user-name">Loading...</div>
+          <div class="profile-name" id="user-name">Connected</div>
           <div class="profile-wallet" id="user-wallet"></div>
         </div>
       </div>
@@ -6801,6 +6810,7 @@ router.get('/dashboard', async (req, res) => {
       
       const shortAddr = userAddress.slice(0,6) + '...' + userAddress.slice(-4);
       document.getElementById('user-wallet').textContent = shortAddr;
+      document.getElementById('user-name').textContent = shortAddr; // Show address immediately
       document.getElementById('settings-wallet').textContent = userAddress;
 
       // Load user data
@@ -6808,7 +6818,7 @@ router.get('/dashboard', async (req, res) => {
         const userRes = await fetch('/api/users/' + userAddress);
         if (userRes.ok) {
           userData = await userRes.json();
-          document.getElementById('user-name').textContent = userData.name || 'User';
+          document.getElementById('user-name').textContent = userData.name || shortAddr;
           
           // Check if user is an agent
           if (userData.agent) {
@@ -7002,21 +7012,20 @@ router.get('/dashboard', async (req, res) => {
     }
 
     window.addEventListener('load', async () => {
-      // Show wallet debug info
       const debugEl = document.getElementById('wallet-status-debug');
       const hasEthereum = typeof window.ethereum !== 'undefined';
       const hasEthers = typeof ethers !== 'undefined';
       
+      // Only show status if there's an issue - keep it clean otherwise
       if (debugEl) {
         if (!hasEthers) {
-          debugEl.innerHTML = '❌ <strong>Error:</strong> Wallet library (ethers.js) failed to load. Try refreshing.';
+          debugEl.innerHTML = '❌ Wallet library failed to load. <a href="javascript:location.reload()" style="color: var(--accent);">Refresh</a>';
           debugEl.style.color = 'var(--error)';
         } else if (!hasEthereum) {
-          debugEl.innerHTML = '⚠️ <strong>No wallet detected.</strong> Please install <a href="https://metamask.io" target="_blank" style="color: var(--accent);">MetaMask</a> or use a Web3 browser.';
-          debugEl.style.color = 'var(--warning)';
+          debugEl.innerHTML = 'No wallet? <a href="https://metamask.io" target="_blank" style="color: var(--accent);">Get MetaMask</a>';
+          debugEl.style.color = 'var(--text-muted)';
         } else {
-          debugEl.innerHTML = '✅ Wallet detected! Click the button below to connect.';
-          debugEl.style.color = 'var(--success)';
+          debugEl.innerHTML = ''; // Clean - wallet ready, no message needed
         }
       }
       
