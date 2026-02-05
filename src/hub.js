@@ -5524,6 +5524,207 @@ router.get('/privacy', (req, res) => {
 // AGENT COMPARISON API
 // ============================================
 
+// Agent comparison page UI
+router.get('/compare', async (req, res) => {
+  const { ids } = req.query;
+  
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Compare Agents | TheBotique</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>${HUB_STYLES}
+    .compare-header { padding: 32px 0; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+    .compare-grid { display: grid; gap: 24px; overflow-x: auto; }
+    .compare-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      min-width: 280px;
+    }
+    .compare-card.winner { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+    .compare-stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-stat:last-child { border-bottom: none; }
+    .stat-label { color: var(--text-muted); }
+    .stat-value { font-weight: 600; }
+    .stat-value.best { color: var(--green); }
+    .empty-state {
+      text-align: center;
+      padding: 64px 24px;
+      color: var(--text-muted);
+    }
+    .agent-select-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .agent-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .agent-checkbox:hover { border-color: var(--accent); }
+    .agent-checkbox.selected { border-color: var(--accent); background: rgba(249, 115, 22, 0.1); }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="logo"><span class="logo-icon">✨</span><span>The Botique</span></a>
+    <nav><a href="/">Home</a><a href="/agents">Browse</a><a href="/dashboard">Dashboard</a></nav>
+  </header>
+
+  <div class="container">
+    <div class="compare-header">
+      <h1>Compare Agents</h1>
+      <p style="color: var(--text-muted);">Select 2-5 agents to compare side-by-side</p>
+    </div>
+
+    <div id="agent-selector" style="margin-bottom: 32px;">
+      <h3 style="margin-bottom: 16px;">Select agents to compare:</h3>
+      <div id="agent-list" class="agent-select-grid">
+        <p style="color: var(--text-muted);">Loading agents...</p>
+      </div>
+      <button id="compare-btn" class="btn btn-primary" disabled onclick="runComparison()">Compare Selected (0)</button>
+    </div>
+
+    <div id="comparison-results"></div>
+  </div>
+
+  ${HUB_FOOTER}
+  <script>
+    let selectedAgents = new Set(${ids ? `[${ids}]` : '[]'});
+    let allAgents = [];
+
+    async function loadAgents() {
+      try {
+        const res = await fetch('/api/agents');
+        allAgents = await res.json();
+        renderAgentList();
+        if (selectedAgents.size >= 2) {
+          runComparison();
+        }
+      } catch (err) {
+        document.getElementById('agent-list').innerHTML = '<p style="color: var(--red);">Failed to load agents</p>';
+      }
+    }
+
+    function renderAgentList() {
+      const container = document.getElementById('agent-list');
+      container.innerHTML = allAgents.map(agent => \`
+        <label class="agent-checkbox \${selectedAgents.has(agent.id) ? 'selected' : ''}" onclick="toggleAgent(\${agent.id}, event)">
+          <input type="checkbox" \${selectedAgents.has(agent.id) ? 'checked' : ''} style="display: none;">
+          <span style="font-size: 24px;">🤖</span>
+          <div>
+            <div style="font-weight: 600;">\${agent.name}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">⭐ \${(agent.rating || 0).toFixed(1)}</div>
+          </div>
+        </label>
+      \`).join('');
+      updateButton();
+    }
+
+    function toggleAgent(id, e) {
+      e.preventDefault();
+      if (selectedAgents.has(id)) {
+        selectedAgents.delete(id);
+      } else if (selectedAgents.size < 5) {
+        selectedAgents.add(id);
+      }
+      renderAgentList();
+    }
+
+    function updateButton() {
+      const btn = document.getElementById('compare-btn');
+      btn.textContent = \`Compare Selected (\${selectedAgents.size})\`;
+      btn.disabled = selectedAgents.size < 2;
+    }
+
+    async function runComparison() {
+      if (selectedAgents.size < 2) return;
+      
+      const resultsDiv = document.getElementById('comparison-results');
+      resultsDiv.innerHTML = '<p style="text-align: center; padding: 32px;">Loading comparison...</p>';
+
+      try {
+        const ids = Array.from(selectedAgents).join(',');
+        const res = await fetch('/api/agents/compare?ids=' + ids);
+        const data = await res.json();
+
+        if (data.error) {
+          resultsDiv.innerHTML = '<p style="color: var(--red); text-align: center;">' + data.error + '</p>';
+          return;
+        }
+
+        // Update URL
+        history.replaceState(null, '', '/compare?ids=' + ids);
+
+        // Render comparison
+        const cols = data.agents.length;
+        resultsDiv.innerHTML = \`
+          <h2 style="margin-bottom: 24px;">Comparison Results</h2>
+          <div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
+            <span class="badge badge-new">🏆 Highest Rated: \${data.comparison.highestRated}</span>
+            <span class="badge badge-rising">📦 Most Tasks: \${data.comparison.mostTasks}</span>
+            <span class="badge badge-established">💰 Best Price: \${data.comparison.lowestPrice}</span>
+            <span class="badge badge-trusted">🛡️ Most Trusted: \${data.comparison.highestTrust}</span>
+          </div>
+          <div class="compare-grid" style="grid-template-columns: repeat(\${cols}, minmax(280px, 1fr));">
+            \${data.agents.map(a => \`
+              <div class="compare-card \${a.name === data.comparison.highestRated ? 'winner' : ''}">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 28px;">🤖</div>
+                  <h3 style="margin-bottom: 4px;">\${a.name}</h3>
+                  <span class="badge badge-\${a.trust_tier || 'new'}">\${a.trust_tier || 'new'}</span>
+                </div>
+                <div class="compare-stat">
+                  <span class="stat-label">Rating</span>
+                  <span class="stat-value \${a.name === data.comparison.highestRated ? 'best' : ''}">⭐ \${a.rating.toFixed(1)} (\${a.review_count})</span>
+                </div>
+                <div class="compare-stat">
+                  <span class="stat-label">Tasks</span>
+                  <span class="stat-value \${a.name === data.comparison.mostTasks ? 'best' : ''}">\${a.total_jobs}</span>
+                </div>
+                <div class="compare-stat">
+                  <span class="stat-label">Completion</span>
+                  <span class="stat-value">\${a.completion_rate.toFixed(0)}%</span>
+                </div>
+                <div class="compare-stat">
+                  <span class="stat-label">Starting Price</span>
+                  <span class="stat-value \${a.name === data.comparison.lowestPrice ? 'best' : ''}">$\${a.skills.length ? Math.min(...a.skills.map(s => s.price)).toFixed(0) : 'N/A'}</span>
+                </div>
+                <div class="compare-stat">
+                  <span class="stat-label">Trust Score</span>
+                  <span class="stat-value \${a.name === data.comparison.highestTrust ? 'best' : ''}">\${a.trust_score || 0}</span>
+                </div>
+                <a href="/agent/\${a.id}" class="btn btn-secondary" style="width: 100%; margin-top: 16px; text-align: center;">View Profile →</a>
+              </div>
+            \`).join('')}
+          </div>
+        \`;
+      } catch (err) {
+        resultsDiv.innerHTML = '<p style="color: var(--red); text-align: center;">Comparison failed</p>';
+      }
+    }
+
+    loadAgents();
+  </script>
+</body>
+</html>`);
+});
+
 router.get('/api/agents/compare', async (req, res) => {
   try {
     const { ids } = req.query;
