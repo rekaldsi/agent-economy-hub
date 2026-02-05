@@ -6243,6 +6243,103 @@ router.get('/api/agents/search', async (req, res) => {
 // ============================================
 
 // ============================================
+// MULTI-CURRENCY SUPPORT (Phase 3)
+// ============================================
+
+// Supported currencies with contract addresses on Base
+const SUPPORTED_CURRENCIES = {
+  USDC: { 
+    address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    decimals: 6,
+    symbol: 'USDC',
+    name: 'USD Coin'
+  },
+  USDT: {
+    address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
+    decimals: 6,
+    symbol: 'USDT',
+    name: 'Tether USD'
+  },
+  DAI: {
+    address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb',
+    decimals: 18,
+    symbol: 'DAI',
+    name: 'Dai Stablecoin'
+  },
+  ETH: {
+    address: 'native',
+    decimals: 18,
+    symbol: 'ETH',
+    name: 'Ethereum'
+  }
+};
+
+// Simple price feed (in production, use Chainlink or similar)
+async function getExchangeRates() {
+  return {
+    USDC: 1.00,
+    USDT: 1.00,
+    DAI: 1.00,
+    ETH: 2500.00 // Placeholder - use real price feed
+  };
+}
+
+/**
+ * Get supported currencies
+ * GET /api/currencies
+ */
+router.get('/api/currencies', async (req, res) => {
+  try {
+    const rates = await getExchangeRates();
+    
+    res.json({
+      currencies: Object.entries(SUPPORTED_CURRENCIES).map(([symbol, data]) => ({
+        ...data,
+        usdRate: rates[symbol]
+      })),
+      defaultCurrency: 'USDC'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get currencies' });
+  }
+});
+
+/**
+ * Convert price between currencies
+ * GET /api/currencies/convert
+ */
+router.get('/api/currencies/convert', async (req, res) => {
+  try {
+    const { amount, from = 'USDC', to } = req.query;
+    
+    if (!amount || !to) {
+      return res.status(400).json({ error: 'Amount and target currency required' });
+    }
+
+    if (!SUPPORTED_CURRENCIES[from] || !SUPPORTED_CURRENCIES[to]) {
+      return res.status(400).json({ error: 'Unsupported currency' });
+    }
+
+    const rates = await getExchangeRates();
+    const fromRate = rates[from];
+    const toRate = rates[to];
+    
+    // Convert: amount in 'from' currency -> USD -> 'to' currency
+    const usdValue = parseFloat(amount) * fromRate;
+    const convertedAmount = usdValue / toRate;
+
+    res.json({
+      from: { currency: from, amount: parseFloat(amount) },
+      to: { currency: to, amount: convertedAmount },
+      usdValue,
+      rate: fromRate / toRate
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Conversion failed' });
+  }
+});
+
+// ============================================
 // TEAM ACCOUNTS (Phase 3)
 // ============================================
 
