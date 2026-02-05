@@ -118,6 +118,29 @@ function errorHandler(err, req, res, next) {
 }
 
 // ============================================
+// PWA SUPPORT
+// ============================================
+const PWA_HEAD = `
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#f97316">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TheBotique">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+`;
+
+const PWA_SCRIPT = `
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('SW registered'))
+        .catch(err => console.log('SW registration failed'));
+    });
+  }
+`;
+
+// ============================================
 // HUB LANDING PAGE
 // ============================================
 const HUB_STYLES = `
