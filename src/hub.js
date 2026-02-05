@@ -5260,6 +5260,202 @@ function getTierBenefits(tier) {
 }
 
 /**
+ * Dashboard analytics for an agent
+ * GET /api/agents/:id/analytics
+ */
+router.get('/api/agents/:id/analytics', validateIdParam('id'), async (req, res) => {
+  try {
+    const agentId = req.params.id;
+    const { days = 30 } = req.query;
+    
+    // Get agent
+    const agent = await db.getAgentById(agentId);
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    // Get jobs for this agent within time period
+    const jobsResult = await db.query(`
+      SELECT 
+        DATE(created_at) as date,
+        COUNT(*) as tasks,
+        SUM(CASE WHEN status = 'completed' THEN price_usdc ELSE 0 END) as earnings,
+        AVG(CASE WHEN rating IS NOT NULL THEN rating ELSE NULL END) as avg_rating
+      FROM jobs 
+      WHERE agent_id = $1 
+        AND created_at > NOW() - INTERVAL '${parseInt(days)} days'
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC
+    `, [agentId]);
+
+    // Get totals
+    const totalsResult = await db.query(`
+      SELECT 
+        COUNT(*) as total_tasks,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_tasks,
+        COUNT(CASE WHEN status = 'pending' OR status = 'paid' OR status = 'in_progress' THEN 1 END) as active_tasks,
+        COALESCE(SUM(CASE WHEN status = 'completed' THEN price_usdc ELSE 0 END), 0) as total_earnings,
+        COALESCE(AVG(CASE WHEN rating IS NOT NULL THEN rating END), 0) as avg_rating
+      FROM jobs WHERE agent_id = $1
+    `, [agentId]);
+
+    // Get recent reviews
+    const reviewsResult = await db.query(`
+      SELECT r.*, j.skill_name
+      FROM reviews r
+      JOIN jobs j ON r.job_id = j.id
+      WHERE j.agent_id = $1
+      ORDER BY r.created_at DESC
+      LIMIT 5
+    `, [agentId]);
+
+    // Calculate week-over-week changes
+    const lastWeekResult = await db.query(`
+      SELECT 
+        COUNT(*) as tasks,
+        COALESCE(SUM(CASE WHEN status = 'completed' THEN price_usdc ELSE 0 END), 0) as earnings
+      FROM jobs 
+      WHERE agent_id = $1 
+        AND created_at BETWEEN NOW() - INTERVAL '14 days' AND NOW() - INTERVAL '7 days'
+    `, [agentId]);
+
+    const thisWeekResult = await db.query(`
+      SELECT 
+        COUNT(*) as tasks,
+        COALESCE(SUM(CASE WHEN status = 'completed' THEN price_usdc ELSE 0 END), 0) as earnings
+      FROM jobs 
+      WHERE agent_id = $1 
+        AND created_at > NOW() - INTERVAL '7 days'
+    `, [agentId]);
+
+    const lastWeek = lastWeekResult.rows[0] || { tasks: 0, earnings: 0 };
+    const thisWeek = thisWeekResult.rows[0] || { tasks: 0, earnings: 0 };
+
+    res.json({
+      period: `${days} days`,
+      daily: jobsResult.rows,
+      totals: totalsResult.rows[0],
+      recentReviews: reviewsResult.rows,
+      trends: {
+        tasksChange: lastWeek.tasks > 0 
+          ? Math.round(((thisWeek.tasks - lastWeek.tasks) / lastWeek.tasks) * 100) 
+          : thisWeek.tasks > 0 ? 100 : 0,
+        earningsChange: parseFloat(lastWeek.earnings) > 0 
+          ? Math.round(((parseFloat(thisWeek.earnings) - parseFloat(lastWeek.earnings)) / parseFloat(lastWeek.earnings)) * 100) 
+          : parseFloat(thisWeek.earnings) > 0 ? 100 : 0
+      }
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to get analytics');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Get pending actions for operator dashboard
+ * GET /api/agents/:id/pending-actions
+ */
+router.get('/api/agents/:id/pending-actions', validateIdParam('id'), async (req, res) => {
+  try {
+    const agentId = req.params.id;
+
+    // Get jobs needing action
+    const pendingJobs = await db.query(`
+      SELECT id, job_uuid, skill_name, status, price_usdc, created_at, input
+      FROM jobs 
+      WHERE agent_id = $1 
+        AND status IN ('paid', 'in_progress')
+      ORDER BY created_at ASC
+    `, [agentId]);
+
+    // Get revision requests
+    const revisionJobs = await db.query(`
+      SELECT id, job_uuid, skill_name, price_usdc, revision_notes, created_at
+      FROM jobs 
+      WHERE agent_id = $1 
+        AND status = 'revision_requested'
+      ORDER BY created_at ASC
+    `, [agentId]);
+
+    // Get disputes
+    const disputes = await db.query(`
+      SELECT id, job_uuid, skill_name, price_usdc, dispute_reason, disputed_at
+      FROM jobs 
+      WHERE agent_id = $1 
+        AND status = 'disputed'
+      ORDER BY disputed_at ASC
+    `, [agentId]);
+
+    // Get unanswered reviews (no agent_response)
+    const unansweredReviews = await db.query(`
+      SELECT r.id, r.rating, r.comment, r.created_at, j.skill_name
+      FROM reviews r
+      JOIN jobs j ON r.job_id = j.id
+      WHERE j.agent_id = $1 
+        AND r.agent_response IS NULL
+        AND r.comment IS NOT NULL
+      ORDER BY r.created_at DESC
+      LIMIT 10
+    `, [agentId]);
+
+    res.json({
+      pendingJobs: pendingJobs.rows,
+      revisionRequests: revisionJobs.rows,
+      disputes: disputes.rows,
+      unansweredReviews: unansweredReviews.rows,
+      totalActions: pendingJobs.rows.length + revisionJobs.rows.length + disputes.rows.length + unansweredReviews.rows.length
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to get pending actions');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Respond to a review
+ * POST /api/reviews/:id/respond
+ */
+router.post('/api/reviews/:id/respond', validateIdParam('id'), async (req, res) => {
+  try {
+    const { response, wallet } = req.body;
+    
+    if (!response || !wallet) {
+      return res.status(400).json({ error: 'Response and wallet required' });
+    }
+
+    // Verify the wallet owns this agent's review
+    const review = await db.query(`
+      SELECT r.*, j.agent_id, a.user_id, u.wallet_address
+      FROM reviews r
+      JOIN jobs j ON r.job_id = j.id
+      JOIN agents a ON j.agent_id = a.id
+      JOIN users u ON a.user_id = u.id
+      WHERE r.id = $1
+    `, [req.params.id]);
+
+    if (!review.rows[0]) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    if (review.rows[0].wallet_address.toLowerCase() !== wallet.toLowerCase()) {
+      return res.status(403).json({ error: 'Not authorized to respond to this review' });
+    }
+
+    // Update review with response
+    await db.query(`
+      UPDATE reviews 
+      SET agent_response = $1, agent_response_at = NOW()
+      WHERE id = $2
+    `, [sanitizeText(response, 500), req.params.id]);
+
+    res.json({ success: true, message: 'Response posted' });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to post response');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
  * Advanced agent search with filters
  * GET /api/agents/search
  */
@@ -5363,6 +5559,415 @@ router.get('/api/agents/search', async (req, res) => {
 // ============================================
 // LEGAL PAGES
 // ============================================
+
+// ============================================
+// ADMIN PANEL
+// ============================================
+
+// Simple admin auth - in production use proper auth
+const ADMIN_WALLETS = (process.env.ADMIN_WALLETS || '').split(',').map(w => w.toLowerCase().trim()).filter(Boolean);
+
+function isAdmin(wallet) {
+  if (!wallet) return false;
+  return ADMIN_WALLETS.includes(wallet.toLowerCase());
+}
+
+router.get('/admin', async (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Admin Panel | TheBotique</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+  <style>${HUB_STYLES}
+    .admin-header { background: linear-gradient(135deg, #7c3aed, #4f46e5); padding: 32px; color: white; margin-bottom: 32px; border-radius: 12px; }
+    .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+    .admin-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+    .admin-card h3 { margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .dispute-item { padding: 16px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; }
+    .dispute-item.urgent { border-left: 4px solid #ef4444; }
+    .action-buttons { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .badge-count { background: var(--accent); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="logo"><span class="logo-icon">✨</span><span>The Botique</span></a>
+    <nav><a href="/">Home</a><a href="/dashboard">Dashboard</a></nav>
+  </header>
+
+  <div class="container">
+    <div id="auth-check" style="text-align: center; padding: 64px;">
+      <h2>Admin Access Required</h2>
+      <p style="color: var(--text-muted); margin-bottom: 24px;">Connect an admin wallet to access this panel.</p>
+      <button class="btn btn-primary" onclick="connectWallet()">Connect Wallet</button>
+    </div>
+
+    <div id="admin-panel" style="display: none;">
+      <div class="admin-header">
+        <h1>🛡️ Admin Panel</h1>
+        <p>Manage disputes, verify agents, and monitor platform health.</p>
+      </div>
+
+      <div class="admin-grid">
+        <!-- Disputes -->
+        <div class="admin-card">
+          <h3>⚠️ Open Disputes <span id="dispute-count" class="badge-count">0</span></h3>
+          <div id="disputes-list">Loading...</div>
+        </div>
+
+        <!-- Pending Verifications -->
+        <div class="admin-card">
+          <h3>✓ Pending Verifications <span id="verify-count" class="badge-count">0</span></h3>
+          <div id="verifications-list">Loading...</div>
+        </div>
+
+        <!-- Platform Stats -->
+        <div class="admin-card">
+          <h3>📊 Platform Stats</h3>
+          <div id="platform-stats">Loading...</div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="admin-card">
+          <h3>📋 Recent Jobs</h3>
+          <div id="recent-jobs">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    ${HUB_SCRIPTS}
+    
+    let adminWallet = null;
+
+    async function checkAdminAccess() {
+      if (!connected || !userAddress) return false;
+      
+      try {
+        const res = await fetch('/api/admin/check?wallet=' + userAddress);
+        const data = await res.json();
+        return data.isAdmin;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    async function initAdmin() {
+      await checkConnection();
+      
+      if (connected && userAddress) {
+        const isAdmin = await checkAdminAccess();
+        if (isAdmin) {
+          adminWallet = userAddress;
+          document.getElementById('auth-check').style.display = 'none';
+          document.getElementById('admin-panel').style.display = 'block';
+          loadAdminData();
+        } else {
+          document.getElementById('auth-check').innerHTML = '<h2>Access Denied</h2><p style="color: var(--text-muted);">This wallet is not an admin.</p>';
+        }
+      }
+    }
+
+    async function loadAdminData() {
+      // Load disputes
+      try {
+        const res = await fetch('/api/admin/disputes?wallet=' + adminWallet);
+        const disputes = await res.json();
+        document.getElementById('dispute-count').textContent = disputes.length;
+        document.getElementById('disputes-list').innerHTML = disputes.length 
+          ? disputes.map(d => \`
+              <div class="dispute-item \${d.disputed_at && new Date(d.disputed_at) < Date.now() - 48*60*60*1000 ? 'urgent' : ''}">
+                <div style="font-weight: 600;">\${d.skill_name || 'Task'}</div>
+                <div style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0;">$\${Number(d.price_usdc).toFixed(2)} · Job #\${d.job_uuid.slice(0,8)}</div>
+                <div style="margin: 8px 0;">\${d.dispute_reason || 'No reason provided'}</div>
+                <div class="action-buttons">
+                  <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.8rem;" onclick="resolveDispute('\${d.job_uuid}', 'refund')">Full Refund</button>
+                  <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.8rem;" onclick="resolveDispute('\${d.job_uuid}', 'partial')">Partial (50%)</button>
+                  <button class="btn btn-primary" style="padding: 8px 12px; font-size: 0.8rem;" onclick="resolveDispute('\${d.job_uuid}', 'release')">Release to Agent</button>
+                </div>
+              </div>
+            \`).join('')
+          : '<p style="color: var(--text-muted);">No open disputes 🎉</p>';
+      } catch (e) {
+        document.getElementById('disputes-list').innerHTML = '<p style="color: var(--red);">Failed to load</p>';
+      }
+
+      // Load pending verifications
+      try {
+        const res = await fetch('/api/admin/pending-verifications?wallet=' + adminWallet);
+        const verifications = await res.json();
+        document.getElementById('verify-count').textContent = verifications.length;
+        document.getElementById('verifications-list').innerHTML = verifications.length
+          ? verifications.map(v => \`
+              <div class="dispute-item">
+                <div style="font-weight: 600;">\${v.name}</div>
+                <div style="color: var(--text-muted); font-size: 0.85rem;">@\${v.x_handle || 'no handle'}</div>
+                <div class="action-buttons">
+                  <button class="btn btn-primary" style="padding: 8px 12px; font-size: 0.8rem;" onclick="approveVerification(\${v.id})">Approve</button>
+                  <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.8rem;" onclick="rejectVerification(\${v.id})">Reject</button>
+                </div>
+              </div>
+            \`).join('')
+          : '<p style="color: var(--text-muted);">No pending verifications</p>';
+      } catch (e) {
+        document.getElementById('verifications-list').innerHTML = '<p style="color: var(--red);">Failed to load</p>';
+      }
+
+      // Load platform stats
+      try {
+        const res = await fetch('/api/stats');
+        const stats = await res.json();
+        document.getElementById('platform-stats').innerHTML = \`
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div><span style="color: var(--text-muted);">Agents:</span> <strong>\${stats.total_agents}</strong></div>
+            <div><span style="color: var(--text-muted);">Jobs:</span> <strong>\${stats.total_jobs}</strong></div>
+            <div><span style="color: var(--text-muted);">Volume:</span> <strong>$\${Number(stats.total_volume_usdc || 0).toFixed(0)}</strong></div>
+            <div><span style="color: var(--text-muted);">Active (24h):</span> <strong>\${stats.active_agents_24h || 0}</strong></div>
+          </div>
+        \`;
+      } catch (e) {
+        document.getElementById('platform-stats').innerHTML = '<p style="color: var(--red);">Failed to load</p>';
+      }
+
+      // Load recent jobs
+      try {
+        const res = await fetch('/api/admin/recent-jobs?wallet=' + adminWallet);
+        const jobs = await res.json();
+        document.getElementById('recent-jobs').innerHTML = jobs.slice(0, 5).map(j => \`
+          <div style="padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between;">
+            <span>\${j.skill_name || 'Task'}</span>
+            <span class="status-badge status-\${j.status}">\${j.status}</span>
+          </div>
+        \`).join('') || '<p style="color: var(--text-muted);">No recent jobs</p>';
+      } catch (e) {
+        document.getElementById('recent-jobs').innerHTML = '<p style="color: var(--red);">Failed to load</p>';
+      }
+    }
+
+    async function resolveDispute(jobUuid, resolution) {
+      if (!confirm('Resolve this dispute with: ' + resolution + '?')) return;
+      
+      try {
+        const res = await fetch('/api/admin/resolve-dispute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobUuid, resolution, wallet: adminWallet })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Dispute resolved', 'success');
+          loadAdminData();
+        } else {
+          showToast(data.error || 'Failed', 'error');
+        }
+      } catch (e) {
+        showToast('Error resolving dispute', 'error');
+      }
+    }
+
+    async function approveVerification(agentId) {
+      try {
+        const res = await fetch('/api/admin/verify-agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agentId, wallet: adminWallet, action: 'approve' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Agent verified', 'success');
+          loadAdminData();
+        } else {
+          showToast(data.error || 'Failed', 'error');
+        }
+      } catch (e) {
+        showToast('Error', 'error');
+      }
+    }
+
+    async function rejectVerification(agentId) {
+      try {
+        const res = await fetch('/api/admin/verify-agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agentId, wallet: adminWallet, action: 'reject' })
+        });
+        loadAdminData();
+      } catch (e) {
+        showToast('Error', 'error');
+      }
+    }
+
+    // Check wallet on load
+    window.addEventListener('load', initAdmin);
+    
+    // Re-check after wallet connect
+    const originalConnect = connectWallet;
+    connectWallet = async function(silent) {
+      await originalConnect(silent);
+      initAdmin();
+    };
+  </script>
+  ${HUB_FOOTER}
+</body>
+</html>`);
+});
+
+// Admin API endpoints
+router.get('/api/admin/check', (req, res) => {
+  const { wallet } = req.query;
+  res.json({ isAdmin: isAdmin(wallet) });
+});
+
+router.get('/api/admin/disputes', async (req, res) => {
+  const { wallet } = req.query;
+  if (!isAdmin(wallet)) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+  
+  try {
+    const result = await db.query(`
+      SELECT j.*, a.name as agent_name
+      FROM jobs j
+      LEFT JOIN agents a ON j.agent_id = a.id
+      WHERE j.status = 'disputed'
+      ORDER BY j.disputed_at ASC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch disputes' });
+  }
+});
+
+router.get('/api/admin/pending-verifications', async (req, res) => {
+  const { wallet } = req.query;
+  if (!isAdmin(wallet)) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+  
+  try {
+    const result = await db.query(`
+      SELECT a.*, u.wallet_address
+      FROM agents a
+      JOIN users u ON a.user_id = u.id
+      WHERE a.x_handle IS NOT NULL 
+        AND a.x_verified_at IS NULL
+      ORDER BY a.created_at ASC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch verifications' });
+  }
+});
+
+router.get('/api/admin/recent-jobs', async (req, res) => {
+  const { wallet } = req.query;
+  if (!isAdmin(wallet)) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+  
+  try {
+    const result = await db.query(`
+      SELECT j.*, a.name as agent_name
+      FROM jobs j
+      LEFT JOIN agents a ON j.agent_id = a.id
+      ORDER BY j.created_at DESC
+      LIMIT 20
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch jobs' });
+  }
+});
+
+router.post('/api/admin/resolve-dispute', async (req, res) => {
+  const { wallet, jobUuid, resolution } = req.body;
+  
+  if (!isAdmin(wallet)) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+  
+  try {
+    // Get job
+    const job = await db.query('SELECT * FROM jobs WHERE job_uuid = $1', [jobUuid]);
+    if (!job.rows[0]) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    const j = job.rows[0];
+    let newStatus, refundAmount;
+
+    switch (resolution) {
+      case 'refund':
+        newStatus = 'refunded';
+        refundAmount = j.price_usdc;
+        break;
+      case 'partial':
+        newStatus = 'refunded';
+        refundAmount = j.price_usdc / 2;
+        break;
+      case 'release':
+        newStatus = 'completed';
+        refundAmount = 0;
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid resolution' });
+    }
+
+    await db.query(`
+      UPDATE jobs 
+      SET status = $1, 
+          refund_amount = $2,
+          resolved_at = NOW(),
+          resolved_by = $3
+      WHERE job_uuid = $4
+    `, [newStatus, refundAmount, wallet, jobUuid]);
+
+    // Recalculate agent trust
+    if (j.agent_id) {
+      await db.calculateTrustTier(j.agent_id);
+    }
+
+    res.json({ success: true, status: newStatus, refundAmount });
+  } catch (error) {
+    console.error('Resolve dispute error:', error);
+    res.status(500).json({ error: 'Failed to resolve dispute' });
+  }
+});
+
+router.post('/api/admin/verify-agent', async (req, res) => {
+  const { wallet, agentId, action } = req.body;
+  
+  if (!isAdmin(wallet)) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+  
+  try {
+    if (action === 'approve') {
+      await db.query(`
+        UPDATE agents 
+        SET x_verified_at = NOW(),
+            security_audit_status = 'passed'
+        WHERE id = $1
+      `, [agentId]);
+      
+      // Recalculate trust tier
+      await db.calculateTrustTier(agentId);
+    } else {
+      await db.query(`
+        UPDATE agents 
+        SET x_handle = NULL
+        WHERE id = $1
+      `, [agentId]);
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update verification' });
+  }
+});
 
 // ============================================
 // HEALTH & STATUS
