@@ -1834,6 +1834,108 @@ const HUB_SCRIPTS = `
     });
     window.location.href = \`/agent/\${agentId}?\${params.toString()}\`;
   }
+
+  // ============================================
+  // JOB ACTION FUNCTIONS (PRD Task Flow)
+  // ============================================
+
+  // Approve delivered work
+  async function approveJob(jobUuid) {
+    if (!connected) {
+      showToast('Please connect your wallet first', 'error');
+      return;
+    }
+
+    if (!confirm('Approve this work and release payment to the agent?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(\`/api/jobs/\${jobUuid}/approve\`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: userAddress })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showToast('✅ Work approved! Payment released.', 'success');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        showToast(data.error || 'Failed to approve', 'error');
+      }
+    } catch (err) {
+      showToast('Error approving work', 'error');
+      console.error(err);
+    }
+  }
+
+  // Request revision
+  async function requestRevision(jobUuid) {
+    if (!connected) {
+      showToast('Please connect your wallet first', 'error');
+      return;
+    }
+
+    const feedback = prompt('What changes would you like? (optional)');
+    if (feedback === null) return; // User cancelled
+
+    try {
+      const res = await fetch(\`/api/jobs/\${jobUuid}/revision\`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: userAddress, feedback })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showToast('🔄 Revision requested. Agent notified.', 'success');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        showToast(data.error || 'Failed to request revision', 'error');
+      }
+    } catch (err) {
+      showToast('Error requesting revision', 'error');
+      console.error(err);
+    }
+  }
+
+  // Open dispute
+  async function openDispute(jobUuid) {
+    if (!connected) {
+      showToast('Please connect your wallet first', 'error');
+      return;
+    }
+
+    const reason = prompt('Please describe the issue:');
+    if (!reason || !reason.trim()) {
+      showToast('Please provide a reason for the dispute', 'error');
+      return;
+    }
+
+    if (!confirm('Open a dispute? Platform will review within 48 hours.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(\`/api/jobs/\${jobUuid}/dispute\`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: userAddress, reason })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showToast('⚠️ Dispute opened. We\\'ll review within 48 hours.', 'success');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        showToast(data.error || 'Failed to open dispute', 'error');
+      }
+    } catch (err) {
+      showToast('Error opening dispute', 'error');
+      console.error(err);
+    }
+  }
 `;
 
 // Hub landing page
@@ -3667,17 +3769,48 @@ function getStatusDisplay(job, statusColor) {
   const statusInfo = {
     pending: { icon: '⏳', label: 'Pending Payment', desc: 'Waiting for payment confirmation' },
     paid: { icon: '🔄', label: 'Processing', desc: 'AI is generating your result...' },
+    in_progress: { icon: '⚙️', label: 'In Progress', desc: 'Agent is working on your task' },
+    delivered: { icon: '📦', label: 'Delivered', desc: 'Review and approve the work' },
     completed: { icon: '✅', label: 'Completed', desc: 'Result ready' },
+    disputed: { icon: '⚠️', label: 'Disputed', desc: 'Under platform review' },
+    refunded: { icon: '↩️', label: 'Refunded', desc: 'Payment returned' },
     failed: { icon: '❌', label: 'Failed', desc: 'Processing error occurred' }
   };
 
   const info = statusInfo[job.status] || { icon: '❓', label: job.status, desc: '' };
+
+  // Action buttons for delivered status
+  let actionButtons = '';
+  if (job.status === 'delivered') {
+    actionButtons = `
+      <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button onclick="approveJob('${job.job_uuid}')" class="btn btn-primary" style="background: #10b981; border-color: #10b981;">
+          ✅ Approve & Pay
+        </button>
+        <button onclick="requestRevision('${job.job_uuid}')" class="btn btn-secondary">
+          🔄 Request Revision
+        </button>
+        <button onclick="openDispute('${job.job_uuid}')" class="btn btn-secondary" style="color: #ef4444;">
+          ⚠️ Dispute
+        </button>
+      </div>
+    `;
+  } else if (job.status === 'in_progress') {
+    actionButtons = `
+      <div style="margin-top: 16px;">
+        <button onclick="openDispute('${job.job_uuid}')" class="btn btn-secondary" style="color: #ef4444;">
+          ⚠️ Open Dispute
+        </button>
+      </div>
+    `;
+  }
 
   return `
     <div class="status-badge-lg" style="background: ${statusColor}; padding: 12px 16px; border-radius: 8px;">
       <div style="font-size: 20px; margin-bottom: 4px;">${info.icon}</div>
       <div style="font-weight: 600; color: #1f2937;">${info.label}</div>
       ${info.desc ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;">${info.desc}</div>` : ''}
+      ${actionButtons}
     </div>
   `;
 }
