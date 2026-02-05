@@ -3775,10 +3775,120 @@ router.get('/job/:uuid', validateUuidParam('uuid'), async (req, res) => {
 
     ${outputHtml}
     ${paymentHtml}
+
+    <!-- Messages Section -->
+    ${['paid', 'in_progress', 'delivered', 'revision_requested', 'disputed'].includes(job.status) ? `
+    <div class="job-section" id="messages-section">
+      <h3>💬 Messages</h3>
+      <div id="messages-container" style="max-height: 400px; overflow-y: auto; margin-bottom: 16px;">
+        <p style="color: var(--text-muted); text-align: center;">Connect wallet to view messages</p>
+      </div>
+      <div id="message-form" style="display: none;">
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="message-input" placeholder="Type a message..." style="flex: 1; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+          <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+    ` : ''}
   </div>
 
   <script>${HUB_SCRIPTS}</script>
   <script>
+    const JOB_UUID = '${job.job_uuid}';
+    let messagePolling = null;
+
+    // Load messages when wallet connects
+    async function loadMessages() {
+      if (!connected || !userAddress) return;
+      
+      try {
+        const res = await fetch('/api/jobs/' + JOB_UUID + '/messages?wallet=' + userAddress);
+        if (!res.ok) {
+          document.getElementById('messages-container').innerHTML = '<p style="color: var(--text-muted);">Unable to load messages</p>';
+          return;
+        }
+        
+        const data = await res.json();
+        const container = document.getElementById('messages-container');
+        
+        if (data.messages.length === 0) {
+          container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No messages yet. Start the conversation!</p>';
+        } else {
+          container.innerHTML = data.messages.map(m => {
+            const isMine = m.sender_wallet.toLowerCase() === userAddress.toLowerCase();
+            return \`
+              <div style="margin-bottom: 12px; text-align: \${isMine ? 'right' : 'left'};">
+                <div style="display: inline-block; max-width: 80%; padding: 12px 16px; border-radius: 12px; background: \${isMine ? 'var(--accent)' : 'var(--bg-input)'}; color: \${isMine ? 'white' : 'var(--text)'};">
+                  <div>\${escapeHtml(m.message)}</div>
+                  <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 4px;">\${new Date(m.created_at).toLocaleTimeString()}</div>
+                </div>
+              </div>
+            \`;
+          }).join('');
+          container.scrollTop = container.scrollHeight;
+        }
+        
+        document.getElementById('message-form').style.display = 'block';
+      } catch (err) {
+        console.error('Failed to load messages:', err);
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('message-input');
+      const message = input.value.trim();
+      if (!message || !connected) return;
+
+      try {
+        const res = await fetch('/api/jobs/' + JOB_UUID + '/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet: userAddress, message })
+        });
+        
+        if (res.ok) {
+          input.value = '';
+          loadMessages();
+        } else {
+          const err = await res.json();
+          showToast(err.error || 'Failed to send', 'error');
+        }
+      } catch (err) {
+        showToast('Failed to send message', 'error');
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Poll for new messages
+    function startMessagePolling() {
+      messagePolling = setInterval(loadMessages, 5000);
+    }
+
+    // Override wallet connect to load messages
+    const origConnect = connectWallet;
+    connectWallet = async function(silent) {
+      await origConnect(silent);
+      if (connected) {
+        loadMessages();
+        startMessagePolling();
+      }
+    };
+
+    // Check connection on load
+    window.addEventListener('load', async () => {
+      await checkConnection();
+      if (connected) {
+        loadMessages();
+        startMessagePolling();
+      }
+    });
+
     // Auto-refresh page if job is being processed
     (function() {
       const jobStatus = '${job.status}';
@@ -4723,6 +4833,155 @@ router.post('/api/reviews/:id/respond', validateIdParam('id'), async (req, res) 
       return res.status(404).json({ error: error.message });
     }
     const { statusCode, body } = formatErrorResponse(error, 'Failed to add response');
+    res.status(statusCode).json(body);
+  }
+});
+
+// ============================================
+// IN-APP MESSAGING
+// ============================================
+
+/**
+ * Get messages for a job
+ * GET /api/jobs/:uuid/messages
+ */
+router.get('/api/jobs/:uuid/messages', async (req, res) => {
+  try {
+    const { wallet } = req.query;
+    if (!wallet) {
+      return res.status(400).json({ error: 'Wallet required' });
+    }
+
+    // Get job and verify access
+    const jobResult = await db.query(
+      'SELECT j.*, a.user_id as agent_user_id, u.wallet_address as agent_wallet FROM jobs j LEFT JOIN agents a ON j.agent_id = a.id LEFT JOIN users u ON a.user_id = u.id WHERE j.job_uuid = $1',
+      [req.params.uuid]
+    );
+    const job = jobResult.rows[0];
+    
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    // Verify caller is either hirer or agent
+    const isHirer = job.requester_wallet?.toLowerCase() === wallet.toLowerCase();
+    const isAgent = job.agent_wallet?.toLowerCase() === wallet.toLowerCase();
+    
+    if (!isHirer && !isAgent) {
+      return res.status(403).json({ error: 'Not authorized to view messages' });
+    }
+
+    // Get messages
+    const messages = await db.query(
+      'SELECT * FROM messages WHERE job_id = $1 ORDER BY created_at ASC',
+      [job.id]
+    );
+
+    // Mark messages as read
+    if (messages.rows.length > 0) {
+      await db.query(
+        'UPDATE messages SET read_at = NOW() WHERE job_id = $1 AND sender_wallet != $2 AND read_at IS NULL',
+        [job.id, wallet.toLowerCase()]
+      );
+    }
+
+    res.json({
+      jobUuid: job.job_uuid,
+      messages: messages.rows,
+      participants: {
+        hirer: job.requester_wallet,
+        agent: job.agent_wallet
+      }
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to get messages');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Send a message on a job
+ * POST /api/jobs/:uuid/messages
+ */
+router.post('/api/jobs/:uuid/messages', async (req, res) => {
+  try {
+    const { wallet, message } = req.body;
+    
+    if (!wallet || !message) {
+      return res.status(400).json({ error: 'Wallet and message required' });
+    }
+
+    if (message.length > 2000) {
+      return res.status(400).json({ error: 'Message too long (max 2000 chars)' });
+    }
+
+    // Get job and verify access
+    const jobResult = await db.query(
+      'SELECT j.*, a.user_id as agent_user_id, u.wallet_address as agent_wallet FROM jobs j LEFT JOIN agents a ON j.agent_id = a.id LEFT JOIN users u ON a.user_id = u.id WHERE j.job_uuid = $1',
+      [req.params.uuid]
+    );
+    const job = jobResult.rows[0];
+    
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    // Verify caller is either hirer or agent
+    const isHirer = job.requester_wallet?.toLowerCase() === wallet.toLowerCase();
+    const isAgent = job.agent_wallet?.toLowerCase() === wallet.toLowerCase();
+    
+    if (!isHirer && !isAgent) {
+      return res.status(403).json({ error: 'Not authorized to send messages' });
+    }
+
+    // Check if job is in a valid state for messaging
+    const validStates = ['paid', 'in_progress', 'delivered', 'revision_requested', 'disputed'];
+    if (!validStates.includes(job.status)) {
+      return res.status(400).json({ error: 'Cannot send messages on this job' });
+    }
+
+    // Insert message
+    const result = await db.query(
+      'INSERT INTO messages (job_id, sender_wallet, sender_type, message) VALUES ($1, $2, $3, $4) RETURNING *',
+      [job.id, wallet.toLowerCase(), isHirer ? 'hirer' : 'operator', sanitizeText(message, 2000)]
+    );
+
+    res.json({
+      success: true,
+      message: result.rows[0]
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to send message');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Get unread message count for a wallet
+ * GET /api/messages/unread
+ */
+router.get('/api/messages/unread', async (req, res) => {
+  try {
+    const { wallet } = req.query;
+    if (!wallet) {
+      return res.status(400).json({ error: 'Wallet required' });
+    }
+
+    // Count unread messages where user is a participant but not sender
+    const result = await db.query(`
+      SELECT COUNT(*) as unread
+      FROM messages m
+      JOIN jobs j ON m.job_id = j.id
+      LEFT JOIN agents a ON j.agent_id = a.id
+      LEFT JOIN users u ON a.user_id = u.id
+      WHERE m.read_at IS NULL
+        AND m.sender_wallet != $1
+        AND (j.requester_wallet = $1 OR u.wallet_address = $1)
+    `, [wallet.toLowerCase()]);
+
+    res.json({ unread: parseInt(result.rows[0].unread) });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to get unread count');
     res.status(statusCode).json(body);
   }
 });

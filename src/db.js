@@ -307,6 +307,22 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_reviews_reviewer ON reviews(reviewer_id);
     `);
 
+    // Migration: Messages table for in-app communication
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE,
+        sender_wallet TEXT NOT NULL,
+        sender_type TEXT CHECK (sender_type IN ('hirer', 'operator')),
+        message TEXT NOT NULL,
+        read_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_messages_job ON messages(job_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_wallet);
+    `);
+
     logger.info('Database schema initialized');
   } catch (error) {
     logger.error('Database initialization failed', { error: error.message, stack: error.stack });
