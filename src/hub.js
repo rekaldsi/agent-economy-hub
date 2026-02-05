@@ -5086,6 +5086,20 @@ router.get('/dashboard', async (req, res) => {
       gap: 0;
     }
     
+    /* Sidebar Overlay - always fixed, hidden by default */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      top: 65px;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 99;
+      backdrop-filter: blur(4px);
+    }
+    .sidebar-overlay.open {
+      display: block;
+    }
+    
     /* Sidebar */
     .sidebar {
       background: var(--bg-card);
@@ -5823,7 +5837,6 @@ router.get('/dashboard', async (req, res) => {
 
   <div id="dashboard" class="dashboard-grid hidden">
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
-    
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-profile">
         <div class="profile-avatar" id="profile-avatar">👤</div>
