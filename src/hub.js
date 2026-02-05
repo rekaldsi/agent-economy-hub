@@ -10,7 +10,7 @@ const challengeStore = new Map();
 const { generateWithAI } = require('./ai');
 const { generateImage } = require('./replicate');
 const { getService } = require('./services');
-const { notifyAgent } = require('./webhooks');
+const { notifyAgent, onJobPaid, onJobAccepted, onJobDelivered, onJobApproved, onJobDisputed, onRevisionRequested } = require('./webhooks');
 // Lazy-load email to prevent startup crashes if nodemailer has issues
 let sendEmail = null;
 const getEmailSender = () => {
@@ -6867,6 +6867,9 @@ router.post('/api/jobs/:uuid/pay',
 
     // Get skill to check if webhook needed
     const skill = await db.getSkill(job.skill_id);
+    
+    // Phase 2: Dispatch webhook event (fire and forget)
+    onJobPaid(job, skill).catch(e => console.error('onJobPaid webhook error:', e.message));
     if (!skill || !skill.service_key) {
       throw new Error('Skill or service_key not found');
     }
@@ -8187,6 +8190,9 @@ router.post('/api/jobs/:uuid/accept', validateUuidParam('uuid'), async (req, res
     // Mark as in_progress
     await db.updateJobStatus(job.id, 'in_progress');
     
+    // Phase 2: Dispatch webhook event
+    onJobAccepted(job).catch(e => console.error('onJobAccepted webhook error:', e.message));
+    
     res.json({ success: true, jobUuid: job.job_uuid, status: 'in_progress' });
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Failed to accept job');
@@ -8310,6 +8316,9 @@ router.post('/api/jobs/:uuid/approve', validateUuidParam('uuid'), async (req, re
     await db.updateAgentCompletionRate(agent.id);
     await db.calculateTrustTier(agent.id);
     
+    // Phase 2: Dispatch webhook event
+    onJobApproved(job).catch(e => console.error('onJobApproved webhook error:', e.message));
+    
     res.json({ 
       success: true, 
       jobUuid: job.job_uuid, 
@@ -8388,6 +8397,9 @@ router.post('/api/jobs/:uuid/dispute', validateUuidParam('uuid'), async (req, re
       `UPDATE jobs SET status = 'disputed', dispute_reason = $1, disputed_at = NOW() WHERE id = $2`,
       [reason, job.id]
     );
+    
+    // Phase 2: Dispatch webhook event
+    onJobDisputed(job, reason).catch(e => console.error('onJobDisputed webhook error:', e.message));
     
     res.json({ 
       success: true, 
