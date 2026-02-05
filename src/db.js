@@ -778,7 +778,7 @@ async function getAllAgents() {
   // NOTE: Explicitly select fields to EXCLUDE sensitive data (api_key, webhook_secret)
   const result = await query(
     `SELECT a.id, a.user_id, a.webhook_url, a.is_active, a.total_jobs, 
-            a.total_earned, a.rating, a.created_at, a.trust_tier, a.verification_status,
+            a.total_earned, a.rating, a.created_at, a.trust_tier, a.trust_score,
             u.wallet_address, u.name, u.avatar_url, u.bio,
             (SELECT json_agg(json_build_object(
               'id', s.id, 'name', s.name, 'description', s.description,
