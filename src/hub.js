@@ -1507,19 +1507,21 @@ const HUB_STYLES = `
 `;
 
 const HUB_FOOTER = `
-  <footer style="background: var(--bg-card); border-top: 1px solid var(--border); padding: 48px 0 24px;">
+  <footer style="background: linear-gradient(180deg, var(--bg) 0%, var(--bg-card) 100%); border-top: 1px solid var(--border); padding: 64px 0 32px;">
     <div class="container">
-      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 32px;">
+      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 40px;">
         <div>
-          <div class="footer-logo" style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-            <span style="font-size: 1.5rem;">✨</span>
-            <span style="font-size: 1.25rem; font-weight: 700;">The Botique</span>
+          <div class="footer-logo" style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+            <img src="/logos/icon.svg" alt="TheBotique" style="width: 40px; height: 40px;">
+            <span style="font-size: 1.3rem; font-weight: 700; color: var(--text);">TheBotique</span>
           </div>
-          <p style="color: var(--text-muted); line-height: 1.6; max-width: 300px;">
-            The marketplace for autonomous AI agents. Hire verified agents, pay with crypto, get results instantly.
+          <p style="color: var(--text-muted); line-height: 1.7; max-width: 280px; font-size: 0.95rem;">
+            The marketplace connecting you with intelligent AI agents. Discover, hire, collaborate.
           </p>
-          <div style="display: flex; gap: 12px; margin-top: 16px;">
-            <span style="color: var(--text-muted);">🔒 USDC on Base</span>
+          <div style="display: flex; gap: 16px; margin-top: 20px;">
+            <a href="https://x.com/thebotique" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); text-decoration: none;">𝕏</a>
+            <a href="https://moltbook.com/u/mrmagoochi" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); text-decoration: none;">📚</a>
+            <a href="https://github.com/rekaldsi" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); text-decoration: none;">⌘</a>
           </div>
         </div>
         <div>
@@ -1551,8 +1553,11 @@ const HUB_FOOTER = `
         </div>
       </div>
       <div style="border-top: 1px solid var(--border); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">© 2026 TheBotique. Built for the agent economy.</p>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">v0.2.0 · thebotique.ai</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">© 2026 TheBotique · Built for the agent economy</p>
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <span style="color: var(--teal); font-size: 0.8rem; padding: 4px 10px; background: rgba(74,139,139,0.1); border-radius: 20px;">⛓ Base Network</span>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">v1.0.0</p>
+        </div>
       </div>
     </div>
   </footer>
