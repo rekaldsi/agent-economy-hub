@@ -4775,65 +4775,84 @@ router.get('/dashboard', async (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Dashboard | The Botique</title>
+  <title>Dashboard | TheBotique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+  ${PWA_HEAD}
   <style>${HUB_STYLES}
+    /* ========================================
+       DASHBOARD - REFINED FUTURISM v2
+       ======================================== */
     .dashboard-grid {
       display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 32px;
-      min-height: calc(100vh - 80px);
+      grid-template-columns: 260px 1fr;
+      min-height: calc(100vh - 65px);
     }
     .sidebar {
       background: var(--bg-card);
       border-right: 1px solid var(--border);
-      padding: 24px;
+      padding: 24px 16px;
+      position: sticky;
+      top: 65px;
+      height: calc(100vh - 65px);
+      overflow-y: auto;
     }
-    .sidebar-section { margin-bottom: 32px; }
+    .sidebar-section { margin-bottom: 28px; }
     .sidebar-section h3 {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.08em;
       color: var(--text-muted);
       margin-bottom: 12px;
+      padding: 0 12px;
     }
     .sidebar-link {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 10px 12px;
+      padding: 12px 16px;
       color: var(--text-muted);
       text-decoration: none;
-      border-radius: 8px;
+      border-radius: var(--radius-md);
       margin-bottom: 4px;
       cursor: pointer;
+      transition: all var(--duration-fast);
+      font-size: 0.9rem;
     }
-    .sidebar-link:hover, .sidebar-link.active {
-      background: var(--bg-input);
+    .sidebar-link:hover {
+      background: var(--bg);
       color: var(--text);
+    }
+    .sidebar-link.active {
+      background: rgba(0, 240, 255, 0.08);
+      color: var(--accent);
+      font-weight: 500;
     }
     .main-content { padding: 32px; }
     .stats-row {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
+      gap: 20px;
       margin-bottom: 32px;
     }
     .stat-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      transition: all var(--duration-fast);
     }
-    .stat-card .label { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 4px; }
-    .stat-card .value { font-size: 1.5rem; font-weight: 700; }
+    .stat-card:hover {
+      border-color: var(--border-light);
+    }
+    .stat-card .label { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-card .value { font-size: 1.75rem; font-weight: 700; }
     .jobs-table {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: var(--radius-lg);
       overflow: hidden;
     }
     .jobs-table table {
@@ -4841,31 +4860,47 @@ router.get('/dashboard', async (req, res) => {
       border-collapse: collapse;
     }
     .jobs-table th, .jobs-table td {
-      padding: 14px 16px;
+      padding: 16px 20px;
       text-align: left;
       border-bottom: 1px solid var(--border);
     }
     .jobs-table th {
-      background: var(--bg-input);
-      font-size: 0.8rem;
+      background: var(--bg);
+      font-size: 0.75rem;
       text-transform: uppercase;
+      letter-spacing: 0.05em;
       color: var(--text-muted);
+      font-weight: 600;
     }
+    .jobs-table tr:hover { background: var(--bg); }
     .jobs-table tr:last-child td { border-bottom: none; }
     .status-badge {
       display: inline-block;
-      padding: 4px 10px;
-      border-radius: 12px;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
       font-size: 0.75rem;
       font-weight: 600;
     }
-    .status-pending { background: #fef3c7; color: #92400e; }
-    .status-paid { background: #dbeafe; color: #1e40af; }
-    .status-completed { background: #d1fae5; color: #065f46; }
-    .status-delivered { background: #e0e7ff; color: #3730a3; }
+    .status-pending { background: rgba(255, 184, 0, 0.15); color: var(--warning); }
+    .status-paid { background: rgba(77, 159, 255, 0.15); color: var(--info); }
+    .status-in_progress { background: rgba(0, 240, 255, 0.15); color: var(--accent); }
+    .status-completed { background: rgba(0, 230, 184, 0.15); color: var(--success); }
+    .status-delivered { background: rgba(183, 148, 246, 0.15); color: var(--purple); }
+    .status-disputed { background: rgba(255, 92, 92, 0.15); color: var(--error); }
     .connect-prompt {
       text-align: center;
-      padding: 80px 32px;
+      padding: 100px 32px;
+    }
+    .connect-prompt .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      border-radius: var(--radius-xl);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
     }
     .connect-prompt h2 { margin-bottom: 12px; }
     .connect-prompt p { color: var(--text-muted); margin-bottom: 24px; }
@@ -4873,24 +4908,28 @@ router.get('/dashboard', async (req, res) => {
       background: none;
       border: none;
       color: var(--text-muted);
-      padding: 12px 20px;
+      padding: 14px 24px;
       cursor: pointer;
       border-bottom: 2px solid transparent;
+      font-size: 0.9rem;
+      transition: all var(--duration-fast);
     }
+    .tab-btn:hover { color: var(--text); }
     .tab-btn.active {
-      color: var(--text);
+      color: var(--accent);
       border-bottom-color: var(--accent);
     }
     .empty-state {
       text-align: center;
-      padding: 48px;
+      padding: 64px;
       color: var(--text-muted);
     }
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
     .result-list {
       margin-top: 16px;
     }
     .result-item {
-      padding: 12px;
+      padding: 16px;
       margin-bottom: 8px;
       background: var(--bg-card);
       border-radius: 8px;
