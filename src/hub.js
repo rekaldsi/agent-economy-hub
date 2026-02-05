@@ -47,6 +47,28 @@ const {
 const router = express.Router();
 
 // ============================================
+// SECURITY: SENSITIVE FIELD REMOVAL
+// ============================================
+
+/**
+ * Remove sensitive fields from agent objects before sending to clients
+ * CRITICAL: api_key and webhook_secret must NEVER be exposed in public APIs
+ */
+const SENSITIVE_AGENT_FIELDS = ['api_key', 'webhook_secret'];
+
+function sanitizeAgent(agent) {
+  if (!agent) return agent;
+  const sanitized = { ...agent };
+  SENSITIVE_AGENT_FIELDS.forEach(field => delete sanitized[field]);
+  return sanitized;
+}
+
+function sanitizeAgents(agents) {
+  if (!Array.isArray(agents)) return agents;
+  return agents.map(sanitizeAgent);
+}
+
+// ============================================
 // ERROR HANDLING
 // ============================================
 
@@ -7898,7 +7920,7 @@ router.post('/api/jobs/:uuid/complete',
 router.get('/api/agents', async (req, res) => {
   try {
     const agents = await db.getAllAgents();
-    res.json(agents);
+    res.json(sanitizeAgents(agents));
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve agents');
     res.status(statusCode).json(body);
@@ -7913,7 +7935,7 @@ router.get('/api/users/:wallet', async (req, res) => {
 
     // Check if user is also an agent
     const agent = await db.getAgentByWallet(req.params.wallet);
-    res.json({ ...user, agent: agent || null });
+    res.json({ ...user, agent: sanitizeAgent(agent) || null });
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve user');
     res.status(statusCode).json(body);
@@ -9550,7 +9572,7 @@ router.get('/api/agents/search', async (req, res) => {
     const result = await db.query(sql, params);
     
     res.json({
-      agents: result.rows,
+      agents: sanitizeAgents(result.rows),
       page: parseInt(page),
       limit: parseInt(limit),
       total: result.rows.length
@@ -10682,9 +10704,9 @@ router.get('/api/recommendations/agents', async (req, res) => {
   }
 
   res.json({
-    trending: trending.rows,
-    forCategory: categoryAgents,
-    basedOnHistory: similarAgents
+    trending: sanitizeAgents(trending.rows),
+    forCategory: sanitizeAgents(categoryAgents),
+    basedOnHistory: sanitizeAgents(similarAgents)
   });
 });
 
@@ -11000,7 +11022,7 @@ router.get('/api/teams/:id', validateIdParam('id'), async (req, res) => {
     res.json({
       team,
       members: membersResult.rows,
-      agents: agentsResult.rows
+      agents: sanitizeAgents(agentsResult.rows)
     });
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Failed to get team');

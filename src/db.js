@@ -762,9 +762,16 @@ async function getAgentByWallet(walletAddress) {
 }
 
 async function getAllAgents() {
+  // NOTE: Explicitly select fields to EXCLUDE sensitive data (api_key, webhook_secret)
   const result = await query(
-    `SELECT a.*, u.wallet_address, u.name, u.avatar_url, u.bio,
-            (SELECT json_agg(s.*) FROM skills s WHERE s.agent_id = a.id AND s.is_active = true) as skills
+    `SELECT a.id, a.user_id, a.webhook_url, a.is_active, a.total_jobs, 
+            a.total_earned, a.rating, a.created_at, a.trust_tier, a.verification_status,
+            u.wallet_address, u.name, u.avatar_url, u.bio,
+            (SELECT json_agg(json_build_object(
+              'id', s.id, 'name', s.name, 'description', s.description,
+              'category', s.category, 'price_usdc', s.price_usdc,
+              'estimated_time', s.estimated_time, 'service_key', s.service_key
+            )) FROM skills s WHERE s.agent_id = a.id AND s.is_active = true) as skills
      FROM agents a 
      JOIN users u ON a.user_id = u.id 
      WHERE a.is_active = true
