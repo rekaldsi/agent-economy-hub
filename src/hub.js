@@ -1886,7 +1886,10 @@ const HUB_SCRIPTS = `
 
   // Connect wallet
   async function connectWallet(silent = false) {
+    console.log('[Wallet] Attempting connection...', { silent, hasEthereum: typeof window.ethereum !== 'undefined', hasEthers: typeof ethers !== 'undefined' });
+    
     if (typeof window.ethereum === 'undefined') {
+      console.log('[Wallet] No ethereum provider found');
       if (!silent) {
         if (isMobile()) {
           // On mobile, offer to open in wallet app
@@ -1901,8 +1904,8 @@ const HUB_SCRIPTS = `
     
     // Check if ethers is loaded
     if (typeof ethers === 'undefined') {
+      console.error('[Wallet] ethers.js not loaded');
       if (!silent) showToast('Loading wallet library, please try again...', 'error');
-      console.error('ethers.js not loaded');
       return;
     }
 
@@ -1954,6 +1957,7 @@ const HUB_SCRIPTS = `
       const balanceFormatted = (Number(balance) / 10**Number(decimals)).toFixed(2);
 
       connected = true;
+      console.log('[Wallet] Connected successfully:', userAddress, 'Balance:', balanceFormatted, 'USDC');
       updateWalletUI(userAddress, balanceFormatted);
 
       // Register user in backend
@@ -1964,8 +1968,16 @@ const HUB_SCRIPTS = `
       });
 
     } catch (error) {
-      console.error('Wallet connection error:', error);
-      if (!silent) showToast('Failed to connect wallet: ' + error.message, 'error');
+      console.error('[Wallet] Connection error:', error);
+      let msg = 'Failed to connect wallet';
+      if (error.code === 4001) {
+        msg = 'Connection rejected by user';
+      } else if (error.code === -32002) {
+        msg = 'Connection request already pending - check your wallet';
+      } else if (error.message) {
+        msg = error.message.slice(0, 100);
+      }
+      if (!silent) showToast(msg, 'error');
     } finally {
       const btn = document.getElementById('connect-btn');
       if (btn && !silent) {

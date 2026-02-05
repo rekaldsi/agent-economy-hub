@@ -23,9 +23,18 @@ app.use('/api/jobs/:uuid/complete', express.json({
   limit: '500kb' // Allow larger output data from agents
 }));
 
-// Security: Content-Security-Policy header to prevent XSS
+// Security: Content-Security-Policy header
+// Note: 'unsafe-eval' needed for some ethers.js operations, wallet providers need blob: and data:
 app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*");
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com blob:",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: https: blob:",
+    "connect-src 'self' https://* wss://*",
+    "frame-src 'self' https://*.walletconnect.com https://*.walletconnect.org"
+  ].join('; '));
   next();
 });
 
