@@ -2414,8 +2414,6 @@ router.get('/', async (req, res) => {
     const agentCards = (featuredAgents.length > 0 ? featuredAgents : agents.slice(0, 6)).map(agent => {
       const skills = agent.skills || [];
       const tier = tierConfig[agent.trust_tier] || tierConfig['new'];
-      const minPrice = skills.length > 0 ? Math.min(...skills.map(s => Number(s.price_usdc))) : 0;
-      
       return `
         <a href="/agent/${agent.id}" class="featured-agent-card">
           <div class="agent-card-header">
@@ -2427,7 +2425,6 @@ router.get('/', async (req, res) => {
           <div class="agent-meta">
             <span class="rating">★ ${Number(agent.rating || 0).toFixed(1)}</span>
             <span class="jobs">${agent.total_jobs || 0} tasks</span>
-            ${minPrice > 0 ? `<span class="price">From $${minPrice.toFixed(0)}</span>` : ''}
           </div>
         </a>
       `;
@@ -2896,23 +2893,84 @@ router.get('/', async (req, res) => {
       flex-wrap: wrap;
     }
     
-    /* Mobile Responsive */
+    /* Mobile Responsive - Tablet */
     @media (max-width: 768px) {
-      .hero-title { font-size: 2.5rem; }
-      .hero-subtitle { font-size: 1rem; }
-      .hero-search input { padding: 16px 20px; padding-right: 120px; }
-      .hero-search button { padding: 10px 20px; }
-      .stats-bar { flex-direction: column; gap: 24px; }
-      .steps-grid { grid-template-columns: 1fr 1fr; }
+      .hero-section {
+        min-height: auto;
+        padding: 60px 0 40px;
+      }
+      .hero-badge { margin-bottom: 16px; padding: 6px 14px; font-size: 0.8rem; }
+      .hero-title { font-size: 2rem; margin-bottom: 16px; }
+      .hero-subtitle { font-size: 0.95rem; margin-bottom: 24px; }
+      .hero-search { margin-bottom: 20px; }
+      .hero-search input { padding: 14px 18px; padding-right: 110px; font-size: 1rem; }
+      .hero-search button { padding: 10px 18px; font-size: 0.9rem; }
+      .popular-tags { margin-bottom: 24px; gap: 8px; }
+      .tag-pill { padding: 8px 14px; font-size: 0.8rem; }
+      .stats-bar { 
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        padding: 20px;
+        max-width: 100%;
+      }
+      .stat-block .number { font-size: 1.5rem; }
+      .stat-block .label { font-size: 0.75rem; }
+      .categories-section { padding: 40px 0; }
+      .section-header { margin-bottom: 24px; }
+      .section-header h2 { font-size: 1.75rem; }
+      .section-header p { font-size: 0.95rem; }
+      .categories-grid { gap: 12px; }
+      .category-card { padding: 16px; }
+      .featured-section { padding: 40px 0; }
+      .featured-agent-card { padding: 20px; }
+      .steps-section { padding: 40px 0; }
+      .steps-grid { grid-template-columns: 1fr 1fr; gap: 20px; }
+      .step { padding: 24px 16px; }
+      .step-icon { width: 50px; height: 50px; font-size: 24px; margin-bottom: 12px; }
+      .step h3 { font-size: 1rem; }
+      .step p { font-size: 0.85rem; }
       .step:not(:last-child)::after { display: none; }
-      .cta-card { padding: 40px 24px; }
-      .cta-card h2 { font-size: 1.75rem; }
+      .cta-section { padding: 40px 0; }
+      .cta-card { padding: 32px 20px; }
+      .cta-card h2 { font-size: 1.5rem; }
+      .cta-card p { font-size: 0.95rem; }
     }
     
+    /* Mobile Responsive - Phone */
     @media (max-width: 480px) {
-      .hero-title { font-size: 2rem; }
-      .steps-grid { grid-template-columns: 1fr; }
-      .categories-grid { grid-template-columns: 1fr 1fr; }
+      .hero-section { padding: 40px 0 30px; }
+      .hero-badge { margin-bottom: 12px; }
+      .hero-title { font-size: 1.75rem; line-height: 1.2; }
+      .hero-subtitle { font-size: 0.9rem; margin-bottom: 20px; }
+      .hero-search input { padding: 12px 14px; padding-right: 100px; font-size: 0.9rem; }
+      .hero-search button { padding: 8px 14px; font-size: 0.85rem; }
+      .popular-tags { gap: 6px; margin-bottom: 20px; }
+      .tag-pill { padding: 6px 12px; font-size: 0.75rem; }
+      .stats-bar { gap: 12px; padding: 16px; }
+      .stat-block .number { font-size: 1.25rem; }
+      .categories-section { padding: 30px 0; }
+      .section-header h2 { font-size: 1.5rem; margin-bottom: 8px; }
+      .section-header p { font-size: 0.85rem; }
+      .categories-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .category-card { padding: 14px 12px; }
+      .category-card .icon { font-size: 1.5rem; margin-bottom: 8px; }
+      .category-card .name { font-size: 0.85rem; }
+      .category-card .desc { font-size: 0.7rem; }
+      .featured-section { padding: 30px 0; }
+      .featured-agents-grid { gap: 12px; }
+      .featured-agent-card { padding: 16px; }
+      .featured-agent-card h3 { font-size: 1rem; }
+      .featured-agent-card .agent-bio { font-size: 0.8rem; }
+      .steps-section { padding: 30px 0; }
+      .steps-grid { grid-template-columns: 1fr; gap: 16px; }
+      .step { padding: 20px 16px; }
+      .cta-section { padding: 30px 0; }
+      .cta-card { padding: 24px 16px; }
+      .cta-card h2 { font-size: 1.25rem; margin-bottom: 8px; }
+      .cta-card p { font-size: 0.85rem; margin-bottom: 20px; }
+      .cta-buttons { flex-direction: column; gap: 10px; }
+      .cta-buttons .btn { width: 100%; }
     }
   </style>
 </head>
@@ -3943,9 +4001,7 @@ router.get('/agents', async (req, res) => {
 
     // Build agent cards
     const agentsHtml = agents.map(agent => {
-      const skills = agent.skills || [];
       const tier = tierConfig[agent.trust_tier] || tierConfig['new'];
-      const minPrice = skills.length > 0 ? Math.min(...skills.map(s => Number(s.price_usdc))) : 0;
 
       return `
         <a href="/agent/${agent.id}" class="agent-card">
@@ -3960,7 +4016,6 @@ router.get('/agents', async (req, res) => {
           <div class="card-meta">
             <span class="rating">★ ${Number(agent.rating || 0).toFixed(1)}</span>
             <span class="tasks">${agent.total_jobs || 0} tasks</span>
-            ${minPrice > 0 ? `<span class="price">From $${minPrice.toFixed(0)}</span>` : ''}
           </div>
         </a>
       `;
