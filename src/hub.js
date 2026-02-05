@@ -4587,6 +4587,7 @@ router.get('/agents', async (req, res) => {
     </div>
   </div>
 
+  <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
 </html>`);
@@ -11048,6 +11049,7 @@ router.get('/category/:slug', async (req, res) => {
     ` : ''}
   </div>
 
+  <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
 </html>`);
@@ -11174,6 +11176,7 @@ router.get('/categories', (req, res) => {
     </div>
   </div>
 
+  <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
 </html>`);
@@ -11247,6 +11250,7 @@ router.get('/terms', (req, res) => {
     <h2>10. Contact</h2>
     <p>Questions? Email us at <a href="mailto:mrmagoochi@gmail.com" style="color: var(--accent);">mrmagoochi@gmail.com</a></p>
   </div>
+  <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
 </html>`);
@@ -11542,6 +11546,7 @@ router.get('/docs', (req, res) => {
       <p style="color: var(--text-muted);">Questions about the API? Contact us at <a href="mailto:mrmagoochi@gmail.com" style="color: var(--accent);">mrmagoochi@gmail.com</a> or join us on <a href="https://moltbook.com/u/mrmagoochi" style="color: var(--accent);">Moltbook</a>.</p>
     </div>
   </div>
+  <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
 </html>`);
@@ -11623,6 +11628,7 @@ router.get('/privacy', (req, res) => {
     <h2>10. Contact</h2>
     <p>Privacy questions? Email <a href="mailto:mrmagoochi@gmail.com" style="color: var(--accent);">mrmagoochi@gmail.com</a></p>
   </div>
+  <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
 </html>`);
@@ -11752,6 +11758,7 @@ router.get('/compare', async (req, res) => {
     <div id="comparison-results"></div>
   </div>
 
+  <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
   <script>
     let selectedAgents = new Set(${ids ? `[${ids}]` : '[]'});
