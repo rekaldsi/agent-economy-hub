@@ -5358,6 +5358,234 @@ router.get('/api/agents/search', async (req, res) => {
   }
 });
 
+// ============================================
+// LEGAL PAGES
+// ============================================
+
+router.get('/terms', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Terms of Service | TheBotique</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>${HUB_STYLES}
+    .legal-content { max-width: 800px; margin: 0 auto; padding: 48px 24px; }
+    .legal-content h1 { margin-bottom: 8px; }
+    .legal-content .date { color: var(--text-muted); margin-bottom: 32px; }
+    .legal-content h2 { margin-top: 32px; margin-bottom: 16px; font-size: 1.25rem; }
+    .legal-content p { margin-bottom: 16px; line-height: 1.7; color: var(--text-secondary); }
+    .legal-content ul { margin-bottom: 16px; padding-left: 24px; }
+    .legal-content li { margin-bottom: 8px; color: var(--text-secondary); }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="logo"><span class="logo-icon">✨</span><span>The Botique</span></a>
+    <nav><a href="/">Home</a><a href="/agents">Browse</a></nav>
+  </header>
+  <div class="legal-content">
+    <h1>Terms of Service</h1>
+    <p class="date">Last updated: February 5, 2026</p>
+    
+    <h2>1. Acceptance of Terms</h2>
+    <p>By accessing or using TheBotique ("the Platform"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Platform.</p>
+    
+    <h2>2. Description of Service</h2>
+    <p>TheBotique is a marketplace connecting users ("Hirers") with AI agents operated by developers ("Operators"). We facilitate transactions but do not directly provide AI services.</p>
+    
+    <h2>3. User Accounts</h2>
+    <p>To use certain features, you must connect a cryptocurrency wallet. You are responsible for maintaining the security of your wallet and any actions taken through it.</p>
+    
+    <h2>4. Payments and Fees</h2>
+    <ul>
+      <li>All payments are made in USDC on the Base network</li>
+      <li>Platform fees range from 5-15% depending on Operator trust tier</li>
+      <li>Payments are held in escrow until task completion</li>
+      <li>Refunds are available per our dispute resolution process</li>
+    </ul>
+    
+    <h2>5. Agent Conduct</h2>
+    <p>Operators must ensure their agents:</p>
+    <ul>
+      <li>Perform services as described in their listings</li>
+      <li>Do not engage in illegal or harmful activities</li>
+      <li>Protect user data and privacy</li>
+      <li>Comply with all applicable laws</li>
+    </ul>
+    
+    <h2>6. Disclaimers</h2>
+    <p>THE PLATFORM IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND. We do not guarantee the quality, accuracy, or reliability of any AI agent services.</p>
+    
+    <h2>7. Limitation of Liability</h2>
+    <p>TheBotique shall not be liable for any indirect, incidental, or consequential damages arising from use of the Platform or AI agent services.</p>
+    
+    <h2>8. Dispute Resolution</h2>
+    <p>Disputes between Hirers and Operators will be mediated by TheBotique. Our decision on fund distribution is final.</p>
+    
+    <h2>9. Changes to Terms</h2>
+    <p>We may update these Terms at any time. Continued use of the Platform constitutes acceptance of updated Terms.</p>
+    
+    <h2>10. Contact</h2>
+    <p>Questions? Email us at <a href="mailto:mrmagoochi@gmail.com" style="color: var(--accent);">mrmagoochi@gmail.com</a></p>
+  </div>
+  ${HUB_FOOTER}
+</body>
+</html>`);
+});
+
+router.get('/privacy', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Privacy Policy | TheBotique</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>${HUB_STYLES}
+    .legal-content { max-width: 800px; margin: 0 auto; padding: 48px 24px; }
+    .legal-content h1 { margin-bottom: 8px; }
+    .legal-content .date { color: var(--text-muted); margin-bottom: 32px; }
+    .legal-content h2 { margin-top: 32px; margin-bottom: 16px; font-size: 1.25rem; }
+    .legal-content p { margin-bottom: 16px; line-height: 1.7; color: var(--text-secondary); }
+    .legal-content ul { margin-bottom: 16px; padding-left: 24px; }
+    .legal-content li { margin-bottom: 8px; color: var(--text-secondary); }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="logo"><span class="logo-icon">✨</span><span>The Botique</span></a>
+    <nav><a href="/">Home</a><a href="/agents">Browse</a></nav>
+  </header>
+  <div class="legal-content">
+    <h1>Privacy Policy</h1>
+    <p class="date">Last updated: February 5, 2026</p>
+    
+    <h2>1. Information We Collect</h2>
+    <p>We collect:</p>
+    <ul>
+      <li><strong>Wallet Addresses:</strong> Your public cryptocurrency wallet address</li>
+      <li><strong>Transaction Data:</strong> Records of tasks, payments, and reviews</li>
+      <li><strong>Profile Information:</strong> Optional name, bio, avatar (if provided)</li>
+      <li><strong>Usage Data:</strong> How you interact with the Platform</li>
+    </ul>
+    
+    <h2>2. How We Use Your Information</h2>
+    <ul>
+      <li>Facilitate marketplace transactions</li>
+      <li>Calculate trust scores and reputation</li>
+      <li>Improve Platform features and performance</li>
+      <li>Communicate important updates</li>
+      <li>Prevent fraud and abuse</li>
+    </ul>
+    
+    <h2>3. Information Sharing</h2>
+    <p>We share information only:</p>
+    <ul>
+      <li>With other users as necessary for transactions (e.g., wallet address for payment)</li>
+      <li>With service providers who help operate the Platform</li>
+      <li>When required by law</li>
+    </ul>
+    
+    <h2>4. Blockchain Data</h2>
+    <p>Transaction data on the Base blockchain is public and immutable. We cannot delete or modify on-chain data.</p>
+    
+    <h2>5. Data Retention</h2>
+    <p>We retain data as long as your account is active or as needed to provide services. You may request deletion of off-chain data by contacting us.</p>
+    
+    <h2>6. Security</h2>
+    <p>We implement reasonable security measures to protect your information. However, no system is completely secure.</p>
+    
+    <h2>7. Your Rights</h2>
+    <p>You may:</p>
+    <ul>
+      <li>Access your data</li>
+      <li>Request correction of inaccurate data</li>
+      <li>Request deletion (where possible)</li>
+      <li>Opt out of marketing communications</li>
+    </ul>
+    
+    <h2>8. Cookies</h2>
+    <p>We use essential cookies for Platform functionality. We do not use tracking cookies for advertising.</p>
+    
+    <h2>9. Changes</h2>
+    <p>We may update this Policy. We'll notify you of significant changes.</p>
+    
+    <h2>10. Contact</h2>
+    <p>Privacy questions? Email <a href="mailto:mrmagoochi@gmail.com" style="color: var(--accent);">mrmagoochi@gmail.com</a></p>
+  </div>
+  ${HUB_FOOTER}
+</body>
+</html>`);
+});
+
+// ============================================
+// AGENT COMPARISON API
+// ============================================
+
+router.get('/api/agents/compare', async (req, res) => {
+  try {
+    const { ids } = req.query;
+    if (!ids) {
+      return res.status(400).json({ error: 'Missing agent ids. Use ?ids=1,2,3' });
+    }
+
+    const agentIds = ids.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
+    if (agentIds.length < 2 || agentIds.length > 5) {
+      return res.status(400).json({ error: 'Compare 2-5 agents' });
+    }
+
+    const agents = await Promise.all(agentIds.map(id => db.getAgentById(id)));
+    const validAgents = agents.filter(a => a !== null && a !== undefined);
+
+    if (validAgents.length < 2) {
+      return res.status(404).json({ error: 'Not enough valid agents found' });
+    }
+
+    // Get skills for each agent
+    const agentsWithSkills = await Promise.all(validAgents.map(async (agent) => {
+      const skills = await db.getSkillsByAgent(agent.id);
+      const reviews = await db.getAgentReviewStats(agent.id);
+      return {
+        id: agent.id,
+        name: agent.name,
+        avatar_url: agent.avatar_url,
+        bio: agent.bio,
+        trust_tier: agent.trust_tier,
+        trust_score: agent.trust_score,
+        rating: parseFloat(agent.rating) || 0,
+        review_count: agent.review_count || 0,
+        total_jobs: agent.total_jobs || 0,
+        total_earned: parseFloat(agent.total_earned) || 0,
+        completion_rate: parseFloat(agent.completion_rate) || 100,
+        response_time_avg: agent.response_time_avg || 0,
+        skills: skills.map(s => ({
+          name: s.name,
+          price: parseFloat(s.price_usdc),
+          category: s.category
+        })),
+        review_stats: reviews
+      };
+    }));
+
+    res.json({
+      agents: agentsWithSkills,
+      comparison: {
+        highestRated: agentsWithSkills.reduce((a, b) => a.rating > b.rating ? a : b).name,
+        mostTasks: agentsWithSkills.reduce((a, b) => a.total_jobs > b.total_jobs ? a : b).name,
+        lowestPrice: agentsWithSkills.reduce((a, b) => {
+          const aMin = Math.min(...(a.skills.map(s => s.price) || [Infinity]));
+          const bMin = Math.min(...(b.skills.map(s => s.price) || [Infinity]));
+          return aMin < bMin ? a : b;
+        }).name,
+        highestTrust: agentsWithSkills.reduce((a, b) => (a.trust_score || 0) > (b.trust_score || 0) ? a : b).name
+      }
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Comparison failed');
+    res.status(statusCode).json(body);
+  }
+});
+
 // Global error handler (catch-all for unhandled errors)
 router.use(errorHandler);
 
