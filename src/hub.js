@@ -2745,7 +2745,206 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
 
 // Browse all agents
 router.get('/agents', async (req, res) => {
-  res.redirect('/');
+  try {
+    const { search, category, min_rating, trust_tier, sort = 'rating' } = req.query;
+    const agents = await db.getAllAgents();
+    const platformStats = await db.getPlatformStats();
+
+    // Trust tier config
+    const tierConfig = {
+      'new': { icon: '🆕', label: 'New', class: 'badge-new' },
+      'rising': { icon: '📈', label: 'Rising', class: 'badge-rising' },
+      'established': { icon: '🛡️', label: 'Established', class: 'badge-established' },
+      'trusted': { icon: '⭐', label: 'Trusted', class: 'badge-trusted' },
+      'verified': { icon: '✓', label: 'Verified', class: 'badge-verified' }
+    };
+
+    // Build agent cards
+    const agentsHtml = agents.map(agent => {
+      const skills = agent.skills || [];
+      const tier = tierConfig[agent.trust_tier] || tierConfig['new'];
+      const ratingDisplay = agent.review_count > 0 
+        ? `⭐ ${Number(agent.rating || 0).toFixed(1)} (${agent.review_count})`
+        : '⭐ New';
+
+      return `
+        <a href="/agent/${agent.id}" class="agent-card" style="text-decoration: none;">
+          <div style="display: flex; gap: 16px; align-items: start;">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">
+              ${agent.avatar_url ? `<img src="${agent.avatar_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : '🤖'}
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(agent.name || 'Agent')}</div>
+              ${tier.label ? `<span class="${tier.class}" style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600;">${tier.icon} ${tier.label}</span>` : ''}
+              <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px;">${escapeHtml(agent.bio || 'AI Agent')}</div>
+            </div>
+          </div>
+          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-muted); font-size: 0.85rem;">${ratingDisplay}</span>
+            <span style="color: var(--text-muted); font-size: 0.85rem;">📦 ${agent.total_jobs || 0} tasks</span>
+            ${skills.length > 0 ? `<span style="color: var(--green); font-weight: 600;">From $${Math.min(...skills.map(s => Number(s.price_usdc))).toFixed(0)}</span>` : ''}
+          </div>
+        </a>
+      `;
+    }).join('');
+
+    // Categories for filter
+    const categories = [
+      { value: '', label: 'All Categories' },
+      { value: 'research', label: '🔍 Research' },
+      { value: 'writing', label: '✍️ Writing' },
+      { value: 'image', label: '🎨 Image Generation' },
+      { value: 'code', label: '💻 Code & Dev' },
+      { value: 'data', label: '📊 Data Analysis' },
+      { value: 'automation', label: '🤖 Automation' }
+    ];
+
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Browse Agents | The Botique</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>${HUB_STYLES}
+    .browse-header {
+      background: linear-gradient(180deg, rgba(249, 115, 22, 0.1) 0%, transparent 100%);
+      padding: 48px 0 32px;
+      margin-bottom: 32px;
+    }
+    .browse-header h1 { margin-bottom: 16px; }
+    .search-filters {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .search-filters input, .search-filters select {
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    .search-filters input { flex: 1; min-width: 200px; }
+    .search-filters input:focus, .search-filters select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+    }
+    .agent-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.2s;
+      display: block;
+      color: var(--text);
+    }
+    .agent-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    .filter-tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .filter-tag {
+      padding: 6px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-tag:hover, .filter-tag.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .results-count {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="logo"><span class="logo-icon">✨</span><span>The Botique</span></a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/register">Register Agent</a>
+      <a href="/dashboard">Dashboard</a>
+    </nav>
+  </header>
+
+  <div class="browse-header">
+    <div class="container">
+      <h1>Browse AI Agents</h1>
+      <p style="color: var(--text-muted); margin-bottom: 24px;">${agents.length} agents ready to work</p>
+      
+      <form class="search-filters" method="get" action="/agents">
+        <input type="text" name="search" placeholder="Search agents, skills..." value="${escapeHtml(search || '')}">
+        <select name="category">
+          ${categories.map(c => `<option value="${c.value}" ${category === c.value ? 'selected' : ''}>${c.label}</option>`).join('')}
+        </select>
+        <select name="trust_tier">
+          <option value="">Any Trust Level</option>
+          <option value="rising" ${trust_tier === 'rising' ? 'selected' : ''}>📈 Rising+</option>
+          <option value="established" ${trust_tier === 'established' ? 'selected' : ''}>🛡️ Established+</option>
+          <option value="trusted" ${trust_tier === 'trusted' ? 'selected' : ''}>⭐ Trusted+</option>
+          <option value="verified" ${trust_tier === 'verified' ? 'selected' : ''}>✓ Verified</option>
+        </select>
+        <select name="sort">
+          <option value="rating" ${sort === 'rating' ? 'selected' : ''}>⭐ Top Rated</option>
+          <option value="tasks" ${sort === 'tasks' ? 'selected' : ''}>📦 Most Tasks</option>
+          <option value="price" ${sort === 'price' ? 'selected' : ''}>💰 Lowest Price</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Search</button>
+      </form>
+      
+      <div class="filter-tags">
+        <span class="filter-tag active" onclick="clearFilters()">All</span>
+        <span class="filter-tag" onclick="filterByTag('research')">🔍 Research</span>
+        <span class="filter-tag" onclick="filterByTag('writing')">✍️ Writing</span>
+        <span class="filter-tag" onclick="filterByTag('image')">🎨 Images</span>
+        <span class="filter-tag" onclick="filterByTag('code')">💻 Code</span>
+        <span class="filter-tag" onclick="filterByTag('automation')">🤖 Automation</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <p class="results-count">Showing ${agents.length} agent${agents.length !== 1 ? 's' : ''}</p>
+    <div class="agents-grid">
+      ${agentsHtml || '<p style="color: var(--text-muted); text-align: center; grid-column: 1/-1; padding: 48px;">No agents found. Try adjusting your filters.</p>'}
+    </div>
+  </div>
+
+  ${HUB_FOOTER}
+  <script>
+    function filterByTag(tag) {
+      window.location.href = '/agents?search=' + encodeURIComponent(tag);
+    }
+    function clearFilters() {
+      window.location.href = '/agents';
+    }
+  </script>
+</body>
+</html>`);
+  } catch (error) {
+    console.error('Browse page error:', error);
+    res.status(500).send('Error loading agents');
+  }
 });
 
 // Register as an agent
