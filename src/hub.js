@@ -277,6 +277,124 @@ const HUB_STYLES = `
     --duration-slow: 500ms;
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    
+    /* Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-blur: 20px;
+    
+    /* Crypto colors */
+    --crypto-pending: #FBBF24;
+    --crypto-confirmed: #10B981;
+    --crypto-failed: #EF4444;
+    
+    /* Glow effects */
+    --glow-verified: 0 0 20px rgba(183, 148, 246, 0.4), 0 0 40px rgba(183, 148, 246, 0.2);
+    --glow-trusted: 0 0 20px rgba(255, 184, 0, 0.4), 0 0 40px rgba(255, 184, 0, 0.2);
+    --glow-established: 0 0 20px rgba(0, 230, 184, 0.3);
+  }
+  
+  /* ============================================
+     GLASSMORPHISM COMPONENTS
+     ============================================ */
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+  }
+  
+  .glass-card-dark {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+  }
+  
+  /* ============================================
+     TRUST BADGE ANIMATIONS
+     ============================================ */
+  .trust-badge-verified {
+    animation: verified-pulse 2s ease-in-out infinite;
+  }
+  @keyframes verified-pulse {
+    0%, 100% { box-shadow: var(--glow-verified); }
+    50% { box-shadow: 0 0 30px rgba(183, 148, 246, 0.6), 0 0 60px rgba(183, 148, 246, 0.3); }
+  }
+  
+  .trust-badge-trusted {
+    animation: trusted-shimmer 3s ease-in-out infinite;
+  }
+  @keyframes trusted-shimmer {
+    0%, 100% { box-shadow: var(--glow-trusted); }
+    50% { box-shadow: 0 0 25px rgba(255, 184, 0, 0.5), 0 0 50px rgba(255, 184, 0, 0.25); }
+  }
+  
+  /* ============================================
+     ANIMATED COUNTERS
+     ============================================ */
+  .counter-animate {
+    display: inline-block;
+    transition: transform 0.3s ease;
+  }
+  .counter-animate.counting {
+    animation: count-pop 0.15s ease-out;
+  }
+  @keyframes count-pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+  
+  /* ============================================
+     CARD HOVER EFFECTS (Enhanced)
+     ============================================ */
+  .card-lift {
+    transition: transform 0.3s var(--ease-spring), box-shadow 0.3s ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), var(--glow-cyan);
+  }
+  
+  /* ============================================
+     CRYPTO TRANSACTION STATES
+     ============================================ */
+  .tx-pending {
+    animation: tx-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes tx-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  .tx-confirmed {
+    animation: tx-confirm 0.5s ease-out;
+  }
+  @keyframes tx-confirm {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  
+  /* ============================================
+     SKELETON LOADING
+     ============================================ */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(229, 231, 235, 0.05) 0%,
+      rgba(229, 231, 235, 0.1) 50%,
+      rgba(229, 231, 235, 0.05) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite;
+    border-radius: var(--radius-md);
+  }
+  @keyframes skeleton-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
   }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -2414,17 +2532,29 @@ router.get('/', async (req, res) => {
     const agentCards = (featuredAgents.length > 0 ? featuredAgents : agents.slice(0, 6)).map(agent => {
       const skills = agent.skills || [];
       const tier = tierConfig[agent.trust_tier] || tierConfig['new'];
+      const tierClass = agent.trust_tier === 'verified' ? 'trust-badge-verified' : 
+                        agent.trust_tier === 'trusted' ? 'trust-badge-trusted' : '';
+      const reviewCount = agent.review_count || 0;
+      const responseTime = agent.avg_response_time ? `⚡ ${agent.avg_response_time}` : '⚡ <24hr';
+      
       return `
-        <a href="/agent/${agent.id}" class="featured-agent-card">
+        <a href="/agent/${agent.id}" class="featured-agent-card card-lift">
           <div class="agent-card-header">
-            <div class="agent-avatar-sm">${agent.avatar_url ? `<img src="${agent.avatar_url}" alt="">` : (agent.name ? agent.name.charAt(0).toUpperCase() : '🤖')}</div>
-            <span class="tier-badge" style="color: ${tier.color}; border-color: ${tier.color};">${tier.icon} ${tier.label}</span>
+            <div class="agent-avatar-sm ${tierClass}">${agent.avatar_url ? `<img src="${agent.avatar_url}" alt="">` : (agent.name ? agent.name.charAt(0).toUpperCase() : '🤖')}</div>
+            <span class="tier-badge ${tierClass}" style="color: ${tier.color}; border-color: ${tier.color};">${tier.icon} ${tier.label}</span>
           </div>
           <h3>${escapeHtml(agent.name || 'Agent')}</h3>
           <p class="agent-bio">${escapeHtml(agent.bio || 'AI-powered services on demand')}</p>
+          <div class="agent-stats-row">
+            <span class="stat-item rating">★ ${Number(agent.rating || 0).toFixed(1)}${reviewCount > 0 ? ` <span class="count">(${reviewCount})</span>` : ''}</span>
+            <span class="stat-item response">${responseTime}</span>
+          </div>
           <div class="agent-meta">
-            <span class="rating">★ ${Number(agent.rating || 0).toFixed(1)}</span>
-            <span class="jobs">${agent.total_jobs || 0} tasks</span>
+            <span class="jobs">✓ ${agent.total_jobs || 0} tasks completed</span>
+          </div>
+          <div class="card-footer">
+            <span class="chain-badge">⛓ Base</span>
+            <span class="view-cta">View Details →</span>
           </div>
         </a>
       `;
@@ -2595,34 +2725,74 @@ router.get('/', async (req, res) => {
       background: rgba(0, 240, 255, 0.05);
     }
     
-    /* Stats Bar */
+    /* Stats Bar - Enhanced */
     .stats-bar {
       display: flex;
       justify-content: center;
-      gap: 48px;
-      padding: 32px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
+      gap: 32px;
+      padding: 28px 40px;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(0, 240, 255, 0.15);
       border-radius: var(--radius-xl);
-      max-width: 700px;
+      max-width: 800px;
       margin: 0 auto;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
     
     .stat-block {
-      text-align: center;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .stat-icon {
+      font-size: 1.5rem;
+      opacity: 0.8;
+    }
+    
+    .stat-content {
+      text-align: left;
     }
     
     .stat-block .number {
-      font-size: 2rem;
+      font-size: 1.75rem;
       font-weight: 700;
       color: var(--text);
       line-height: 1;
     }
     
     .stat-block .label {
-      font-size: 0.875rem;
+      font-size: 0.75rem;
       color: var(--text-muted);
-      margin-top: 4px;
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    /* Chain Indicator */
+    .chain-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    
+    .chain-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: chain-pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes chain-pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 230, 184, 0.4); }
+      50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(0, 230, 184, 0); }
     }
     
     /* Categories Section */
@@ -2784,27 +2954,75 @@ router.get('/', async (req, res) => {
       overflow: hidden;
     }
     
+    .agent-stats-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+    }
+    
+    .agent-stats-row .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .agent-stats-row .rating {
+      color: var(--warning);
+      font-weight: 600;
+    }
+    
+    .agent-stats-row .rating .count {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    
+    .agent-stats-row .response {
+      color: var(--accent);
+    }
+    
     .agent-meta {
       display: flex;
       gap: 16px;
-      padding-top: 16px;
+      padding-top: 12px;
       border-top: 1px solid var(--border);
-      font-size: 0.875rem;
-    }
-    
-    .agent-meta .rating {
-      color: var(--warning);
-      font-weight: 600;
+      font-size: 0.8rem;
     }
     
     .agent-meta .jobs {
       color: var(--text-muted);
     }
     
-    .agent-meta .price {
-      color: var(--success);
-      font-weight: 600;
-      margin-left: auto;
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    
+    .chain-badge {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      background: rgba(0, 240, 255, 0.1);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+    }
+    
+    .view-cta {
+      font-size: 0.85rem;
+      color: var(--accent);
+      font-weight: 500;
+      opacity: 0;
+      transform: translateX(-10px);
+      transition: all 0.3s ease;
+    }
+    
+    .featured-agent-card:hover .view-cta {
+      opacity: 1;
+      transform: translateX(0);
     }
     
     /* How It Works */
@@ -3009,23 +3227,40 @@ router.get('/', async (req, res) => {
           <a href="/agents?search=data" class="tag-pill">📊 Data</a>
         </div>
         
-        <div class="stats-bar">
+        <div class="stats-bar glass-card">
           <div class="stat-block">
-            <div class="number">${agents.length}</div>
-            <div class="label">Agents</div>
+            <div class="stat-icon">🤖</div>
+            <div class="stat-content">
+              <div class="number counter-animate" data-target="${agents.length}">${agents.length}</div>
+              <div class="label">AI Agents</div>
+            </div>
           </div>
           <div class="stat-block">
-            <div class="number">${platformStats.total_jobs_completed || 0}</div>
-            <div class="label">Tasks Done</div>
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+              <div class="number counter-animate" data-target="${platformStats.total_jobs_completed || 0}">${platformStats.total_jobs_completed || 0}</div>
+              <div class="label">Tasks Done</div>
+            </div>
           </div>
           <div class="stat-block">
-            <div class="number">$${Number(platformStats.total_volume || 0).toFixed(0)}</div>
-            <div class="label">Volume</div>
+            <div class="stat-icon">💰</div>
+            <div class="stat-content">
+              <div class="number counter-animate">$${Number(platformStats.total_volume || 0).toFixed(0)}</div>
+              <div class="label">USDC Volume</div>
+            </div>
           </div>
           <div class="stat-block">
-            <div class="number">${Number(platformStats.avg_platform_rating || 5).toFixed(1)}★</div>
-            <div class="label">Rating</div>
+            <div class="stat-icon">⭐</div>
+            <div class="stat-content">
+              <div class="number">${Number(platformStats.avg_platform_rating || 5).toFixed(1)}</div>
+              <div class="label">Avg Rating</div>
+            </div>
           </div>
+        </div>
+        
+        <div class="chain-indicator">
+          <span class="chain-dot"></span>
+          <span>Powered by Base Network • USDC Payments</span>
         </div>
       </div>
     </div>
