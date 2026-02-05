@@ -6558,6 +6558,71 @@ router.get('/api/sdk/jobs', validateApiKey, async (req, res) => {
  * Webhook test endpoint
  * POST /api/webhooks/test
  */
+// ============================================
+// AGENT CERTIFICATION PROGRAM (Phase 3)
+// ============================================
+
+router.get('/api/certifications', async (req, res) => {
+  const result = await db.query('SELECT * FROM certifications ORDER BY name');
+  res.json(result.rows);
+});
+
+router.get('/api/agents/:id/certifications', validateIdParam('id'), async (req, res) => {
+  const result = await db.query(`
+    SELECT c.*, ac.status, ac.issued_at, ac.expires_at
+    FROM agent_certifications ac
+    JOIN certifications c ON ac.certification_id = c.id
+    WHERE ac.agent_id = $1 AND ac.status = 'approved'
+  `, [req.params.id]);
+  res.json(result.rows);
+});
+
+router.post('/api/agents/:id/certifications/apply', validateIdParam('id'), async (req, res) => {
+  const { wallet, certificationSlug } = req.body;
+  if (!wallet || !certificationSlug) {
+    return res.status(400).json({ error: 'wallet and certificationSlug required' });
+  }
+
+  // Verify ownership
+  const agent = await db.query(`
+    SELECT a.*, u.wallet_address FROM agents a
+    JOIN users u ON a.user_id = u.id WHERE a.id = $1
+  `, [req.params.id]);
+  
+  if (!agent.rows[0] || agent.rows[0].wallet_address.toLowerCase() !== wallet.toLowerCase()) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+
+  const cert = await db.query('SELECT * FROM certifications WHERE slug = $1', [certificationSlug]);
+  if (!cert.rows[0]) {
+    return res.status(404).json({ error: 'Certification not found' });
+  }
+
+  await db.query(`
+    INSERT INTO agent_certifications (agent_id, certification_id, status)
+    VALUES ($1, $2, 'pending')
+    ON CONFLICT (agent_id, certification_id) DO UPDATE SET status = 'pending', created_at = NOW()
+  `, [req.params.id, cert.rows[0].id]);
+
+  res.json({ success: true, message: 'Application submitted' });
+});
+
+router.post('/api/admin/certifications/approve', async (req, res) => {
+  const { wallet, agentId, certificationId, approve } = req.body;
+  if (!isAdmin(wallet)) return res.status(403).json({ error: 'Not authorized' });
+
+  const status = approve ? 'approved' : 'rejected';
+  const expiresAt = approve ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : null;
+
+  await db.query(`
+    UPDATE agent_certifications 
+    SET status = $1, issued_at = NOW(), expires_at = $2, issued_by = $3
+    WHERE agent_id = $4 AND certification_id = $5
+  `, [status, expiresAt, wallet, agentId, certificationId]);
+
+  res.json({ success: true, status });
+});
+
 router.post('/api/webhooks/test', validateApiKey, async (req, res) => {
   try {
     const { url } = req.body;

@@ -440,6 +440,48 @@ async function initDB() {
       END $$;
     `);
 
+    // Migration: Agent Certifications (Phase 3)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS certifications (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT UNIQUE NOT NULL,
+        description TEXT,
+        requirements TEXT,
+        badge_icon TEXT,
+        badge_color TEXT DEFAULT '#f97316',
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS agent_certifications (
+        id SERIAL PRIMARY KEY,
+        agent_id INTEGER REFERENCES agents(id) ON DELETE CASCADE,
+        certification_id INTEGER REFERENCES certifications(id) ON DELETE CASCADE,
+        status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'expired')),
+        issued_at TIMESTAMP,
+        expires_at TIMESTAMP,
+        issued_by TEXT,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(agent_id, certification_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_agent_certs_agent ON agent_certifications(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_agent_certs_status ON agent_certifications(status);
+    `);
+
+    // Seed default certifications
+    await client.query(`
+      INSERT INTO certifications (name, slug, description, badge_icon, badge_color)
+      VALUES 
+        ('Security Audited', 'security-audit', 'Passed platform security review', '🔒', '#22c55e'),
+        ('Fast Responder', 'fast-responder', 'Average response time under 1 hour', '⚡', '#eab308'),
+        ('Top Rated', 'top-rated', 'Maintained 4.8+ rating with 50+ reviews', '⭐', '#f97316'),
+        ('High Volume', 'high-volume', 'Completed 500+ tasks successfully', '🚀', '#8b5cf6'),
+        ('Enterprise Ready', 'enterprise', 'Meets enterprise SLA requirements', '🏢', '#3b82f6')
+      ON CONFLICT (slug) DO NOTHING
+    `);
+
     // Migration: Messages table for in-app communication
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (
