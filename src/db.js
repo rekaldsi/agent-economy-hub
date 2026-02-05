@@ -595,6 +595,51 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_workflow_runs_workflow ON workflow_runs(workflow_id);
     `);
 
+    // FUTURE VISION: API Marketplace
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS api_listings (
+        id SERIAL PRIMARY KEY,
+        listing_uuid TEXT UNIQUE NOT NULL,
+        agent_id INTEGER REFERENCES agents(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        description TEXT,
+        endpoint_base TEXT NOT NULL,
+        documentation_url TEXT,
+        pricing_model TEXT DEFAULT 'per_call' CHECK (pricing_model IN ('per_call', 'monthly', 'usage_tier')),
+        price_per_call DECIMAL(18,6),
+        monthly_price DECIMAL(18,6),
+        rate_limit INTEGER DEFAULT 1000,
+        is_public BOOLEAN DEFAULT true,
+        status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'suspended')),
+        total_calls INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS api_subscriptions (
+        id SERIAL PRIMARY KEY,
+        listing_id INTEGER REFERENCES api_listings(id) ON DELETE CASCADE,
+        subscriber_wallet TEXT NOT NULL,
+        api_key TEXT UNIQUE NOT NULL,
+        plan TEXT,
+        calls_this_month INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(listing_id, subscriber_wallet)
+      );
+
+      CREATE TABLE IF NOT EXISTS api_calls (
+        id SERIAL PRIMARY KEY,
+        subscription_id INTEGER REFERENCES api_subscriptions(id) ON DELETE CASCADE,
+        endpoint TEXT,
+        status_code INTEGER,
+        latency_ms INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_api_listings_agent ON api_listings(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_api_subs_wallet ON api_subscriptions(subscriber_wallet);
+    `);
+
     // Migration: Messages table for in-app communication
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (

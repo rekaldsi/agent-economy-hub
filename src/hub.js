@@ -7105,6 +7105,118 @@ router.get('/api/verticals/:slug', async (req, res) => {
   });
 });
 
+// ============================================
+// FUTURE VISION: API Marketplace
+// ============================================
+
+router.get('/api/marketplace/apis', async (req, res) => {
+  const { category, sort = 'popular' } = req.query;
+  
+  let orderBy = 'total_calls DESC';
+  if (sort === 'newest') orderBy = 'created_at DESC';
+  if (sort === 'price') orderBy = 'price_per_call ASC';
+
+  const result = await db.query(`
+    SELECT al.*, a.name as agent_name, a.trust_tier, a.rating
+    FROM api_listings al
+    JOIN agents a ON al.agent_id = a.id
+    WHERE al.status = 'approved' AND al.is_public = true
+    ORDER BY ${orderBy}
+    LIMIT 50
+  `);
+
+  res.json(result.rows);
+});
+
+router.get('/api/marketplace/apis/:uuid', async (req, res) => {
+  const listing = await db.query(`
+    SELECT al.*, a.name as agent_name, a.trust_tier, a.rating, a.bio as agent_bio
+    FROM api_listings al
+    JOIN agents a ON al.agent_id = a.id
+    WHERE al.listing_uuid = $1
+  `, [req.params.uuid]);
+
+  if (!listing.rows[0]) return res.status(404).json({ error: 'API not found' });
+  res.json(listing.rows[0]);
+});
+
+router.post('/api/marketplace/apis', async (req, res) => {
+  const { wallet, agentId, name, description, endpointBase, pricingModel, pricePerCall, monthlyPrice, rateLimit } = req.body;
+  if (!wallet || !agentId || !name || !endpointBase) {
+    return res.status(400).json({ error: 'wallet, agentId, name, endpointBase required' });
+  }
+
+  // Verify ownership
+  const agent = await db.query(`
+    SELECT a.* FROM agents a JOIN users u ON a.user_id = u.id 
+    WHERE a.id = $1 AND u.wallet_address = $2
+  `, [agentId, wallet.toLowerCase()]);
+
+  if (!agent.rows[0]) return res.status(403).json({ error: 'Not authorized' });
+
+  const listingUuid = uuidv4();
+  const result = await db.query(`
+    INSERT INTO api_listings (listing_uuid, agent_id, name, description, endpoint_base, pricing_model, price_per_call, monthly_price, rate_limit)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
+  `, [listingUuid, agentId, name, description, endpointBase, pricingModel || 'per_call', pricePerCall, monthlyPrice, rateLimit || 1000]);
+
+  res.json({ success: true, listing: result.rows[0] });
+});
+
+router.post('/api/marketplace/apis/:uuid/subscribe', async (req, res) => {
+  const { wallet, plan } = req.body;
+  if (!wallet) return res.status(400).json({ error: 'wallet required' });
+
+  const listing = await db.query('SELECT * FROM api_listings WHERE listing_uuid = $1 AND status = $2', [req.params.uuid, 'approved']);
+  if (!listing.rows[0]) return res.status(404).json({ error: 'API not found or not approved' });
+
+  const apiKey = 'sk_' + require('crypto').randomBytes(24).toString('hex');
+
+  const result = await db.query(`
+    INSERT INTO api_subscriptions (listing_id, subscriber_wallet, api_key, plan)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (listing_id, subscriber_wallet) DO UPDATE SET api_key = $3, status = 'active'
+    RETURNING *
+  `, [listing.rows[0].id, wallet.toLowerCase(), apiKey, plan]);
+
+  res.json({
+    success: true,
+    subscription: result.rows[0],
+    apiKey,
+    message: 'Store this API key securely'
+  });
+});
+
+router.get('/api/marketplace/my-subscriptions', async (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).json({ error: 'wallet required' });
+
+  const result = await db.query(`
+    SELECT asub.*, al.name, al.endpoint_base, al.rate_limit
+    FROM api_subscriptions asub
+    JOIN api_listings al ON asub.listing_id = al.id
+    WHERE asub.subscriber_wallet = $1 AND asub.status = 'active'
+  `, [wallet.toLowerCase()]);
+
+  res.json(result.rows);
+});
+
+router.get('/api/marketplace/my-apis', async (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).json({ error: 'wallet required' });
+
+  const result = await db.query(`
+    SELECT al.*, 
+      (SELECT COUNT(*) FROM api_subscriptions WHERE listing_id = al.id AND status = 'active') as subscribers
+    FROM api_listings al
+    JOIN agents a ON al.agent_id = a.id
+    JOIN users u ON a.user_id = u.id
+    WHERE u.wallet_address = $1
+  `, [wallet.toLowerCase()]);
+
+  res.json(result.rows);
+});
+
 router.get('/api/verticals/:slug/featured', async (req, res) => {
   const vertical = VERTICALS[req.params.slug];
   if (!vertical) return res.status(404).json({ error: 'Vertical not found' });
