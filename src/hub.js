@@ -5161,6 +5161,103 @@ router.post('/api/agents/:id/recalculate-trust', validateIdParam('id'), async (r
 });
 
 /**
+ * Get trust tier progress for an agent
+ * GET /api/agents/:id/trust-progress
+ */
+router.get('/api/agents/:id/trust-progress', validateIdParam('id'), async (req, res) => {
+  try {
+    const agent = await db.getAgentById(req.params.id);
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    // Define tier requirements per PRD
+    const tierRequirements = {
+      new: { tasks: 0, rating: 0, responseHrs: Infinity, completionRate: 0, earnings: 0 },
+      rising: { tasks: 5, rating: 4.0, responseHrs: 24, completionRate: 0, earnings: 0 },
+      established: { tasks: 25, rating: 4.3, responseHrs: 12, completionRate: 90, earnings: 0 },
+      trusted: { tasks: 100, rating: 4.5, responseHrs: 6, completionRate: 95, earnings: 10000 },
+      verified: { tasks: 250, rating: 4.7, responseHrs: 3, completionRate: 98, earnings: 50000 }
+    };
+
+    const tierOrder = ['new', 'rising', 'established', 'trusted', 'verified'];
+    const currentTierIndex = tierOrder.indexOf(agent.trust_tier || 'new');
+    const nextTier = currentTierIndex < tierOrder.length - 1 ? tierOrder[currentTierIndex + 1] : null;
+
+    // Current stats
+    const current = {
+      tasks: parseInt(agent.total_jobs) || 0,
+      rating: parseFloat(agent.rating) || 0,
+      responseHrs: (parseInt(agent.response_time_avg) || 0) / 3600,
+      completionRate: parseFloat(agent.completion_rate) || 100,
+      earnings: parseFloat(agent.total_earned) || 0,
+      securityAudit: agent.security_audit_status === 'passed',
+      webhookVerified: !!agent.webhook_verified_at,
+      rentahuman: agent.rentahuman_enabled === true
+    };
+
+    // Calculate progress to next tier
+    let progress = {};
+    if (nextTier) {
+      const req = tierRequirements[nextTier];
+      progress = {
+        nextTier,
+        requirements: {
+          tasks: { current: current.tasks, required: req.tasks, met: current.tasks >= req.tasks },
+          rating: { current: current.rating.toFixed(1), required: req.rating, met: current.rating >= req.rating },
+          responseTime: { current: current.responseHrs.toFixed(1) + 'h', required: req.responseHrs + 'h', met: current.responseHrs <= req.responseHrs || req.responseHrs === Infinity },
+          completionRate: { current: current.completionRate.toFixed(0) + '%', required: req.completionRate + '%', met: current.completionRate >= req.completionRate },
+          earnings: { current: '$' + current.earnings.toFixed(0), required: '$' + req.earnings, met: current.earnings >= req.earnings || req.earnings === 0 }
+        },
+        percentComplete: calculateProgressPercent(current, req)
+      };
+
+      // Add special requirements for higher tiers
+      if (nextTier === 'established' || nextTier === 'trusted' || nextTier === 'verified') {
+        progress.requirements.securityAudit = { current: current.securityAudit ? 'Passed' : 'Not done', required: 'Passed', met: current.securityAudit };
+      }
+      if (nextTier === 'verified') {
+        progress.requirements.rentahuman = { current: current.rentahuman ? 'Enabled' : 'Not enabled', required: 'Enabled', met: current.rentahuman };
+      }
+    }
+
+    res.json({
+      currentTier: agent.trust_tier || 'new',
+      trustScore: agent.trust_score || 0,
+      stats: current,
+      progress,
+      tierBenefits: getTierBenefits(agent.trust_tier || 'new')
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to get trust progress');
+    res.status(statusCode).json(body);
+  }
+});
+
+// Helper to calculate progress percentage
+function calculateProgressPercent(current, requirements) {
+  const metrics = [
+    Math.min(100, (current.tasks / requirements.tasks) * 100) || 0,
+    Math.min(100, (current.rating / requirements.rating) * 100) || 0,
+    requirements.completionRate > 0 ? Math.min(100, (current.completionRate / requirements.completionRate) * 100) : 100,
+    requirements.earnings > 0 ? Math.min(100, (current.earnings / requirements.earnings) * 100) : 100
+  ];
+  return Math.round(metrics.reduce((a, b) => a + b, 0) / metrics.length);
+}
+
+// Helper to get tier benefits
+function getTierBenefits(tier) {
+  const benefits = {
+    new: ['Listed in marketplace', 'Can accept tasks', 'Standard 15% platform fee'],
+    rising: ['Rising badge', 'Improved search ranking', 'Featured in "New & Promising"', '12% platform fee'],
+    established: ['Established badge', 'Priority support', '10% platform fee', 'Featured placement'],
+    trusted: ['Trusted badge', 'Top search placement', '8% platform fee', 'Custom branding'],
+    verified: ['Verified badge', 'Highest priority', '5% platform fee', 'Co-marketing opportunities', 'Dedicated support']
+  };
+  return benefits[tier] || benefits.new;
+}
+
+/**
  * Advanced agent search with filters
  * GET /api/agents/search
  */
