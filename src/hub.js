@@ -9880,11 +9880,26 @@ router.get('/category/:slug', async (req, res) => {
 
 // All categories index
 router.get('/categories', (req, res) => {
+  // Category gradients for visual variety
+  const categoryGradients = {
+    'creative': 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)',
+    'research': 'linear-gradient(135deg, #4D9FFF 0%, #00F0FF 100%)',
+    'data': 'linear-gradient(135deg, #00E6B8 0%, #00B894 100%)',
+    'image': 'linear-gradient(135deg, #B794F6 0%, #667EEA 100%)',
+    'code': 'linear-gradient(135deg, #FFB800 0%, #FF6B35 100%)',
+    'automation': 'linear-gradient(135deg, #00F0FF 0%, #4D9FFF 100%)',
+    'writing': 'linear-gradient(135deg, #FF6B9D 0%, #C44569 100%)',
+    'audio': 'linear-gradient(135deg, #A855F7 0%, #7C3AED 100%)',
+    'video': 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+    'integration': 'linear-gradient(135deg, #14B8A6 0%, #0D9488 100%)'
+  };
+
   const categoryCards = Object.entries(CATEGORIES).map(([slug, cat]) => `
-    <a href="/category/${slug}" style="display: block; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-decoration: none; color: var(--text); transition: all 0.2s;">
-      <div style="font-size: 48px; margin-bottom: 12px;">${cat.icon}</div>
-      <h3 style="margin-bottom: 8px;">${cat.name}</h3>
-      <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">${cat.desc}</p>
+    <a href="/category/${slug}" class="category-card">
+      <div class="card-gradient" style="background: ${categoryGradients[slug] || categoryGradients['creative']};"></div>
+      <div class="card-icon">${cat.icon}</div>
+      <h3>${cat.name}</h3>
+      <p>${cat.desc}</p>
     </a>
   `).join('');
 
@@ -9894,25 +9909,87 @@ router.get('/categories', (req, res) => {
   <title>Categories | TheBotique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  ${PWA_HEAD}
   <style>${HUB_STYLES}
+    .categories-hero {
+      background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
+      padding: 64px 0;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .categories-hero h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .categories-hero p {
+      color: var(--text-muted);
+      font-size: 1.125rem;
+    }
     .categories-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: 24px;
-      margin-top: 32px;
+      padding: 48px 0;
     }
-    .categories-grid a:hover {
-      border-color: var(--accent);
-      transform: translateY(-2px);
+    .category-card {
+      position: relative;
+      display: block;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 32px 24px;
+      text-decoration: none;
+      color: var(--text);
+      transition: all var(--duration-normal);
+      overflow: hidden;
+    }
+    .category-card .card-gradient {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      opacity: 0.7;
+      transition: all var(--duration-normal);
+    }
+    .category-card:hover {
+      border-color: var(--border-light);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+    .category-card:hover .card-gradient {
+      height: 6px;
+      opacity: 1;
+    }
+    .category-card .card-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+    }
+    .category-card h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .category-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0;
+      line-height: 1.5;
     }
   </style>
 </head>
 <body>
   ${HUB_HEADER}
 
-  <div class="container" style="padding: 48px 24px;">
-    <h1>Browse by Category</h1>
-    <p style="color: var(--text-muted);">Find the perfect AI agent for your needs</p>
+  <section class="categories-hero">
+    <div class="container">
+      <h1>Browse by Category</h1>
+      <p>Find the perfect AI agent for your needs</p>
+    </div>
+  </section>
+
+  <div class="container">
     <div class="categories-grid">
       ${categoryCards}
     </div>
@@ -10353,60 +10430,104 @@ router.get('/compare', async (req, res) => {
   <title>Compare Agents | TheBotique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  ${PWA_HEAD}
   <style>${HUB_STYLES}
-    .compare-header { padding: 32px 0; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+    .compare-hero {
+      background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
+      padding: 64px 0 48px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-hero h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .compare-hero p {
+      color: var(--text-muted);
+      font-size: 1.125rem;
+    }
     .compare-grid { display: grid; gap: 24px; overflow-x: auto; }
     .compare-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: var(--radius-lg);
       padding: 24px;
       min-width: 280px;
+      transition: all var(--duration-normal);
     }
-    .compare-card.winner { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+    .compare-card.winner { border-color: var(--success); box-shadow: var(--glow-cyan); }
     .compare-stat {
       display: flex;
       justify-content: space-between;
-      padding: 12px 0;
+      padding: 14px 0;
       border-bottom: 1px solid var(--border);
     }
     .compare-stat:last-child { border-bottom: none; }
     .stat-label { color: var(--text-muted); }
     .stat-value { font-weight: 600; }
-    .stat-value.best { color: var(--green); }
+    .stat-value.best { color: var(--success); }
     .empty-state {
       text-align: center;
-      padding: 64px 24px;
-      color: var(--text-muted);
+      padding: 80px 24px;
     }
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
     .agent-select-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
       margin-bottom: 24px;
     }
     .agent-checkbox {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 12px;
+      padding: 16px;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: var(--radius-md);
       cursor: pointer;
+      transition: all var(--duration-fast);
     }
     .agent-checkbox:hover { border-color: var(--accent); }
-    .agent-checkbox.selected { border-color: var(--accent); background: rgba(249, 115, 22, 0.1); }
+    .agent-checkbox.selected { 
+      border-color: var(--accent); 
+      background: rgba(0, 240, 255, 0.05);
+      box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.1);
+    }
+    .agent-checkbox .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .selector-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      margin-bottom: 32px;
+    }
+    .selector-section h3 {
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
   ${HUB_HEADER}
 
-  <div class="container">
-    <div class="compare-header">
+  <section class="compare-hero">
+    <div class="container">
       <h1>Compare Agents</h1>
-      <p style="color: var(--text-muted);">Select 2-5 agents to compare side-by-side</p>
+      <p>Select 2-5 agents to compare side-by-side</p>
     </div>
+  </section>
+
+  <div class="container" style="padding-top: 32px;">
 
     <div id="agent-selector" style="margin-bottom: 32px;">
       <h3 style="margin-bottom: 16px;">Select agents to compare:</h3>
