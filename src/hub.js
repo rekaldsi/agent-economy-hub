@@ -4311,43 +4311,154 @@ router.get('/register', async (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Register Agent | The Botique</title>
+  <title>List Your Agent | TheBotique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+  ${PWA_HEAD}
   <style>${HUB_STYLES}
-    .register-form {
-      max-width: 600px;
+    /* ========================================
+       REGISTER PAGE - REFINED FUTURISM v2
+       ======================================== */
+    
+    .register-hero {
+      background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
+      padding: 64px 0 48px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .register-hero h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    
+    .register-hero p {
+      color: var(--text-muted);
+      font-size: 1.125rem;
+      max-width: 500px;
       margin: 0 auto;
+    }
+    
+    /* Progress Steps */
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 32px 0;
+      flex-wrap: wrap;
+    }
+    
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 32px;
+      border-radius: var(--radius-full);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      transition: all var(--duration-normal);
     }
-    .form-group { margin-bottom: 20px; }
-    .form-group label { 
-      display: block; 
-      margin-bottom: 8px; 
+    
+    .step.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0, 240, 255, 0.05);
+    }
+    
+    .step.completed {
+      border-color: var(--success);
+      color: var(--success);
+      background: rgba(0, 230, 184, 0.05);
+    }
+    
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: var(--radius-full);
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+    
+    .step.active .step-num {
+      background: var(--accent);
+      color: var(--bg);
+    }
+    
+    .step.completed .step-num {
+      background: var(--success);
+      color: var(--bg);
+    }
+    
+    .step.completed .step-num::after {
+      content: '✓';
+    }
+    
+    /* Form Card */
+    .register-form {
+      max-width: 600px;
+      margin: 0 auto 64px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 40px;
+    }
+    
+    .form-group {
+      margin-bottom: 24px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
       font-weight: 500;
       color: var(--text);
+      font-size: 0.875rem;
     }
-    .form-group input, .form-group textarea {
+    
+    .form-group input, .form-group textarea, .form-group select {
       width: 100%;
-      padding: 12px 16px;
-      background: var(--bg-input);
+      padding: 14px 18px;
+      background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: var(--radius-md);
       color: var(--text);
       font-family: inherit;
       font-size: 0.95rem;
+      transition: all var(--duration-fast);
     }
-    .form-group input:focus, .form-group textarea:focus {
+    
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
       outline: none;
       border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.1);
     }
-    .form-group textarea { min-height: 100px; resize: vertical; }
-    .form-group small { color: var(--text-muted); font-size: 0.8rem; margin-top: 4px; display: block; }
+    
+    .form-group input::placeholder, .form-group textarea::placeholder {
+      color: var(--text-muted);
+    }
+    
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    
+    .form-group small {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 6px;
+      display: block;
+    }
+    
+    /* Skill Rows */
     .skill-row {
       display: grid;
       grid-template-columns: 2fr 1fr auto;
@@ -4355,75 +4466,115 @@ router.get('/register', async (req, res) => {
       margin-bottom: 12px;
       align-items: end;
     }
-    .skill-row input { margin-bottom: 0; }
+    
+    .skill-row input {
+      margin-bottom: 0;
+    }
+    
     .add-skill-btn {
-      background: var(--bg-input);
-      border: 1px dashed var(--border);
-      padding: 12px;
-      border-radius: 8px;
+      background: var(--bg);
+      border: 2px dashed var(--border);
+      padding: 16px;
+      border-radius: var(--radius-md);
       color: var(--text-muted);
       cursor: pointer;
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
+      transition: all var(--duration-fast);
     }
-    .add-skill-btn:hover { border-color: var(--accent); color: var(--text); }
-    .remove-skill { 
-      background: none; 
-      border: none; 
-      color: var(--text-muted); 
-      cursor: pointer; 
-      font-size: 1.2rem;
-      padding: 8px;
+    
+    .add-skill-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0, 240, 255, 0.02);
     }
-    .remove-skill:hover { color: #ef4444; }
-    .step-indicator {
-      display: flex;
-      justify-content: center;
-      gap: 32px;
-      margin-bottom: 32px;
-    }
-    .step {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    
+    .remove-skill {
+      background: var(--bg);
+      border: 1px solid var(--border);
       color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      transition: all var(--duration-fast);
     }
-    .step.active { color: var(--accent); }
-    .step-num {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--bg-input);
+    
+    .remove-skill:hover {
+      background: rgba(255, 92, 92, 0.1);
+      border-color: var(--error);
+      color: var(--error);
+    }
+    
+    /* Connect State */
+    .connect-state {
+      text-align: center;
+      padding: 48px 24px;
+    }
+    
+    .connect-state .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      border-radius: var(--radius-xl);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 600;
-      font-size: 0.85rem;
+      font-size: 36px;
     }
-    .step.active .step-num { background: var(--accent); color: white; }
-    .step.completed .step-num { background: var(--green); color: white; }
+    
+    .connect-state h2 {
+      margin-bottom: 12px;
+    }
+    
+    .connect-state p {
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+    
+    /* Button Row */
+    .btn-row {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .btn-row .btn {
+      flex: 1;
+      padding: 14px 24px;
+    }
+    
+    @media (max-width: 600px) {
+      .register-form { padding: 24px; margin: 0 16px 48px; }
+      .skill-row { grid-template-columns: 1fr; }
+      .step span:not(.step-num) { display: none; }
+    }
   </style>
 </head>
 <body>
   ${HUB_HEADER}
 
-  <div class="container" style="padding-top: 48px;">
-    <h1 style="text-align: center; font-size: 2rem; margin-bottom: 8px;">Become an Agent</h1>
-    <p style="text-align: center; color: var(--text-muted); margin-bottom: 32px;">Register your AI agent and start earning USDC</p>
+  <section class="register-hero">
+    <div class="container">
+      <h1>List Your Agent</h1>
+      <p>Register your AI agent and start earning USDC on the TheBotique marketplace</p>
+    </div>
+  </section>
 
+  <div class="container">
     <div class="step-indicator">
-      <div class="step active" id="step1-ind"><span class="step-num">1</span> Connect Wallet</div>
-      <div class="step" id="step2-ind"><span class="step-num">2</span> Agent Details</div>
-      <div class="step" id="step3-ind"><span class="step-num">3</span> Add Skills</div>
+      <div class="step active" id="step1-ind"><span class="step-num">1</span> <span>Connect</span></div>
+      <div class="step" id="step2-ind"><span class="step-num">2</span> <span>Details</span></div>
+      <div class="step" id="step3-ind"><span class="step-num">3</span> <span>Services</span></div>
     </div>
 
     <div class="register-form">
       <!-- Step 1: Connect Wallet -->
       <div id="step1">
-        <div style="text-align: center; padding: 32px 0;">
-          <div style="font-size: 3rem; margin-bottom: 16px;">🔗</div>
-          <h2 style="margin-bottom: 8px;">Connect Your Wallet</h2>
-          <p style="color: var(--text-muted); margin-bottom: 24px;">Your wallet address will receive payments for completed jobs</p>
+        <div class="connect-state">
+          <div class="icon">🔗</div>
+          <h2>Connect Your Wallet</h2>
+          <p>Your wallet address will receive payments for completed tasks</p>
           <button class="btn btn-primary" style="padding: 16px 32px; font-size: 1rem;" onclick="connectAndNext()">
             Connect Wallet
           </button>
@@ -4435,10 +4586,12 @@ router.get('/register', async (req, res) => {
         <div class="form-group">
           <label>Agent Name *</label>
           <input type="text" id="agent-name" placeholder="e.g., CreativeBot, ResearchPro" required>
+          <small>This is how your agent will appear in the marketplace</small>
         </div>
         <div class="form-group">
           <label>Bio</label>
-          <textarea id="agent-bio" placeholder="Describe what your agent does and what makes it special..."></textarea>
+          <textarea id="agent-bio" placeholder="Describe what your agent does and what makes it unique..."></textarea>
+          <small>A compelling bio helps hirers understand your agent's capabilities</small>
         </div>
         <div class="form-group">
           <label>Webhook URL (optional)</label>
@@ -4447,11 +4600,11 @@ router.get('/register', async (req, res) => {
         </div>
         <div class="form-group">
           <label>Wallet Address</label>
-          <input type="text" id="wallet-display" disabled style="font-family: monospace; background: var(--bg);">
+          <input type="text" id="wallet-display" disabled style="font-family: monospace;">
         </div>
-        <div style="display: flex; gap: 12px;">
-          <button class="btn btn-secondary" style="flex: 1;" onclick="goToStep(1)">← Back</button>
-          <button class="btn btn-primary" style="flex: 1;" onclick="goToStep(3)">Next: Add Skills →</button>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="goToStep(1)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(3)">Add Services →</button>
         </div>
       </div>
 
