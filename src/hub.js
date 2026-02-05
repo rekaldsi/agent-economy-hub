@@ -5364,6 +5364,212 @@ router.get('/api/agents/search', async (req, res) => {
 // LEGAL PAGES
 // ============================================
 
+// ============================================
+// CATEGORY PAGES
+// ============================================
+
+const CATEGORIES = {
+  research: { name: 'Research', icon: '🔍', desc: 'Deep-dive analysis, market research, competitive intelligence' },
+  writing: { name: 'Writing', icon: '✍️', desc: 'Content creation, copywriting, documentation, blog posts' },
+  image: { name: 'Image Generation', icon: '🎨', desc: 'AI art, illustrations, logos, marketing visuals' },
+  code: { name: 'Code & Dev', icon: '💻', desc: 'Development, debugging, code review, automation scripts' },
+  data: { name: 'Data Analysis', icon: '📊', desc: 'Data processing, visualization, insights, reports' },
+  automation: { name: 'Automation', icon: '🤖', desc: 'Workflow automation, integrations, bots, scrapers' },
+  audio: { name: 'Audio & Voice', icon: '🎙️', desc: 'Transcription, voice synthesis, music, podcasts' },
+  video: { name: 'Video', icon: '🎬', desc: 'Video editing, animation, thumbnails, motion graphics' },
+  marketing: { name: 'Marketing', icon: '📈', desc: 'Campaigns, social media, SEO, ad copy' },
+  translation: { name: 'Translation', icon: '🌍', desc: 'Multi-language translation, localization' }
+};
+
+router.get('/category/:slug', async (req, res) => {
+  const { slug } = req.params;
+  const category = CATEGORIES[slug];
+  
+  if (!category) {
+    return res.status(404).send('Category not found');
+  }
+
+  try {
+    const agents = await db.getAllAgents();
+    // Filter agents that have skills matching this category
+    const filteredAgents = agents.filter(agent => {
+      const skills = agent.skills || [];
+      return skills.some(s => s.category?.toLowerCase() === slug.toLowerCase());
+    });
+
+    const tierConfig = {
+      'new': { icon: '🆕', label: 'New', class: 'badge-new' },
+      'rising': { icon: '📈', label: 'Rising', class: 'badge-rising' },
+      'established': { icon: '🛡️', label: 'Established', class: 'badge-established' },
+      'trusted': { icon: '⭐', label: 'Trusted', class: 'badge-trusted' },
+      'verified': { icon: '✓', label: 'Verified', class: 'badge-verified' }
+    };
+
+    const agentsHtml = filteredAgents.map(agent => {
+      const skills = agent.skills || [];
+      const tier = tierConfig[agent.trust_tier] || tierConfig['new'];
+      const ratingDisplay = agent.review_count > 0 
+        ? `⭐ ${Number(agent.rating || 0).toFixed(1)} (${agent.review_count})`
+        : '⭐ New';
+
+      return `
+        <a href="/agent/${agent.id}" class="agent-card" style="text-decoration: none; display: block; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; transition: all 0.2s; color: var(--text);">
+          <div style="display: flex; gap: 16px; align-items: start;">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">
+              ${agent.avatar_url ? `<img src="${agent.avatar_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : '🤖'}
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(agent.name || 'Agent')}</div>
+              ${tier.label ? `<span class="${tier.class}" style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600;">${tier.icon} ${tier.label}</span>` : ''}
+              <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px;">${escapeHtml(agent.bio || 'AI Agent')}</div>
+            </div>
+          </div>
+          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-muted); font-size: 0.85rem;">${ratingDisplay}</span>
+            <span style="color: var(--text-muted); font-size: 0.85rem;">📦 ${agent.total_jobs || 0} tasks</span>
+          </div>
+        </a>
+      `;
+    }).join('');
+
+    // Related categories
+    const relatedCategories = Object.entries(CATEGORIES)
+      .filter(([k]) => k !== slug)
+      .slice(0, 4)
+      .map(([k, v]) => `<a href="/category/${k}" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; color: var(--text); text-decoration: none;">${v.icon} ${v.name}</a>`)
+      .join('');
+
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>${category.name} Agents | TheBotique</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Find the best ${category.name.toLowerCase()} AI agents. ${category.desc}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>${HUB_STYLES}
+    .category-hero {
+      background: linear-gradient(180deg, rgba(249, 115, 22, 0.15) 0%, transparent 100%);
+      padding: 64px 0 48px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .category-hero .icon { font-size: 64px; margin-bottom: 16px; }
+    .category-hero h1 { margin-bottom: 12px; }
+    .category-hero p { color: var(--text-muted); max-width: 600px; margin: 0 auto; }
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+      margin-top: 32px;
+    }
+    .agent-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="logo"><span class="logo-icon">✨</span><span>The Botique</span></a>
+    <nav><a href="/">Home</a><a href="/agents">Browse</a><a href="/dashboard">Dashboard</a></nav>
+  </header>
+
+  <div class="category-hero">
+    <div class="container">
+      <div class="icon">${category.icon}</div>
+      <h1>${category.name} Agents</h1>
+      <p>${category.desc}</p>
+    </div>
+  </div>
+
+  <div class="container" style="padding: 48px 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <p style="color: var(--text-muted); margin: 0;">${filteredAgents.length} agent${filteredAgents.length !== 1 ? 's' : ''} in this category</p>
+      <a href="/agents" class="btn btn-secondary" style="text-decoration: none;">← All Categories</a>
+    </div>
+    
+    <div class="agents-grid">
+      ${agentsHtml || `
+        <div style="grid-column: 1/-1; text-align: center; padding: 64px 24px; color: var(--text-muted);">
+          <p style="font-size: 48px; margin-bottom: 16px;">${category.icon}</p>
+          <p>No agents in this category yet.</p>
+          <a href="/register" class="btn btn-primary" style="margin-top: 16px;">Register Your Agent</a>
+        </div>
+      `}
+    </div>
+
+    ${filteredAgents.length > 0 ? `
+      <div style="margin-top: 64px;">
+        <h2 style="margin-bottom: 16px;">Explore Other Categories</h2>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          ${relatedCategories}
+        </div>
+      </div>
+    ` : ''}
+  </div>
+
+  ${HUB_FOOTER}
+</body>
+</html>`);
+  } catch (error) {
+    console.error('Category page error:', error);
+    res.status(500).send('Error loading category');
+  }
+});
+
+// All categories index
+router.get('/categories', (req, res) => {
+  const categoryCards = Object.entries(CATEGORIES).map(([slug, cat]) => `
+    <a href="/category/${slug}" style="display: block; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-decoration: none; color: var(--text); transition: all 0.2s;">
+      <div style="font-size: 48px; margin-bottom: 12px;">${cat.icon}</div>
+      <h3 style="margin-bottom: 8px;">${cat.name}</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">${cat.desc}</p>
+    </a>
+  `).join('');
+
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Categories | TheBotique</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>${HUB_STYLES}
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 24px;
+      margin-top: 32px;
+    }
+    .categories-grid a:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="logo"><span class="logo-icon">✨</span><span>The Botique</span></a>
+    <nav><a href="/">Home</a><a href="/agents">Browse</a><a href="/dashboard">Dashboard</a></nav>
+  </header>
+
+  <div class="container" style="padding: 48px 24px;">
+    <h1>Browse by Category</h1>
+    <p style="color: var(--text-muted);">Find the perfect AI agent for your needs</p>
+    <div class="categories-grid">
+      ${categoryCards}
+    </div>
+  </div>
+
+  ${HUB_FOOTER}
+</body>
+</html>`);
+});
+
+// ============================================
+// LEGAL PAGES
+// ============================================
+
 router.get('/terms', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
