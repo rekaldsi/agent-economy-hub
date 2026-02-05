@@ -3907,190 +3907,387 @@ router.get('/agents', async (req, res) => {
   try {
     const { search, category, min_rating, trust_tier, sort = 'rating' } = req.query;
     const agents = await db.getAllAgents();
-    const platformStats = await db.getPlatformStats();
 
-    // Trust tier config
+    // Trust tier config - Refined Futurism
     const tierConfig = {
-      'new': { icon: '🆕', label: 'New', class: 'badge-new' },
-      'rising': { icon: '📈', label: 'Rising', class: 'badge-rising' },
-      'established': { icon: '🛡️', label: 'Established', class: 'badge-established' },
-      'trusted': { icon: '⭐', label: 'Trusted', class: 'badge-trusted' },
-      'verified': { icon: '✓', label: 'Verified', class: 'badge-verified' }
+      'unknown': { icon: '◇', label: 'New', color: 'var(--tier-new)' },
+      'new': { icon: '◇', label: 'New', color: 'var(--tier-new)' },
+      'rising': { icon: '↗', label: 'Rising', color: 'var(--tier-rising)' },
+      'emerging': { icon: '↗', label: 'Rising', color: 'var(--tier-rising)' },
+      'established': { icon: '◆', label: 'Established', color: 'var(--tier-established)' },
+      'trusted': { icon: '★', label: 'Trusted', color: 'var(--tier-trusted)' },
+      'verified': { icon: '✓', label: 'Verified', color: 'var(--tier-verified)' }
     };
 
     // Build agent cards
     const agentsHtml = agents.map(agent => {
       const skills = agent.skills || [];
       const tier = tierConfig[agent.trust_tier] || tierConfig['new'];
-      const ratingDisplay = agent.review_count > 0 
-        ? `⭐ ${Number(agent.rating || 0).toFixed(1)} (${agent.review_count})`
-        : '⭐ New';
+      const minPrice = skills.length > 0 ? Math.min(...skills.map(s => Number(s.price_usdc))) : 0;
 
       return `
-        <a href="/agent/${agent.id}" class="agent-card" style="text-decoration: none;">
-          <div style="display: flex; gap: 16px; align-items: start;">
-            <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">
-              ${agent.avatar_url ? `<img src="${agent.avatar_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : '🤖'}
+        <a href="/agent/${agent.id}" class="agent-card">
+          <div class="card-header">
+            <div class="avatar">
+              ${agent.avatar_url ? `<img src="${agent.avatar_url}" alt="">` : (agent.name ? agent.name.charAt(0).toUpperCase() : '🤖')}
             </div>
-            <div style="flex: 1; min-width: 0;">
-              <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(agent.name || 'Agent')}</div>
-              ${tier.label ? `<span class="${tier.class}" style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600;">${tier.icon} ${tier.label}</span>` : ''}
-              <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px;">${escapeHtml(agent.bio || 'AI Agent')}</div>
-            </div>
+            <span class="tier-badge" style="color: ${tier.color}; border-color: ${tier.color};">${tier.icon} ${tier.label}</span>
           </div>
-          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: var(--text-muted); font-size: 0.85rem;">${ratingDisplay}</span>
-            <span style="color: var(--text-muted); font-size: 0.85rem;">📦 ${agent.total_jobs || 0} tasks</span>
-            ${skills.length > 0 ? `<span style="color: var(--green); font-weight: 600;">From $${Math.min(...skills.map(s => Number(s.price_usdc))).toFixed(0)}</span>` : ''}
+          <h3>${escapeHtml(agent.name || 'Agent')}</h3>
+          <p class="bio">${escapeHtml(agent.bio || 'AI-powered services on demand')}</p>
+          <div class="card-meta">
+            <span class="rating">★ ${Number(agent.rating || 0).toFixed(1)}</span>
+            <span class="tasks">${agent.total_jobs || 0} tasks</span>
+            ${minPrice > 0 ? `<span class="price">From $${minPrice.toFixed(0)}</span>` : ''}
           </div>
         </a>
       `;
     }).join('');
 
     // Categories for filter
-    const categories = [
-      { value: '', label: 'All Categories' },
-      { value: 'research', label: '🔍 Research' },
-      { value: 'writing', label: '✍️ Writing' },
-      { value: 'image', label: '🎨 Image Generation' },
-      { value: 'code', label: '💻 Code & Dev' },
-      { value: 'data', label: '📊 Data Analysis' },
-      { value: 'automation', label: '🤖 Automation' }
+    const filterCategories = [
+      { slug: '', label: 'All', icon: '✨' },
+      { slug: 'research', label: 'Research', icon: '🔬' },
+      { slug: 'writing', label: 'Writing', icon: '✍️' },
+      { slug: 'image', label: 'Images', icon: '🎨' },
+      { slug: 'code', label: 'Code', icon: '💻' },
+      { slug: 'data', label: 'Data', icon: '📊' },
+      { slug: 'automation', label: 'Automation', icon: '🤖' }
     ];
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Browse Agents | The Botique</title>
+  <title>Browse Agents | TheBotique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  ${PWA_HEAD}
   <style>${HUB_STYLES}
-    .browse-header {
-      background: linear-gradient(180deg, rgba(249, 115, 22, 0.1) 0%, transparent 100%);
-      padding: 48px 0 32px;
+    /* ========================================
+       BROWSE PAGE - REFINED FUTURISM v2
+       ======================================== */
+    
+    .browse-hero {
+      background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
+      padding: 48px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .browse-hero h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    
+    .browse-hero .subtitle {
+      color: var(--text-muted);
+      font-size: 1.125rem;
       margin-bottom: 32px;
     }
-    .browse-header h1 { margin-bottom: 16px; }
-    .search-filters {
+    
+    /* Search Bar */
+    .search-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    
+    .search-bar input {
+      flex: 1;
+      padding: 16px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      color: var(--text);
+      font-size: 1rem;
+      transition: all var(--duration-fast);
+    }
+    
+    .search-bar input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: var(--glow-cyan);
+    }
+    
+    .search-bar input::placeholder {
+      color: var(--text-muted);
+    }
+    
+    /* Filter Controls */
+    .filter-row {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
-      margin-bottom: 24px;
+      align-items: center;
     }
-    .search-filters input, .search-filters select {
+    
+    .filter-select {
       padding: 12px 16px;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: var(--radius-md);
       color: var(--text);
-      font-size: 0.95rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all var(--duration-fast);
     }
-    .search-filters input { flex: 1; min-width: 200px; }
-    .search-filters input:focus, .search-filters select:focus {
+    
+    .filter-select:focus {
       outline: none;
       border-color: var(--accent);
     }
+    
+    /* Category Pills */
+    .category-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    
+    .category-pill {
+      padding: 10px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all var(--duration-fast);
+      text-decoration: none;
+    }
+    
+    .category-pill:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    
+    .category-pill.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg);
+    }
+    
+    /* Results */
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .results-count {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+    
+    .view-toggle {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .view-btn {
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    
+    .view-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg);
+    }
+    
+    /* Agent Cards */
     .agents-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 24px;
     }
+    
     .agent-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      transition: all 0.2s;
-      display: block;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      text-decoration: none;
       color: var(--text);
+      display: block;
+      transition: all var(--duration-normal);
     }
+    
     .agent-card:hover {
       border-color: var(--accent);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
+      transform: translateY(-4px);
+      box-shadow: var(--glow-cyan);
     }
-    .filter-tags {
+    
+    .card-header {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 24px;
-    }
-    .filter-tag {
-      padding: 6px 12px;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .filter-tag:hover, .filter-tag.active {
-      background: var(--accent);
-      color: white;
-      border-color: var(--accent);
-    }
-    .results-count {
-      color: var(--text-muted);
+      justify-content: space-between;
+      align-items: flex-start;
       margin-bottom: 16px;
+    }
+    
+    .avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 600;
+      overflow: hidden;
+    }
+    
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .tier-badge {
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid;
+      background: transparent;
+    }
+    
+    .agent-card h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .bio {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    
+    .card-meta {
+      display: flex;
+      gap: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+    
+    .card-meta .rating {
+      color: var(--warning);
+      font-weight: 600;
+    }
+    
+    .card-meta .tasks {
+      color: var(--text-muted);
+    }
+    
+    .card-meta .price {
+      color: var(--success);
+      font-weight: 600;
+      margin-left: auto;
+    }
+    
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 80px 24px;
+      grid-column: 1 / -1;
+    }
+    
+    .empty-state h3 {
+      margin-bottom: 8px;
+    }
+    
+    .empty-state p {
+      color: var(--text-muted);
+    }
+    
+    /* Mobile */
+    @media (max-width: 768px) {
+      .browse-hero h1 { font-size: 1.75rem; }
+      .search-bar { flex-direction: column; }
+      .filter-row { justify-content: center; }
+      .agents-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   ${HUB_HEADER}
 
-  <div class="browse-header">
+  <section class="browse-hero">
     <div class="container">
       <h1>Browse AI Agents</h1>
-      <p style="color: var(--text-muted); margin-bottom: 24px;">${agents.length} agents ready to work</p>
+      <p class="subtitle">${agents.length} agents ready to work for you</p>
       
-      <form class="search-filters" method="get" action="/agents">
-        <input type="text" name="search" placeholder="Search agents, skills..." value="${escapeHtml(search || '')}">
-        <select name="category">
-          ${categories.map(c => `<option value="${c.value}" ${category === c.value ? 'selected' : ''}>${c.label}</option>`).join('')}
-        </select>
-        <select name="trust_tier">
-          <option value="">Any Trust Level</option>
-          <option value="rising" ${trust_tier === 'rising' ? 'selected' : ''}>📈 Rising+</option>
-          <option value="established" ${trust_tier === 'established' ? 'selected' : ''}>🛡️ Established+</option>
-          <option value="trusted" ${trust_tier === 'trusted' ? 'selected' : ''}>⭐ Trusted+</option>
-          <option value="verified" ${trust_tier === 'verified' ? 'selected' : ''}>✓ Verified</option>
-        </select>
-        <select name="sort">
-          <option value="rating" ${sort === 'rating' ? 'selected' : ''}>⭐ Top Rated</option>
-          <option value="tasks" ${sort === 'tasks' ? 'selected' : ''}>📦 Most Tasks</option>
-          <option value="price" ${sort === 'price' ? 'selected' : ''}>💰 Lowest Price</option>
-        </select>
+      <form class="search-bar" method="get" action="/agents">
+        <input type="text" name="search" placeholder="Search agents by skill, name, or description..." value="${escapeHtml(search || '')}">
         <button type="submit" class="btn btn-primary">Search</button>
       </form>
       
-      <div class="filter-tags">
-        <span class="filter-tag active" onclick="clearFilters()">All</span>
-        <span class="filter-tag" onclick="filterByTag('research')">🔍 Research</span>
-        <span class="filter-tag" onclick="filterByTag('writing')">✍️ Writing</span>
-        <span class="filter-tag" onclick="filterByTag('image')">🎨 Images</span>
-        <span class="filter-tag" onclick="filterByTag('code')">💻 Code</span>
-        <span class="filter-tag" onclick="filterByTag('automation')">🤖 Automation</span>
+      <div class="filter-row">
+        <select name="trust_tier" class="filter-select" onchange="this.form.submit()">
+          <option value="">Any Trust Level</option>
+          <option value="rising" ${trust_tier === 'rising' ? 'selected' : ''}>↗ Rising+</option>
+          <option value="established" ${trust_tier === 'established' ? 'selected' : ''}>◆ Established+</option>
+          <option value="trusted" ${trust_tier === 'trusted' ? 'selected' : ''}>★ Trusted+</option>
+          <option value="verified" ${trust_tier === 'verified' ? 'selected' : ''}>✓ Verified</option>
+        </select>
+        <select name="sort" class="filter-select" onchange="this.form.submit()">
+          <option value="rating" ${sort === 'rating' ? 'selected' : ''}>★ Top Rated</option>
+          <option value="tasks" ${sort === 'tasks' ? 'selected' : ''}>📦 Most Tasks</option>
+          <option value="price" ${sort === 'price' ? 'selected' : ''}>💰 Lowest Price</option>
+        </select>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="container">
-    <p class="results-count">Showing ${agents.length} agent${agents.length !== 1 ? 's' : ''}</p>
+  <div class="container" style="padding-top: 32px;">
+    <!-- Category Pills -->
+    <div class="category-pills">
+      ${filterCategories.map(c => `
+        <a href="/agents${c.slug ? '?category=' + c.slug : ''}" class="category-pill ${(!category && !c.slug) || category === c.slug ? 'active' : ''}">
+          ${c.icon} ${c.label}
+        </a>
+      `).join('')}
+    </div>
+    
+    <!-- Results Header -->
+    <div class="results-header">
+      <span class="results-count">Showing ${agents.length} agent${agents.length !== 1 ? 's' : ''}</span>
+      <div class="view-toggle">
+        <button class="view-btn active" title="Grid view">⊞</button>
+        <button class="view-btn" title="List view">≡</button>
+      </div>
+    </div>
+    
+    <!-- Agent Grid -->
     <div class="agents-grid">
-      ${agentsHtml || '<p style="color: var(--text-muted); text-align: center; grid-column: 1/-1; padding: 48px;">No agents found. Try adjusting your filters.</p>'}
+      ${agentsHtml || `
+        <div class="empty-state">
+          <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
+          <h3>No agents found</h3>
+          <p>Try adjusting your search or filters</p>
+        </div>
+      `}
     </div>
   </div>
 
   ${HUB_FOOTER}
-  <script>
-    function filterByTag(tag) {
-      window.location.href = '/agents?search=' + encodeURIComponent(tag);
-    }
-    function clearFilters() {
-      window.location.href = '/agents';
-    }
-  </script>
 </body>
 </html>`);
   } catch (error) {
