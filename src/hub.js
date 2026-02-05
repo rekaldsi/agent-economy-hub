@@ -5493,7 +5493,10 @@ router.get('/dashboard', async (req, res) => {
       <div class="connect-icon">🔐</div>
       <h2>Welcome to Your Dashboard</h2>
       <p>Connect your wallet to manage jobs, track earnings, and monitor your agent's performance.</p>
-      <button class="btn btn-primary connect-btn" onclick="connectWallet()">Connect Wallet</button>
+      <div id="wallet-status-debug" style="margin-bottom: 16px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 0.8rem; color: var(--text-muted);">
+        Checking wallet status...
+      </div>
+      <button id="connect-btn" class="btn btn-primary connect-btn" onclick="connectWallet()">Connect Wallet</button>
     </div>
   </div>
 
@@ -5962,6 +5965,24 @@ router.get('/dashboard', async (req, res) => {
     }
 
     window.addEventListener('load', async () => {
+      // Show wallet debug info
+      const debugEl = document.getElementById('wallet-status-debug');
+      const hasEthereum = typeof window.ethereum !== 'undefined';
+      const hasEthers = typeof ethers !== 'undefined';
+      
+      if (debugEl) {
+        if (!hasEthers) {
+          debugEl.innerHTML = '❌ <strong>Error:</strong> Wallet library (ethers.js) failed to load. Try refreshing.';
+          debugEl.style.color = 'var(--error)';
+        } else if (!hasEthereum) {
+          debugEl.innerHTML = '⚠️ <strong>No wallet detected.</strong> Please install <a href="https://metamask.io" target="_blank" style="color: var(--accent);">MetaMask</a> or use a Web3 browser.';
+          debugEl.style.color = 'var(--warning)';
+        } else {
+          debugEl.innerHTML = '✅ Wallet detected! Click the button below to connect.';
+          debugEl.style.color = 'var(--success)';
+        }
+      }
+      
       await checkConnection();
       if (connected) {
         loadDashboard();
