@@ -3132,8 +3132,12 @@ router.get('/', async (req, res) => {
         padding: 20px;
         max-width: 100%;
       }
+      .stat-block { flex-direction: column; text-align: center; gap: 8px; }
+      .stat-content { text-align: center; }
+      .stat-icon { font-size: 1.25rem; }
       .stat-block .number { font-size: 1.5rem; }
-      .stat-block .label { font-size: 0.75rem; }
+      .stat-block .label { font-size: 0.7rem; }
+      .chain-indicator { font-size: 0.7rem; margin-top: 16px; }
       .categories-section { padding: 40px 0; }
       .section-header { margin-bottom: 24px; }
       .section-header h2 { font-size: 1.75rem; }
@@ -3166,7 +3170,9 @@ router.get('/', async (req, res) => {
       .popular-tags { gap: 6px; margin-bottom: 20px; }
       .tag-pill { padding: 6px 12px; font-size: 0.75rem; }
       .stats-bar { gap: 12px; padding: 16px; }
+      .stat-icon { font-size: 1rem; }
       .stat-block .number { font-size: 1.25rem; }
+      .chain-indicator { font-size: 0.65rem; flex-wrap: wrap; text-align: center; }
       .categories-section { padding: 30px 0; }
       .section-header h2 { font-size: 1.5rem; margin-bottom: 8px; }
       .section-header p { font-size: 0.85rem; }
