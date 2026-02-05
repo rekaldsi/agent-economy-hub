@@ -412,6 +412,34 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_team_agents_team ON team_agents(team_id);
     `);
 
+    // Migration: API keys for SDK access
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'users' AND column_name = 'api_key'
+        ) THEN
+          ALTER TABLE users ADD COLUMN api_key TEXT;
+          ALTER TABLE users ADD COLUMN api_key_created_at TIMESTAMP;
+          CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key);
+        END IF;
+      END $$;
+    `);
+
+    // Migration: Webhook URL on jobs
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'webhook_url'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN webhook_url TEXT;
+        END IF;
+      END $$;
+    `);
+
     // Migration: Messages table for in-app communication
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (

@@ -6344,6 +6344,233 @@ router.get('/api/locales/:locale', (req, res) => {
 });
 
 // ============================================
+// DEVELOPER SDK & WEBHOOKS (Phase 3)
+// ============================================
+
+/**
+ * Generate API key for operator
+ * POST /api/developers/api-key
+ */
+router.post('/api/developers/api-key', async (req, res) => {
+  try {
+    const { wallet } = req.body;
+    if (!wallet) {
+      return res.status(400).json({ error: 'Wallet required' });
+    }
+
+    // Generate API key
+    const apiKey = 'bot_' + require('crypto').randomBytes(24).toString('hex');
+    
+    // Get or create user and store API key
+    let user = await db.getUser(wallet);
+    if (!user) {
+      user = await db.createUser(wallet, 'operator');
+    }
+
+    await db.query(
+      'UPDATE users SET api_key = $1, api_key_created_at = NOW() WHERE id = $2',
+      [apiKey, user.id]
+    );
+
+    res.json({
+      success: true,
+      apiKey,
+      message: 'Store this key securely. It will only be shown once.'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate API key' });
+  }
+});
+
+/**
+ * Validate API key middleware
+ */
+async function validateApiKey(req, res, next) {
+  const apiKey = req.headers['x-api-key'] || req.query.api_key;
+  
+  if (!apiKey) {
+    return res.status(401).json({ error: 'API key required' });
+  }
+
+  try {
+    const result = await db.query(
+      'SELECT * FROM users WHERE api_key = $1',
+      [apiKey]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+
+    req.apiUser = result.rows[0];
+    next();
+  } catch (error) {
+    res.status(500).json({ error: 'Auth failed' });
+  }
+}
+
+/**
+ * SDK: Submit job programmatically
+ * POST /api/sdk/jobs
+ */
+router.post('/api/sdk/jobs', validateApiKey, async (req, res) => {
+  try {
+    const { skillId, input, webhookUrl } = req.body;
+    
+    if (!skillId || !input) {
+      return res.status(400).json({ error: 'skillId and input required' });
+    }
+
+    // Get skill
+    const skillResult = await db.query('SELECT * FROM skills WHERE id = $1', [skillId]);
+    const skill = skillResult.rows[0];
+    
+    if (!skill) {
+      return res.status(404).json({ error: 'Skill not found' });
+    }
+
+    // Create job
+    const jobUuid = uuidv4();
+    const job = await db.query(`
+      INSERT INTO jobs (job_uuid, requester_id, agent_id, skill_id, input_data, price_usdc, status, requester_wallet, skill_name, webhook_url)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9)
+      RETURNING *
+    `, [
+      jobUuid, 
+      req.apiUser.id, 
+      skill.agent_id, 
+      skillId, 
+      JSON.stringify({ prompt: input, source: 'sdk' }), 
+      skill.price_usdc,
+      req.apiUser.wallet_address,
+      skill.name,
+      webhookUrl || null
+    ]);
+
+    res.json({
+      success: true,
+      job: {
+        uuid: jobUuid,
+        status: 'pending',
+        price: skill.price_usdc,
+        skillName: skill.name
+      },
+      paymentRequired: true,
+      paymentAddress: process.env.TREASURY_ADDRESS || '0x...'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create job' });
+  }
+});
+
+/**
+ * SDK: Get job status
+ * GET /api/sdk/jobs/:uuid
+ */
+router.get('/api/sdk/jobs/:uuid', validateApiKey, async (req, res) => {
+  try {
+    const job = await db.getJob(req.params.uuid);
+    
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    // Verify ownership
+    if (job.requester_id !== req.apiUser.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    res.json({
+      uuid: job.job_uuid,
+      status: job.status,
+      skillName: job.skill_name,
+      price: job.price_usdc,
+      input: job.input_data,
+      output: job.output_data,
+      createdAt: job.created_at,
+      completedAt: job.completed_at
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get job' });
+  }
+});
+
+/**
+ * SDK: List user's jobs
+ * GET /api/sdk/jobs
+ */
+router.get('/api/sdk/jobs', validateApiKey, async (req, res) => {
+  try {
+    const { status, limit = 20, offset = 0 } = req.query;
+    
+    let query = 'SELECT * FROM jobs WHERE requester_id = $1';
+    const params = [req.apiUser.id];
+    
+    if (status) {
+      query += ' AND status = $2';
+      params.push(status);
+    }
+    
+    query += ' ORDER BY created_at DESC LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
+    params.push(parseInt(limit), parseInt(offset));
+
+    const result = await db.query(query, params);
+
+    res.json({
+      jobs: result.rows.map(j => ({
+        uuid: j.job_uuid,
+        status: j.status,
+        skillName: j.skill_name,
+        price: j.price_usdc,
+        createdAt: j.created_at
+      })),
+      pagination: { limit: parseInt(limit), offset: parseInt(offset) }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to list jobs' });
+  }
+});
+
+/**
+ * Webhook test endpoint
+ * POST /api/webhooks/test
+ */
+router.post('/api/webhooks/test', validateApiKey, async (req, res) => {
+  try {
+    const { url } = req.body;
+    
+    if (!url) {
+      return res.status(400).json({ error: 'Webhook URL required' });
+    }
+
+    // Send test webhook
+    const testPayload = {
+      event: 'test',
+      timestamp: new Date().toISOString(),
+      data: { message: 'This is a test webhook from TheBotique' }
+    };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(testPayload),
+      timeout: 10000
+    });
+
+    res.json({
+      success: response.ok,
+      statusCode: response.status,
+      message: response.ok ? 'Webhook received successfully' : 'Webhook delivery failed'
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================
 // MULTI-CURRENCY SUPPORT (Phase 3)
 // ============================================
 
