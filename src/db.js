@@ -379,6 +379,39 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
     `);
 
+    // Migration: Team accounts (Phase 3)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS teams (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        owner_wallet TEXT NOT NULL,
+        plan TEXT DEFAULT 'free' CHECK (plan IN ('free', 'pro', 'enterprise')),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS team_members (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+        wallet_address TEXT NOT NULL,
+        role TEXT DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
+        invited_by TEXT,
+        joined_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(team_id, wallet_address)
+      );
+      
+      CREATE TABLE IF NOT EXISTS team_agents (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+        agent_id INTEGER REFERENCES agents(id) ON DELETE CASCADE,
+        added_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(team_id, agent_id)
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_teams_owner ON teams(owner_wallet);
+      CREATE INDEX IF NOT EXISTS idx_team_members_wallet ON team_members(wallet_address);
+      CREATE INDEX IF NOT EXISTS idx_team_agents_team ON team_agents(team_id);
+    `);
+
     // Migration: Messages table for in-app communication
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (

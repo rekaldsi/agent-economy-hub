@@ -6243,6 +6243,263 @@ router.get('/api/agents/search', async (req, res) => {
 // ============================================
 
 // ============================================
+// TEAM ACCOUNTS (Phase 3)
+// ============================================
+
+/**
+ * Create a team
+ * POST /api/teams
+ */
+router.post('/api/teams', async (req, res) => {
+  try {
+    const { wallet, name } = req.body;
+    
+    if (!wallet || !name) {
+      return res.status(400).json({ error: 'Wallet and team name required' });
+    }
+
+    // Check if user already owns a team
+    const existingResult = await db.query(
+      'SELECT * FROM teams WHERE owner_wallet = $1',
+      [wallet.toLowerCase()]
+    );
+
+    if (existingResult.rows.length > 0) {
+      return res.status(409).json({ error: 'You already own a team', team: existingResult.rows[0] });
+    }
+
+    // Create team
+    const teamResult = await db.query(`
+      INSERT INTO teams (name, owner_wallet)
+      VALUES ($1, $2)
+      RETURNING *
+    `, [sanitizeText(name, 100), wallet.toLowerCase()]);
+
+    const team = teamResult.rows[0];
+
+    // Add owner as member
+    await db.query(`
+      INSERT INTO team_members (team_id, wallet_address, role)
+      VALUES ($1, $2, 'owner')
+    `, [team.id, wallet.toLowerCase()]);
+
+    res.json({ success: true, team });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to create team');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Get user's teams
+ * GET /api/teams
+ */
+router.get('/api/teams', async (req, res) => {
+  try {
+    const { wallet } = req.query;
+    if (!wallet) {
+      return res.status(400).json({ error: 'Wallet required' });
+    }
+
+    const result = await db.query(`
+      SELECT t.*, tm.role as my_role,
+             (SELECT COUNT(*) FROM team_members WHERE team_id = t.id) as member_count,
+             (SELECT COUNT(*) FROM team_agents WHERE team_id = t.id) as agent_count
+      FROM teams t
+      JOIN team_members tm ON t.id = tm.team_id
+      WHERE tm.wallet_address = $1
+    `, [wallet.toLowerCase()]);
+
+    res.json(result.rows);
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to get teams');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Get team details
+ * GET /api/teams/:id
+ */
+router.get('/api/teams/:id', validateIdParam('id'), async (req, res) => {
+  try {
+    const { wallet } = req.query;
+    
+    // Get team
+    const teamResult = await db.query('SELECT * FROM teams WHERE id = $1', [req.params.id]);
+    const team = teamResult.rows[0];
+    
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Get members
+    const membersResult = await db.query(
+      'SELECT * FROM team_members WHERE team_id = $1',
+      [req.params.id]
+    );
+
+    // Get agents
+    const agentsResult = await db.query(`
+      SELECT a.* FROM agents a
+      JOIN team_agents ta ON a.id = ta.agent_id
+      WHERE ta.team_id = $1
+    `, [req.params.id]);
+
+    res.json({
+      team,
+      members: membersResult.rows,
+      agents: agentsResult.rows
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to get team');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Invite member to team
+ * POST /api/teams/:id/invite
+ */
+router.post('/api/teams/:id/invite', validateIdParam('id'), async (req, res) => {
+  try {
+    const { wallet, inviteeWallet, role = 'member' } = req.body;
+    
+    if (!wallet || !inviteeWallet) {
+      return res.status(400).json({ error: 'Wallet and invitee wallet required' });
+    }
+
+    // Verify caller has permission
+    const memberResult = await db.query(
+      'SELECT * FROM team_members WHERE team_id = $1 AND wallet_address = $2',
+      [req.params.id, wallet.toLowerCase()]
+    );
+
+    if (!memberResult.rows[0] || !['owner', 'admin'].includes(memberResult.rows[0].role)) {
+      return res.status(403).json({ error: 'Not authorized to invite members' });
+    }
+
+    // Check if already a member
+    const existingResult = await db.query(
+      'SELECT * FROM team_members WHERE team_id = $1 AND wallet_address = $2',
+      [req.params.id, inviteeWallet.toLowerCase()]
+    );
+
+    if (existingResult.rows.length > 0) {
+      return res.status(409).json({ error: 'User is already a team member' });
+    }
+
+    // Add member
+    await db.query(`
+      INSERT INTO team_members (team_id, wallet_address, role, invited_by)
+      VALUES ($1, $2, $3, $4)
+    `, [req.params.id, inviteeWallet.toLowerCase(), role, wallet.toLowerCase()]);
+
+    res.json({ success: true, message: 'Member invited' });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to invite member');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Remove member from team
+ * DELETE /api/teams/:id/members/:wallet
+ */
+router.delete('/api/teams/:id/members/:wallet', validateIdParam('id'), async (req, res) => {
+  try {
+    const { wallet } = req.body;
+    const targetWallet = req.params.wallet;
+    
+    if (!wallet) {
+      return res.status(400).json({ error: 'Your wallet required' });
+    }
+
+    // Verify caller has permission
+    const memberResult = await db.query(
+      'SELECT * FROM team_members WHERE team_id = $1 AND wallet_address = $2',
+      [req.params.id, wallet.toLowerCase()]
+    );
+
+    const callerRole = memberResult.rows[0]?.role;
+    if (!callerRole || !['owner', 'admin'].includes(callerRole)) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    // Cannot remove owner
+    const targetResult = await db.query(
+      'SELECT * FROM team_members WHERE team_id = $1 AND wallet_address = $2',
+      [req.params.id, targetWallet.toLowerCase()]
+    );
+
+    if (targetResult.rows[0]?.role === 'owner') {
+      return res.status(400).json({ error: 'Cannot remove team owner' });
+    }
+
+    await db.query(
+      'DELETE FROM team_members WHERE team_id = $1 AND wallet_address = $2',
+      [req.params.id, targetWallet.toLowerCase()]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to remove member');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Add agent to team
+ * POST /api/teams/:id/agents
+ */
+router.post('/api/teams/:id/agents', validateIdParam('id'), async (req, res) => {
+  try {
+    const { wallet, agentId } = req.body;
+    
+    if (!wallet || !agentId) {
+      return res.status(400).json({ error: 'Wallet and agentId required' });
+    }
+
+    // Verify caller owns the agent
+    const agentResult = await db.query(`
+      SELECT a.*, u.wallet_address as owner_wallet
+      FROM agents a
+      JOIN users u ON a.user_id = u.id
+      WHERE a.id = $1
+    `, [agentId]);
+
+    if (!agentResult.rows[0]) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    if (agentResult.rows[0].owner_wallet.toLowerCase() !== wallet.toLowerCase()) {
+      return res.status(403).json({ error: 'You do not own this agent' });
+    }
+
+    // Verify caller is team admin
+    const memberResult = await db.query(
+      'SELECT * FROM team_members WHERE team_id = $1 AND wallet_address = $2',
+      [req.params.id, wallet.toLowerCase()]
+    );
+
+    if (!memberResult.rows[0] || !['owner', 'admin'].includes(memberResult.rows[0].role)) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    // Add agent to team
+    await db.query(
+      'INSERT INTO team_agents (team_id, agent_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [req.params.id, agentId]
+    );
+
+    res.json({ success: true, message: 'Agent added to team' });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to add agent');
+    res.status(statusCode).json(body);
+  }
+});
+
+// ============================================
 // ADMIN PANEL
 // ============================================
 
