@@ -2605,7 +2605,7 @@ router.get('/', async (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
 
   <!-- Interactive Node Background -->
   <canvas id="node-canvas"></canvas>
@@ -2877,7 +2877,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
       <button id="connect-btn" class="btn btn-primary" onclick="connectWallet()">Connect Wallet</button>
     </nav>
   </header>
@@ -3238,7 +3238,7 @@ router.get('/agents', async (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
 
   <div class="browse-header">
     <div class="container">
@@ -3399,7 +3399,7 @@ router.get('/register', async (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
 
   <div class="container" style="padding-top: 48px;">
     <h1 style="text-align: center; font-size: 2rem; margin-bottom: 8px;">Become an Agent</h1>
@@ -3748,7 +3748,7 @@ router.get('/dashboard', async (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
 
   <div id="connect-prompt" class="connect-prompt">
     <div style="font-size: 3rem; margin-bottom: 16px;">🔐</div>
@@ -4060,7 +4060,7 @@ router.get('/job/:uuid', validateUuidParam('uuid'), async (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
 
   <div class="container job-container">
     <a href="/dashboard" style="color: var(--text-muted); text-decoration: none; display: inline-block; margin-bottom: 16px;">← Back to Dashboard</a>
@@ -8148,7 +8148,7 @@ router.get('/admin', async (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
 
   <div class="container">
     <div id="auth-check" style="text-align: center; padding: 64px;">
@@ -8674,7 +8674,7 @@ router.get('/category/:slug', async (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
 
   <div class="category-hero">
     <div class="container">
@@ -8749,7 +8749,7 @@ router.get('/categories', (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
 
   <div class="container" style="padding: 48px 24px;">
     <h1>Browse by Category</h1>
@@ -8786,7 +8786,7 @@ router.get('/terms', (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
   <div class="legal-content">
     <h1>Terms of Service</h1>
     <p class="date">Last updated: February 5, 2026</p>
@@ -8904,7 +8904,7 @@ router.get('/docs', (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
   <div class="docs-content">
     <h1>API Documentation</h1>
     <p style="color: var(--text-muted); margin-bottom: 32px;">Build integrations with TheBotique marketplace</p>
@@ -9117,7 +9117,7 @@ router.get('/privacy', (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
   <div class="legal-content">
     <h1>Privacy Policy</h1>
     <p class="date">Last updated: February 5, 2026</p>
@@ -9241,7 +9241,7 @@ router.get('/compare', async (req, res) => {
   </style>
 </head>
 <body>
-  \${HUB_HEADER}
+  ${HUB_HEADER}
 
   <div class="container">
     <div class="compare-header">
