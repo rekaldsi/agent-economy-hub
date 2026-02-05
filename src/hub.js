@@ -6607,6 +6607,80 @@ router.post('/api/agents/:id/certifications/apply', validateIdParam('id'), async
   res.json({ success: true, message: 'Application submitted' });
 });
 
+// ============================================
+// PREMIUM SUPPORT (Phase 3)
+// ============================================
+
+const SUPPORT_TIERS = {
+  free: { priority: 'normal', responseTime: '48h', features: ['Email support', 'Community forum'] },
+  pro: { priority: 'high', responseTime: '24h', features: ['Priority email', 'Chat support', 'Phone callback'] },
+  enterprise: { priority: 'urgent', responseTime: '4h', features: ['Dedicated manager', '24/7 phone', 'SLA guarantee'] }
+};
+
+router.get('/api/support/tiers', (req, res) => res.json(SUPPORT_TIERS));
+
+router.post('/api/support/tickets', async (req, res) => {
+  const { wallet, subject, message, category } = req.body;
+  if (!wallet || !subject || !message) {
+    return res.status(400).json({ error: 'wallet, subject, message required' });
+  }
+
+  const ticketUuid = uuidv4();
+  const result = await db.query(`
+    INSERT INTO support_tickets (ticket_uuid, user_wallet, subject, category)
+    VALUES ($1, $2, $3, $4) RETURNING *
+  `, [ticketUuid, wallet.toLowerCase(), subject, category]);
+
+  await db.query(`
+    INSERT INTO support_messages (ticket_id, sender_wallet, sender_type, message)
+    VALUES ($1, $2, 'user', $3)
+  `, [result.rows[0].id, wallet.toLowerCase(), message]);
+
+  res.json({ success: true, ticketUuid, ticketId: result.rows[0].id });
+});
+
+router.get('/api/support/tickets', async (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).json({ error: 'wallet required' });
+
+  const result = await db.query(`
+    SELECT * FROM support_tickets WHERE user_wallet = $1 ORDER BY created_at DESC
+  `, [wallet.toLowerCase()]);
+  res.json(result.rows);
+});
+
+router.get('/api/support/tickets/:uuid', async (req, res) => {
+  const ticket = await db.query('SELECT * FROM support_tickets WHERE ticket_uuid = $1', [req.params.uuid]);
+  if (!ticket.rows[0]) return res.status(404).json({ error: 'Ticket not found' });
+
+  const messages = await db.query(
+    'SELECT * FROM support_messages WHERE ticket_id = $1 ORDER BY created_at ASC',
+    [ticket.rows[0].id]
+  );
+  res.json({ ticket: ticket.rows[0], messages: messages.rows });
+});
+
+router.post('/api/support/tickets/:uuid/reply', async (req, res) => {
+  const { wallet, message } = req.body;
+  if (!wallet || !message) return res.status(400).json({ error: 'wallet, message required' });
+
+  const ticket = await db.query('SELECT * FROM support_tickets WHERE ticket_uuid = $1', [req.params.uuid]);
+  if (!ticket.rows[0]) return res.status(404).json({ error: 'Ticket not found' });
+
+  const isSupport = isAdmin(wallet);
+  await db.query(`
+    INSERT INTO support_messages (ticket_id, sender_wallet, sender_type, message)
+    VALUES ($1, $2, $3, $4)
+  `, [ticket.rows[0].id, wallet.toLowerCase(), isSupport ? 'support' : 'user', message]);
+
+  if (isSupport) {
+    await db.query('UPDATE support_tickets SET status = $1, updated_at = NOW() WHERE id = $2', 
+      ['in_progress', ticket.rows[0].id]);
+  }
+
+  res.json({ success: true });
+});
+
 router.post('/api/admin/certifications/approve', async (req, res) => {
   const { wallet, agentId, certificationId, approve } = req.body;
   if (!isAdmin(wallet)) return res.status(403).json({ error: 'Not authorized' });

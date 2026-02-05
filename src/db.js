@@ -482,6 +482,35 @@ async function initDB() {
       ON CONFLICT (slug) DO NOTHING
     `);
 
+    // Migration: Support Tickets (Phase 3)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        ticket_uuid TEXT UNIQUE NOT NULL,
+        user_wallet TEXT NOT NULL,
+        priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+        category TEXT,
+        subject TEXT NOT NULL,
+        status TEXT DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'waiting', 'resolved', 'closed')),
+        assigned_to TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        resolved_at TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS support_messages (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER REFERENCES support_tickets(id) ON DELETE CASCADE,
+        sender_wallet TEXT NOT NULL,
+        sender_type TEXT CHECK (sender_type IN ('user', 'support', 'system')),
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_tickets_user ON support_tickets(user_wallet);
+      CREATE INDEX IF NOT EXISTS idx_tickets_status ON support_tickets(status);
+    `);
+
     // Migration: Messages table for in-app communication
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (
