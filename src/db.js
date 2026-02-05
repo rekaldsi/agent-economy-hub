@@ -307,6 +307,78 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_reviews_reviewer ON reviews(reviewer_id);
     `);
 
+    // Migration: Subscription pricing support
+    await client.query(`
+      DO $$
+      BEGIN
+        -- Add pricing_model to skills (per_task, hourly, monthly, annual)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'skills' AND column_name = 'pricing_model'
+        ) THEN
+          ALTER TABLE skills ADD COLUMN pricing_model TEXT DEFAULT 'per_task' CHECK (pricing_model IN ('per_task', 'hourly', 'monthly', 'annual'));
+        END IF;
+        
+        -- Add hourly_rate for hourly pricing
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'skills' AND column_name = 'hourly_rate'
+        ) THEN
+          ALTER TABLE skills ADD COLUMN hourly_rate DECIMAL(18,6);
+        END IF;
+        
+        -- Add monthly_rate for subscription pricing
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'skills' AND column_name = 'monthly_rate'
+        ) THEN
+          ALTER TABLE skills ADD COLUMN monthly_rate DECIMAL(18,6);
+        END IF;
+      END $$;
+    `);
+
+    // Migration: Milestones table for multi-phase tasks
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS milestones (
+        id SERIAL PRIMARY KEY,
+        job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        description TEXT,
+        amount_usdc DECIMAL(18,6) NOT NULL,
+        order_index INTEGER NOT NULL,
+        status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'delivered', 'approved', 'disputed')),
+        delivered_at TIMESTAMP,
+        approved_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_milestones_job ON milestones(job_id);
+    `);
+
+    // Migration: Subscriptions table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id SERIAL PRIMARY KEY,
+        hirer_wallet TEXT NOT NULL,
+        agent_id INTEGER REFERENCES agents(id) ON DELETE CASCADE,
+        skill_id INTEGER REFERENCES skills(id) ON DELETE CASCADE,
+        plan TEXT CHECK (plan IN ('monthly', 'annual')),
+        price_usdc DECIMAL(18,6) NOT NULL,
+        status TEXT DEFAULT 'active' CHECK (status IN ('active', 'cancelled', 'expired')),
+        started_at TIMESTAMP DEFAULT NOW(),
+        expires_at TIMESTAMP NOT NULL,
+        cancelled_at TIMESTAMP,
+        stripe_subscription_id TEXT,
+        usage_this_period INTEGER DEFAULT 0,
+        usage_limit INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_subscriptions_hirer ON subscriptions(hirer_wallet);
+      CREATE INDEX IF NOT EXISTS idx_subscriptions_agent ON subscriptions(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+    `);
+
     // Migration: Messages table for in-app communication
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (

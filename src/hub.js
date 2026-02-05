@@ -5009,6 +5009,406 @@ router.get('/api/messages/unread', async (req, res) => {
   }
 });
 
+// ============================================
+// MILESTONE-BASED PAYMENTS
+// ============================================
+
+/**
+ * Create a job with milestones
+ * POST /api/jobs/with-milestones
+ */
+router.post('/api/jobs/with-milestones', async (req, res) => {
+  try {
+    const { skillId, wallet, input, milestones } = req.body;
+    
+    if (!skillId || !wallet || !milestones || !Array.isArray(milestones)) {
+      return res.status(400).json({ error: 'Missing skillId, wallet, or milestones array' });
+    }
+
+    if (milestones.length < 2) {
+      return res.status(400).json({ error: 'At least 2 milestones required' });
+    }
+
+    // Calculate total price from milestones
+    const totalPrice = milestones.reduce((sum, m) => sum + parseFloat(m.amount || 0), 0);
+    
+    // Get or create user
+    let user = await db.getUser(wallet);
+    if (!user) {
+      user = await db.createUser(wallet, 'hirer');
+    }
+
+    // Get skill and agent
+    const skillResult = await db.query('SELECT * FROM skills WHERE id = $1', [skillId]);
+    const skill = skillResult.rows[0];
+    if (!skill) {
+      return res.status(404).json({ error: 'Skill not found' });
+    }
+
+    // Create the job
+    const jobUuid = uuidv4();
+    const jobResult = await db.query(`
+      INSERT INTO jobs (job_uuid, requester_id, agent_id, skill_id, input_data, price_usdc, status, requester_wallet, skill_name)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8)
+      RETURNING *
+    `, [jobUuid, user.id, skill.agent_id, skillId, JSON.stringify({ prompt: input, hasMilestones: true }), totalPrice, wallet.toLowerCase(), skill.name]);
+
+    const job = jobResult.rows[0];
+
+    // Create milestones
+    for (let i = 0; i < milestones.length; i++) {
+      const m = milestones[i];
+      await db.query(`
+        INSERT INTO milestones (job_id, title, description, amount_usdc, order_index)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [job.id, m.title, m.description || '', parseFloat(m.amount), i + 1]);
+    }
+
+    res.json({
+      success: true,
+      job: {
+        uuid: jobUuid,
+        totalPrice,
+        milestoneCount: milestones.length
+      }
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to create milestone job');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Get milestones for a job
+ * GET /api/jobs/:uuid/milestones
+ */
+router.get('/api/jobs/:uuid/milestones', async (req, res) => {
+  try {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE job_uuid = $1', [req.params.uuid]);
+    const job = jobResult.rows[0];
+    
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    const milestonesResult = await db.query(
+      'SELECT * FROM milestones WHERE job_id = $1 ORDER BY order_index ASC',
+      [job.id]
+    );
+
+    res.json({
+      jobUuid: job.job_uuid,
+      totalPrice: job.price_usdc,
+      milestones: milestonesResult.rows
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to get milestones');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Deliver a milestone
+ * POST /api/milestones/:id/deliver
+ */
+router.post('/api/milestones/:id/deliver', validateIdParam('id'), async (req, res) => {
+  try {
+    const { wallet, deliverable } = req.body;
+    
+    if (!wallet) {
+      return res.status(400).json({ error: 'Wallet required' });
+    }
+
+    // Get milestone and verify agent ownership
+    const result = await db.query(`
+      SELECT m.*, j.agent_id, a.user_id, u.wallet_address as agent_wallet
+      FROM milestones m
+      JOIN jobs j ON m.job_id = j.id
+      JOIN agents a ON j.agent_id = a.id
+      JOIN users u ON a.user_id = u.id
+      WHERE m.id = $1
+    `, [req.params.id]);
+
+    const milestone = result.rows[0];
+    if (!milestone) {
+      return res.status(404).json({ error: 'Milestone not found' });
+    }
+
+    if (milestone.agent_wallet.toLowerCase() !== wallet.toLowerCase()) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    if (milestone.status !== 'pending' && milestone.status !== 'in_progress') {
+      return res.status(400).json({ error: 'Milestone cannot be delivered in current state' });
+    }
+
+    await db.query(
+      'UPDATE milestones SET status = $1, delivered_at = NOW() WHERE id = $2',
+      ['delivered', req.params.id]
+    );
+
+    res.json({ success: true, message: 'Milestone delivered' });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to deliver milestone');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Approve a milestone (releases payment for that milestone)
+ * POST /api/milestones/:id/approve
+ */
+router.post('/api/milestones/:id/approve', validateIdParam('id'), async (req, res) => {
+  try {
+    const { wallet } = req.body;
+    
+    if (!wallet) {
+      return res.status(400).json({ error: 'Wallet required' });
+    }
+
+    // Get milestone and verify hirer ownership
+    const result = await db.query(`
+      SELECT m.*, j.requester_wallet
+      FROM milestones m
+      JOIN jobs j ON m.job_id = j.id
+      WHERE m.id = $1
+    `, [req.params.id]);
+
+    const milestone = result.rows[0];
+    if (!milestone) {
+      return res.status(404).json({ error: 'Milestone not found' });
+    }
+
+    if (milestone.requester_wallet.toLowerCase() !== wallet.toLowerCase()) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    if (milestone.status !== 'delivered') {
+      return res.status(400).json({ error: 'Milestone must be delivered before approval' });
+    }
+
+    await db.query(
+      'UPDATE milestones SET status = $1, approved_at = NOW() WHERE id = $2',
+      ['approved', req.params.id]
+    );
+
+    // Check if all milestones are approved
+    const allMilestones = await db.query(
+      'SELECT * FROM milestones WHERE job_id = $1',
+      [milestone.job_id]
+    );
+    
+    const allApproved = allMilestones.rows.every(m => m.id === milestone.id || m.status === 'approved');
+    
+    if (allApproved) {
+      // Mark job as completed
+      await db.query(
+        'UPDATE jobs SET status = $1, completed_at = NOW() WHERE id = $2',
+        ['completed', milestone.job_id]
+      );
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Milestone approved',
+      allCompleted: allApproved
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to approve milestone');
+    res.status(statusCode).json(body);
+  }
+});
+
+// ============================================
+// SUBSCRIPTION PRICING
+// ============================================
+
+/**
+ * Get subscription plans for an agent
+ * GET /api/agents/:id/subscriptions
+ */
+router.get('/api/agents/:id/subscriptions', validateIdParam('id'), async (req, res) => {
+  try {
+    const skills = await db.getSkillsByAgent(req.params.id);
+    const subscriptionPlans = skills.filter(s => s.pricing_model === 'monthly' || s.pricing_model === 'annual');
+    
+    res.json({
+      agentId: req.params.id,
+      plans: subscriptionPlans.map(s => ({
+        skillId: s.id,
+        name: s.name,
+        description: s.description,
+        pricingModel: s.pricing_model,
+        monthlyRate: s.monthly_rate,
+        perTaskPrice: s.price_usdc,
+        usageLimit: s.usage_limit || 'unlimited'
+      }))
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to get subscriptions');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Subscribe to an agent's service
+ * POST /api/subscriptions
+ */
+router.post('/api/subscriptions', async (req, res) => {
+  try {
+    const { wallet, skillId, plan } = req.body;
+    
+    if (!wallet || !skillId || !plan) {
+      return res.status(400).json({ error: 'Missing wallet, skillId, or plan' });
+    }
+
+    if (!['monthly', 'annual'].includes(plan)) {
+      return res.status(400).json({ error: 'Plan must be monthly or annual' });
+    }
+
+    // Get skill
+    const skillResult = await db.query('SELECT * FROM skills WHERE id = $1', [skillId]);
+    const skill = skillResult.rows[0];
+    
+    if (!skill) {
+      return res.status(404).json({ error: 'Skill not found' });
+    }
+
+    if (!skill.monthly_rate) {
+      return res.status(400).json({ error: 'This skill does not offer subscription pricing' });
+    }
+
+    // Calculate price and expiry
+    const price = plan === 'annual' 
+      ? parseFloat(skill.monthly_rate) * 10 // 2 months free for annual
+      : parseFloat(skill.monthly_rate);
+    
+    const expiresAt = new Date();
+    if (plan === 'annual') {
+      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    } else {
+      expiresAt.setMonth(expiresAt.getMonth() + 1);
+    }
+
+    // Check for existing active subscription
+    const existingResult = await db.query(
+      'SELECT * FROM subscriptions WHERE hirer_wallet = $1 AND skill_id = $2 AND status = $3',
+      [wallet.toLowerCase(), skillId, 'active']
+    );
+
+    if (existingResult.rows.length > 0) {
+      return res.status(409).json({ error: 'Already subscribed to this service' });
+    }
+
+    // Create subscription
+    const result = await db.query(`
+      INSERT INTO subscriptions (hirer_wallet, agent_id, skill_id, plan, price_usdc, expires_at, usage_limit)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `, [wallet.toLowerCase(), skill.agent_id, skillId, plan, price, expiresAt, skill.usage_limit || null]);
+
+    res.json({
+      success: true,
+      subscription: result.rows[0],
+      message: `Subscribed to ${skill.name} (${plan})`
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to create subscription');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Get user's active subscriptions
+ * GET /api/subscriptions
+ */
+router.get('/api/subscriptions', async (req, res) => {
+  try {
+    const { wallet } = req.query;
+    if (!wallet) {
+      return res.status(400).json({ error: 'Wallet required' });
+    }
+
+    const result = await db.query(`
+      SELECT s.*, sk.name as skill_name, sk.description as skill_description, a.name as agent_name
+      FROM subscriptions s
+      JOIN skills sk ON s.skill_id = sk.id
+      JOIN agents a ON s.agent_id = a.id
+      WHERE s.hirer_wallet = $1 AND s.status = 'active'
+      ORDER BY s.created_at DESC
+    `, [wallet.toLowerCase()]);
+
+    res.json(result.rows);
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to get subscriptions');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Cancel a subscription
+ * POST /api/subscriptions/:id/cancel
+ */
+router.post('/api/subscriptions/:id/cancel', validateIdParam('id'), async (req, res) => {
+  try {
+    const { wallet } = req.body;
+    if (!wallet) {
+      return res.status(400).json({ error: 'Wallet required' });
+    }
+
+    const result = await db.query(
+      'UPDATE subscriptions SET status = $1, cancelled_at = NOW() WHERE id = $2 AND hirer_wallet = $3 RETURNING *',
+      ['cancelled', req.params.id, wallet.toLowerCase()]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+
+    res.json({ success: true, subscription: result.rows[0] });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to cancel subscription');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Check subscription access (for agents processing jobs)
+ * GET /api/subscriptions/check-access
+ */
+router.get('/api/subscriptions/check-access', async (req, res) => {
+  try {
+    const { wallet, skillId } = req.query;
+    if (!wallet || !skillId) {
+      return res.status(400).json({ error: 'Wallet and skillId required' });
+    }
+
+    const result = await db.query(`
+      SELECT * FROM subscriptions 
+      WHERE hirer_wallet = $1 
+        AND skill_id = $2 
+        AND status = 'active'
+        AND expires_at > NOW()
+    `, [wallet.toLowerCase(), skillId]);
+
+    if (result.rows.length === 0) {
+      return res.json({ hasAccess: false });
+    }
+
+    const sub = result.rows[0];
+    const hasUsageLeft = !sub.usage_limit || sub.usage_this_period < sub.usage_limit;
+
+    res.json({
+      hasAccess: hasUsageLeft,
+      subscription: sub,
+      usageRemaining: sub.usage_limit ? sub.usage_limit - sub.usage_this_period : 'unlimited'
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to check access');
+    res.status(statusCode).json(body);
+  }
+});
+
 // Get platform stats (for landing page)
 router.get('/api/stats', async (req, res) => {
   try {
