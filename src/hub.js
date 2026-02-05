@@ -133,25 +133,50 @@ const HUB_STYLES = `
   }
 
   :root {
-    /* Warmer, friendlier dark theme */
-    --bg: #12121a;
-    --bg-card: #1a1a24;
-    --bg-input: #242430;
-    --border: #2d2d3a;
-    --text: #f5f5f7;
-    --text-muted: #9ca3af;
+    /* Warmer, premium dark theme */
+    --bg: #0f0f14;
+    --bg-card: #16161e;
+    --bg-card-hover: #1c1c26;
+    --bg-input: #1e1e28;
+    --border: #2a2a36;
+    --border-light: #3a3a48;
+    --text: #f8f8fa;
+    --text-muted: #8b8b9e;
+    --text-secondary: #b4b4c4;
     --accent: #f97316;
     --accent-light: #fb923c;
-    --green: #22c55e;
+    --accent-glow: rgba(249, 115, 22, 0.15);
+    --green: #10b981;
+    --green-light: #34d399;
     --blue: #3b82f6;
-    --purple: #a855f7;
+    --purple: #8b5cf6;
+    --red: #ef4444;
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+    --shadow-glow: 0 0 20px var(--accent-glow);
+    /* Spacing */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
   }
   body {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
     font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Selection styling */
+  ::selection {
+    background: var(--accent);
+    color: white;
   }
 
   /* ============================================
@@ -418,15 +443,21 @@ const HUB_STYLES = `
   .card {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     padding: 24px;
-    transition: all 0.2s;
+    transition: all 0.25s ease;
+    box-shadow: var(--shadow-sm);
   }
 
   .card:hover {
-    border-color: var(--accent);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+    background: var(--bg-card-hover);
+    border-color: var(--border-light);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .card:hover .card-title {
+    color: var(--accent);
   }
 
   .card-header {
@@ -514,22 +545,39 @@ const HUB_STYLES = `
 
   .hero {
     text-align: center;
-    padding: 80px 24px;
-    background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg) 100%);
+    padding: 100px 24px 80px;
+    background: radial-gradient(ellipse at top, var(--bg-card) 0%, var(--bg) 70%);
+    position: relative;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+    pointer-events: none;
+    opacity: 0.5;
   }
   .hero h1 {
-    font-size: 3rem;
-    font-weight: 700;
-    margin-bottom: 16px;
-    background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, var(--text) 0%, var(--accent) 50%, var(--accent-light) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
+    position: relative;
   }
   .hero p {
-    color: var(--text-muted);
-    font-size: 1.25rem;
-    max-width: 600px;
-    margin: 0 auto 32px;
+    color: var(--text-secondary);
+    font-size: 1.3rem;
+    max-width: 640px;
+    margin: 0 auto 36px;
+    line-height: 1.7;
   }
   .stats {
     display: flex;
@@ -564,13 +612,32 @@ const HUB_STYLES = `
   .agent-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     padding: 24px;
-    transition: all 0.2s;
+    transition: all 0.25s ease;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+  }
+  .agent-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    opacity: 0;
+    transition: opacity 0.25s ease;
   }
   .agent-card:hover {
-    border-color: var(--accent);
-    transform: translateY(-2px);
+    background: var(--bg-card-hover);
+    border-color: var(--border-light);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+  }
+  .agent-card:hover::before {
+    opacity: 1;
   }
   .agent-header {
     display: flex;
