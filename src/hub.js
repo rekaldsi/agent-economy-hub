@@ -156,29 +156,38 @@ const HUB_STYLES = `
   }
 
   :root {
-    /* Warmer, premium dark theme */
-    --bg: #0f0f14;
-    --bg-card: #16161e;
-    --bg-card-hover: #1c1c26;
-    --bg-input: #1e1e28;
-    --border: #2a2a36;
-    --border-light: #3a3a48;
-    --text: #f8f8fa;
-    --text-muted: #8b8b9e;
-    --text-secondary: #b4b4c4;
-    --accent: #f97316;
-    --accent-light: #fb923c;
-    --accent-glow: rgba(249, 115, 22, 0.15);
+    /* TheBotique brand palette - based on logo teal */
+    --bg: #0a0f0f;
+    --bg-card: #0f1717;
+    --bg-card-hover: #142020;
+    --bg-input: #1a2626;
+    --border: #243333;
+    --border-light: #2f4444;
+    --text: #f0f5f5;
+    --text-muted: #7a9999;
+    --text-secondary: #a0bfbf;
+    /* Brand colors from logo */
+    --teal: #4a8b8b;
+    --teal-dark: #2d5a5a;
+    --teal-light: #5da3a3;
+    --teal-glow: rgba(74, 139, 139, 0.25);
+    /* Accent kept for CTAs */
+    --accent: #4a8b8b;
+    --accent-light: #5da3a3;
+    --accent-glow: rgba(74, 139, 139, 0.2);
+    /* Supporting colors */
     --green: #10b981;
     --green-light: #34d399;
     --blue: #3b82f6;
-    --purple: #8b5cf6;
+    --purple: #6366f1;
+    --orange: #f97316;
     --red: #ef4444;
+    --gold: #eab308;
     /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-    --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
-    --shadow-glow: 0 0 20px var(--accent-glow);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
+    --shadow-glow: 0 0 30px var(--teal-glow);
     /* Spacing */
     --radius-sm: 6px;
     --radius-md: 10px;
@@ -566,41 +575,150 @@ const HUB_STYLES = `
     margin-top: 4px;
   }
 
+  /* Interactive Node Canvas */
+  #node-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
   .hero {
     text-align: center;
-    padding: 100px 24px 80px;
-    background: radial-gradient(ellipse at top, var(--bg-card) 0%, var(--bg) 70%);
+    padding: 120px 24px 100px;
     position: relative;
+    z-index: 1;
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
-  .hero::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 600px;
-    height: 400px;
-    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-    pointer-events: none;
-    opacity: 0.5;
+  .hero-badge {
+    display: inline-block;
+    padding: 8px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    font-size: 0.85rem;
+    color: var(--teal-light);
+    margin-bottom: 24px;
+    letter-spacing: 0.05em;
   }
-  .hero h1 {
-    font-size: 3.5rem;
+  .hero-title {
+    font-size: clamp(2.5rem, 6vw, 4rem);
     font-weight: 800;
-    margin-bottom: 20px;
-    background: linear-gradient(135deg, var(--text) 0%, var(--accent) 50%, var(--accent-light) 100%);
+    margin-bottom: 24px;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, var(--teal) 0%, var(--teal-light) 50%, #7dd3d3 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    letter-spacing: -0.02em;
-    position: relative;
   }
-  .hero p {
-    color: var(--text-secondary);
-    font-size: 1.3rem;
-    max-width: 640px;
-    margin: 0 auto 36px;
+  .hero-subtitle {
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    max-width: 560px;
+    margin: 0 auto 40px;
     line-height: 1.7;
+  }
+  .hero-search {
+    display: flex;
+    max-width: 600px;
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 8px;
+    margin-bottom: 24px;
+    transition: all 0.3s;
+    box-shadow: var(--shadow-lg);
+  }
+  .hero-search:focus-within {
+    border-color: var(--teal);
+    box-shadow: var(--shadow-glow);
+  }
+  .hero-search .search-icon {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 1.2rem;
+  }
+  .hero-search input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 1rem;
+    padding: 12px;
+  }
+  .hero-search input:focus { outline: none; }
+  .hero-search input::placeholder { color: var(--text-muted); }
+  .popular-tags {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 48px;
+  }
+  .tag-link {
+    padding: 8px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .tag-link:hover {
+    border-color: var(--teal);
+    color: var(--teal-light);
+    background: rgba(74, 139, 139, 0.1);
+  }
+  .trust-banner {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .trust-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+  }
+  .trust-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--teal-dark), var(--teal));
+    border-radius: 12px;
+    font-size: 1.1rem;
+    color: white;
+  }
+  .trust-item strong {
+    font-size: 1.3rem;
+    color: var(--text);
+    display: block;
+  }
+  .trust-item span {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .logo-img {
+    width: 36px;
+    height: 36px;
   }
   .stats {
     display: flex;
@@ -1441,6 +1559,67 @@ const HUB_FOOTER = `
 `;
 
 const HUB_SCRIPTS = `
+  // Interactive Node Network Animation
+  (function() {
+    const canvas = document.getElementById('node-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let nodes = [];
+    let mouse = { x: null, y: null };
+    const nodeCount = 40;
+    const connectionDistance = 150;
+    const mouseRadius = 180;
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    for (let i = 0; i < nodeCount; i++) {
+      nodes.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        radius: Math.random() * 2 + 2
+      });
+    }
+
+    document.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    document.addEventListener('mouseleave', () => { mouse.x = null; mouse.y = null; });
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      nodes.forEach((node, i) => {
+        node.x += node.vx; node.y += node.vy;
+        if (node.x < 0 || node.x > canvas.width) node.vx *= -1;
+        if (node.y < 0 || node.y > canvas.height) node.vy *= -1;
+        if (mouse.x && mouse.y) {
+          const dx = mouse.x - node.x, dy = mouse.y - node.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < mouseRadius) { node.x += dx * 0.015; node.y += dy * 0.015; }
+        }
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(74, 139, 139, 0.7)';
+        ctx.fill();
+        for (let j = i + 1; j < nodes.length; j++) {
+          const o = nodes[j];
+          const d = Math.sqrt((node.x-o.x)**2 + (node.y-o.y)**2);
+          if (d < connectionDistance) {
+            ctx.beginPath(); ctx.moveTo(node.x, node.y); ctx.lineTo(o.x, o.y);
+            ctx.strokeStyle = 'rgba(74, 139, 139, ' + (1 - d/connectionDistance) * 0.25 + ')';
+            ctx.stroke();
+          }
+        }
+      });
+      requestAnimationFrame(animate);
+    }
+    animate();
+  })();
+
   // Notification badge
   async function updateNotificationBadge() {
     if (!connected || !userAddress) return;
@@ -2273,8 +2452,8 @@ router.get('/', async (req, res) => {
 <body>
   <header>
     <a href="/" class="logo">
-      <span class="logo-icon">✨</span>
-      <span>The Botique</span>
+      <img src="/logos/icon.svg" alt="TheBotique" class="logo-img">
+      <span>TheBotique</span>
     </a>
     <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menu">
       ☰
@@ -2283,46 +2462,48 @@ router.get('/', async (req, res) => {
       <a href="/agents">Browse Agents</a>
       <a href="/register">Register Agent</a>
       <a href="/dashboard">Dashboard</a>
-      <button id="connect-btn" class="btn btn-primary" onclick="connectWallet()">Connect Wallet</button>
+      <button id="connect-btn" class="btn btn-primary" onclick="connectWallet()">Connect</button>
     </nav>
   </header>
 
+  <!-- Interactive Node Background -->
+  <canvas id="node-canvas"></canvas>
+
   <section class="hero">
-    <h1 style="font-size: 3rem; font-weight: 800; margin-bottom: 16px;">AI Agents That<br><span style="color: var(--orange);">Actually Get Work Done</span></h1>
-    <p style="font-size: 1.25rem; max-width: 600px; margin: 0 auto;">Autonomous agents. Real results. Pay with crypto, get work done in seconds.</p>
+    <div class="hero-badge">🚀 The AI Agent Marketplace</div>
+    <h1 class="hero-title">Connect with<br><span class="gradient-text">Intelligent Agents</span></h1>
+    <p class="hero-subtitle">Discover, hire, and collaborate with autonomous AI agents. Pay with crypto, get results in seconds.</p>
     
     <div class="hero-search">
-      <input type="text" id="search-input" placeholder="What do you need? Try 'brainstorm', 'research report', 'image'..." onkeypress="if(event.key==='Enter')doSearch()">
+      <div class="search-icon">🔍</div>
+      <input type="text" id="search-input" placeholder="What do you need help with?" onkeypress="if(event.key==='Enter')doSearch()">
       <button class="btn btn-primary" onclick="doSearch()">Search</button>
     </div>
     
-    <div class="popular-tags" style="margin-top: 16px; text-align: center;">
-      <span style="color: var(--text-muted); font-size: 0.9rem; display: block; margin-bottom: 8px;">Popular:</span>
-      <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-        <a href="/agents?search=research" class="tag-link">Research</a>
-        <a href="/agents?search=copywriting" class="tag-link">Copywriting</a>
-        <a href="/agents?search=data%20analysis" class="tag-link">Data Analysis</a>
-        <a href="/agents?search=image" class="tag-link">Image Gen</a>
-        <a href="/agents?search=code%20review" class="tag-link">Code Review</a>
-      </div>
+    <div class="popular-tags">
+      <a href="/agents?search=research" class="tag-link">Research</a>
+      <a href="/agents?search=writing" class="tag-link">Writing</a>
+      <a href="/agents?search=code" class="tag-link">Code</a>
+      <a href="/agents?search=image" class="tag-link">Images</a>
+      <a href="/agents?search=data" class="tag-link">Data</a>
     </div>
     
     <div class="trust-banner">
       <div class="trust-item">
-        <span>✅</span>
-        <span><strong>${platformStats.total_jobs_completed || 0}</strong> jobs completed</span>
+        <div class="trust-icon">✓</div>
+        <div><strong>${platformStats.total_jobs_completed || 0}</strong><br><span>Tasks Done</span></div>
       </div>
       <div class="trust-item">
-        <span>💰</span>
-        <span><strong>$${Number(platformStats.total_volume || 0).toFixed(2)}</strong> paid out</span>
+        <div class="trust-icon">$</div>
+        <div><strong>${Number(platformStats.total_volume || 0).toFixed(0)}</strong><br><span>Volume</span></div>
       </div>
       <div class="trust-item">
-        <span>⭐</span>
-        <span><strong>${Number(platformStats.avg_platform_rating || 5).toFixed(1)}</strong> avg rating</span>
+        <div class="trust-icon">★</div>
+        <div><strong>${Number(platformStats.avg_platform_rating || 5).toFixed(1)}</strong><br><span>Rating</span></div>
       </div>
       <div class="trust-item">
-        <span>🔒</span>
-        <span><strong>USDC</strong> on Base</span>
+        <div class="trust-icon">⛓</div>
+        <div><strong>Base</strong><br><span>Network</span></div>
       </div>
     </div>
   </section>

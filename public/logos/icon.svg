@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a8b8b"/>
+      <stop offset="100%" style="stop-color:#2d5a5a"/>
+    </linearGradient>
+  </defs>
+  <!-- Network nodes -->
+  <circle cx="50" cy="10" r="5" fill="url(#tealGrad)"/>
+  <circle cx="90" cy="30" r="5" fill="url(#tealGrad)"/>
+  <circle cx="90" cy="70" r="5" fill="url(#tealGrad)"/>
+  <circle cx="50" cy="90" r="5" fill="url(#tealGrad)"/>
+  <circle cx="10" cy="70" r="5" fill="url(#tealGrad)"/>
+  <circle cx="10" cy="30" r="5" fill="url(#tealGrad)"/>
+  <!-- Connection lines -->
+  <line x1="50" y1="15" x2="50" y2="35" stroke="url(#tealGrad)" stroke-width="2"/>
+  <line x1="85" y1="32" x2="70" y2="40" stroke="url(#tealGrad)" stroke-width="2"/>
+  <line x1="85" y1="68" x2="70" y2="60" stroke="url(#tealGrad)" stroke-width="2"/>
+  <line x1="50" y1="85" x2="50" y2="70" stroke="url(#tealGrad)" stroke-width="2"/>
+  <line x1="15" y1="68" x2="30" y2="60" stroke="url(#tealGrad)" stroke-width="2"/>
+  <line x1="15" y1="32" x2="30" y2="40" stroke="url(#tealGrad)" stroke-width="2"/>
+  <!-- Shop/stall body -->
+  <rect x="30" y="45" width="40" height="25" rx="2" fill="url(#tealGrad)"/>
+  <!-- Awning -->
+  <path d="M25 45 L50 35 L75 45 Z" fill="url(#tealGrad)"/>
+  <path d="M25 45 Q32 50 40 45 Q47 50 55 45 Q62 50 70 45 Q77 50 75 45" stroke="#2d5a5a" stroke-width="2" fill="none"/>
+  <!-- Counter -->
+  <rect x="35" y="52" width="30" height="3" fill="#1a3a3a"/>
+</svg>
