@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Wallet Test | TheBotique</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, sans-serif;
+      background: #0A0B0D;
+      color: #fff;
+      padding: 40px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .status {
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+      font-family: monospace;
+    }
+    .success { background: rgba(0, 230, 184, 0.15); border: 1px solid #00E6B8; }
+    .error { background: rgba(255, 92, 92, 0.15); border: 1px solid #FF5C5C; }
+    .warning { background: rgba(255, 184, 0, 0.15); border: 1px solid #FFB800; }
+    .info { background: rgba(0, 240, 255, 0.15); border: 1px solid #00F0FF; }
+    button {
+      background: linear-gradient(135deg, #00F0FF, #00B8C4);
+      color: #000;
+      border: none;
+      padding: 16px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 50px;
+      cursor: pointer;
+      width: 100%;
+      margin: 10px 0;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    h1 { margin-bottom: 20px; }
+    #log { white-space: pre-wrap; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>🔐 Wallet Connection Test</h1>
+  
+  <div id="checks" class="status info">Running checks...</div>
+  
+  <button id="connectBtn" onclick="testConnect()">Connect Wallet</button>
+  <button onclick="location.reload()">Refresh Page</button>
+  
+  <h3 style="margin-top: 30px;">Debug Log:</h3>
+  <div id="log" class="status info"></div>
+
+  <script>
+    const log = (msg) => {
+      console.log(msg);
+      document.getElementById('log').textContent += new Date().toISOString().slice(11,19) + ' ' + msg + '\n';
+    };
+
+    // Run checks on load
+    window.addEventListener('load', () => {
+      const checks = document.getElementById('checks');
+      let html = '';
+      
+      // Check 1: ethers.js
+      if (typeof ethers !== 'undefined') {
+        html += '✅ ethers.js loaded (v' + ethers.version + ')\n';
+        log('ethers.js loaded successfully');
+      } else {
+        html += '❌ ethers.js NOT loaded\n';
+        log('ERROR: ethers.js failed to load');
+      }
+      
+      // Check 2: window.ethereum
+      if (typeof window.ethereum !== 'undefined') {
+        html += '✅ Wallet provider detected\n';
+        log('Wallet provider: ' + (window.ethereum.isMetaMask ? 'MetaMask' : 'Other'));
+        
+        // Check if already connected
+        window.ethereum.request({ method: 'eth_accounts' }).then(accounts => {
+          if (accounts.length > 0) {
+            html += '✅ Already connected: ' + accounts[0].slice(0,10) + '...\n';
+            log('Already connected: ' + accounts[0]);
+          }
+          checks.innerHTML = '<pre>' + html + '</pre>';
+        });
+      } else {
+        html += '⚠️ No wallet provider detected\n';
+        html += '\nYou need:\n';
+        html += '• Desktop: Install MetaMask extension\n';
+        html += '• Mobile: Open this page IN the MetaMask app browser\n';
+        log('No window.ethereum - wallet not installed or not in dApp browser');
+        checks.className = 'status warning';
+      }
+      
+      checks.innerHTML = '<pre>' + html + '</pre>';
+    });
+
+    async function testConnect() {
+      const btn = document.getElementById('connectBtn');
+      btn.disabled = true;
+      btn.textContent = 'Connecting...';
+      
+      log('--- Starting connection ---');
+      
+      try {
+        // Step 1: Request accounts
+        log('Requesting accounts...');
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        log('Got accounts: ' + accounts[0]);
+        
+        // Step 2: Create provider
+        log('Creating provider...');
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        
+        // Step 3: Get network
+        log('Getting network...');
+        const network = await provider.getNetwork();
+        log('Network: chainId=' + network.chainId + ' name=' + network.name);
+        
+        // Step 4: Check if Base
+        if (network.chainId !== 8453n) {
+          log('Not on Base (8453), attempting to switch...');
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0x2105' }]
+            });
+            log('Switched to Base');
+          } catch (e) {
+            if (e.code === 4902) {
+              log('Base not found, adding network...');
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0x2105',
+                  chainName: 'Base',
+                  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                  rpcUrls: ['https://mainnet.base.org'],
+                  blockExplorerUrls: ['https://basescan.org']
+                }]
+              });
+            } else {
+              log('Switch failed: ' + e.message);
+            }
+          }
+        }
+        
+        // Step 5: Get USDC balance
+        log('Getting USDC balance...');
+        const usdc = new ethers.Contract(
+          '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+          ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'],
+          provider
+        );
+        const balance = await usdc.balanceOf(accounts[0]);
+        const decimals = await usdc.decimals();
+        const formatted = (Number(balance) / 10**Number(decimals)).toFixed(2);
+        log('USDC Balance: ' + formatted);
+        
+        // Success!
+        document.getElementById('checks').className = 'status success';
+        document.getElementById('checks').innerHTML = '<pre>✅ CONNECTED!\n\nAddress: ' + accounts[0] + '\nNetwork: Base (8453)\nUSDC Balance: $' + formatted + '</pre>';
+        log('--- Connection successful! ---');
+        
+        btn.textContent = 'Connected ✓';
+        
+      } catch (error) {
+        log('ERROR: ' + error.message);
+        log('Code: ' + error.code);
+        
+        let msg = 'Connection failed';
+        if (error.code === 4001) msg = 'You rejected the connection request';
+        else if (error.code === -32002) msg = 'Request pending - check your wallet popup';
+        
+        document.getElementById('checks').className = 'status error';
+        document.getElementById('checks').innerHTML = '<pre>❌ ' + msg + '\n\nError: ' + error.message + '</pre>';
+        
+        btn.disabled = false;
+        btn.textContent = 'Try Again';
+      }
+    }
+  </script>
+</body>
+</html>
