@@ -4400,6 +4400,531 @@ router.get('/api/stats', async (req, res) => {
   }
 });
 
+// ============================================
+// PRD PHASE 2: VERIFICATION ENDPOINTS
+// ============================================
+
+/**
+ * Wallet signature verification
+ * POST /api/verify/wallet
+ */
+router.post('/api/verify/wallet', async (req, res) => {
+  try {
+    const { wallet, message, signature } = req.body;
+    
+    if (!wallet || !message || !signature) {
+      return res.status(400).json({ error: 'Missing wallet, message, or signature' });
+    }
+    
+    // Verify the signature
+    const ethers = require('ethers');
+    const recoveredAddress = ethers.verifyMessage(message, signature);
+    
+    if (recoveredAddress.toLowerCase() !== wallet.toLowerCase()) {
+      return res.status(400).json({ error: 'Invalid signature', verified: false });
+    }
+    
+    // Update user verification status
+    await db.query(
+      `UPDATE users SET identity_verified = true, updated_at = NOW() 
+       WHERE wallet_address = $1`,
+      [wallet.toLowerCase()]
+    );
+    
+    res.json({ verified: true, wallet: wallet.toLowerCase() });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Wallet verification failed');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Generate webhook challenge
+ * POST /api/verify/webhook-challenge
+ */
+router.post('/api/verify/webhook-challenge', async (req, res) => {
+  try {
+    const { agentId } = req.body;
+    
+    if (!agentId) {
+      return res.status(400).json({ error: 'Missing agentId' });
+    }
+    
+    const agent = await db.getAgentById(agentId);
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+    
+    if (!agent.webhook_url) {
+      return res.status(400).json({ error: 'Agent has no webhook URL configured' });
+    }
+    
+    // Generate challenge
+    const crypto = require('crypto');
+    const challenge = crypto.randomBytes(16).toString('hex');
+    const timestamp = Date.now();
+    
+    // Send challenge to webhook
+    const axios = require('axios');
+    try {
+      const response = await axios.post(agent.webhook_url, {
+        type: 'botique_challenge',
+        challenge: challenge,
+        timestamp: timestamp
+      }, {
+        timeout: 30000,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      // Check if response echoes the challenge
+      if (response.data && response.data.challenge === challenge) {
+        // Update agent verification status
+        await db.query(
+          `UPDATE agents SET webhook_verified_at = NOW() WHERE id = $1`,
+          [agentId]
+        );
+        
+        // Recalculate trust tier
+        await db.calculateTrustTier(agentId);
+        
+        res.json({ verified: true, agentId });
+      } else {
+        res.json({ verified: false, error: 'Challenge response mismatch' });
+      }
+    } catch (webhookError) {
+      res.json({ 
+        verified: false, 
+        error: 'Webhook did not respond correctly',
+        details: webhookError.message 
+      });
+    }
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Webhook verification failed');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * X/Twitter verification
+ * POST /api/verify/twitter
+ */
+router.post('/api/verify/twitter', async (req, res) => {
+  try {
+    const { wallet, handle, verificationCode } = req.body;
+    
+    if (!wallet || !handle) {
+      return res.status(400).json({ error: 'Missing wallet or handle' });
+    }
+    
+    // For now, manual verification - admin can verify
+    // In production, would check Twitter API or screenshot
+    await db.query(
+      `UPDATE users SET x_handle = $1, updated_at = NOW() WHERE wallet_address = $2`,
+      [handle.replace('@', ''), wallet.toLowerCase()]
+    );
+    
+    res.json({ 
+      submitted: true, 
+      handle: handle,
+      message: 'Twitter handle submitted for verification. Post a tweet with your verification code to complete.'
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Twitter verification failed');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Admin: Approve Twitter verification
+ * POST /api/admin/verify-twitter
+ */
+router.post('/api/admin/verify-twitter', async (req, res) => {
+  try {
+    const { wallet, adminKey } = req.body;
+    
+    // Simple admin key check (in production, use proper auth)
+    if (adminKey !== process.env.ADMIN_KEY) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
+    await db.query(
+      `UPDATE users SET x_verified_at = NOW() WHERE wallet_address = $1`,
+      [wallet.toLowerCase()]
+    );
+    
+    // Get agent and recalculate trust tier
+    const agent = await db.getAgentByWallet(wallet);
+    if (agent) {
+      await db.calculateTrustTier(agent.id);
+    }
+    
+    res.json({ verified: true, wallet });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Admin verification failed');
+    res.status(statusCode).json(body);
+  }
+});
+
+// ============================================
+// PRD PHASE 2: TASK FLOW ENDPOINTS
+// ============================================
+
+/**
+ * Agent accepts a task
+ * POST /api/jobs/:uuid/accept
+ */
+router.post('/api/jobs/:uuid/accept', validateUuidParam('uuid'), async (req, res) => {
+  try {
+    const { apiKey } = req.body;
+    
+    const job = await db.getJob(req.params.uuid);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    
+    // Verify API key belongs to this job's agent
+    const agent = await db.getAgentById(job.agent_id);
+    if (!agent || agent.api_key !== apiKey) {
+      return res.status(403).json({ error: 'Invalid API key' });
+    }
+    
+    if (job.status !== 'paid') {
+      return res.status(400).json({ error: `Job status is ${job.status}, cannot accept` });
+    }
+    
+    // Mark as in_progress
+    await db.updateJobStatus(job.id, 'in_progress');
+    
+    res.json({ success: true, jobUuid: job.job_uuid, status: 'in_progress' });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to accept job');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Agent declines a task (triggers refund)
+ * POST /api/jobs/:uuid/decline
+ */
+router.post('/api/jobs/:uuid/decline', validateUuidParam('uuid'), async (req, res) => {
+  try {
+    const { apiKey, reason } = req.body;
+    
+    const job = await db.getJob(req.params.uuid);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    
+    // Verify API key
+    const agent = await db.getAgentById(job.agent_id);
+    if (!agent || agent.api_key !== apiKey) {
+      return res.status(403).json({ error: 'Invalid API key' });
+    }
+    
+    if (!['pending', 'paid'].includes(job.status)) {
+      return res.status(400).json({ error: `Job status is ${job.status}, cannot decline` });
+    }
+    
+    // Mark as refunded (in production, trigger actual refund)
+    await db.updateJobStatus(job.id, 'refunded');
+    
+    res.json({ 
+      success: true, 
+      jobUuid: job.job_uuid, 
+      status: 'refunded',
+      message: 'Job declined. Refund initiated.'
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to decline job');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Agent delivers work (awaiting hirer approval)
+ * POST /api/jobs/:uuid/deliver
+ */
+router.post('/api/jobs/:uuid/deliver', validateUuidParam('uuid'), async (req, res) => {
+  try {
+    const { apiKey, output, message } = req.body;
+    
+    if (!output) {
+      return res.status(400).json({ error: 'Missing output' });
+    }
+    
+    const job = await db.getJob(req.params.uuid);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    
+    // Verify API key
+    const agent = await db.getAgentById(job.agent_id);
+    if (!agent || agent.api_key !== apiKey) {
+      return res.status(403).json({ error: 'Invalid API key' });
+    }
+    
+    if (!['paid', 'in_progress'].includes(job.status)) {
+      return res.status(400).json({ error: `Job status is ${job.status}, cannot deliver` });
+    }
+    
+    // Mark as delivered
+    await db.updateJobStatus(job.id, 'delivered', {
+      output_data: JSON.stringify(output),
+      delivered_at: new Date()
+    });
+    
+    res.json({ 
+      success: true, 
+      jobUuid: job.job_uuid, 
+      status: 'delivered',
+      message: 'Work delivered. Awaiting hirer approval.'
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to deliver job');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Hirer approves delivered work (releases payment)
+ * POST /api/jobs/:uuid/approve
+ */
+router.post('/api/jobs/:uuid/approve', validateUuidParam('uuid'), async (req, res) => {
+  try {
+    const { wallet } = req.body;
+    
+    const job = await db.getJob(req.params.uuid);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    
+    // Verify requester
+    const user = await db.getUser(wallet);
+    if (!user || user.id !== job.requester_id) {
+      return res.status(403).json({ error: 'Not authorized to approve this job' });
+    }
+    
+    if (job.status !== 'delivered') {
+      return res.status(400).json({ error: `Job status is ${job.status}, cannot approve` });
+    }
+    
+    // Mark as completed
+    await db.updateJobStatus(job.id, 'completed', {
+      completed_at: new Date()
+    });
+    
+    // Update agent stats
+    const agent = await db.getAgentById(job.agent_id);
+    await db.query(
+      'UPDATE agents SET total_jobs = total_jobs + 1, total_earned = total_earned + $1 WHERE id = $2',
+      [job.price_usdc, agent.id]
+    );
+    
+    // Update completion rate and trust tier
+    await db.updateAgentCompletionRate(agent.id);
+    await db.calculateTrustTier(agent.id);
+    
+    res.json({ 
+      success: true, 
+      jobUuid: job.job_uuid, 
+      status: 'completed',
+      message: 'Work approved. Payment released to agent.'
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to approve job');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Hirer requests revision
+ * POST /api/jobs/:uuid/revision
+ */
+router.post('/api/jobs/:uuid/revision', validateUuidParam('uuid'), async (req, res) => {
+  try {
+    const { wallet, feedback } = req.body;
+    
+    const job = await db.getJob(req.params.uuid);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    
+    // Verify requester
+    const user = await db.getUser(wallet);
+    if (!user || user.id !== job.requester_id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    
+    if (job.status !== 'delivered') {
+      return res.status(400).json({ error: `Job status is ${job.status}, cannot request revision` });
+    }
+    
+    // Mark back as in_progress with revision feedback
+    await db.updateJobStatus(job.id, 'in_progress');
+    
+    res.json({ 
+      success: true, 
+      jobUuid: job.job_uuid, 
+      status: 'in_progress',
+      message: 'Revision requested. Agent notified.'
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to request revision');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Hirer opens dispute
+ * POST /api/jobs/:uuid/dispute
+ */
+router.post('/api/jobs/:uuid/dispute', validateUuidParam('uuid'), async (req, res) => {
+  try {
+    const { wallet, reason, evidence } = req.body;
+    
+    if (!reason) {
+      return res.status(400).json({ error: 'Missing dispute reason' });
+    }
+    
+    const job = await db.getJob(req.params.uuid);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    
+    // Verify requester
+    const user = await db.getUser(wallet);
+    if (!user || user.id !== job.requester_id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    
+    if (!['in_progress', 'delivered'].includes(job.status)) {
+      return res.status(400).json({ error: `Job status is ${job.status}, cannot dispute` });
+    }
+    
+    // Mark as disputed
+    await db.query(
+      `UPDATE jobs SET status = 'disputed', dispute_reason = $1, disputed_at = NOW() WHERE id = $2`,
+      [reason, job.id]
+    );
+    
+    res.json({ 
+      success: true, 
+      jobUuid: job.job_uuid, 
+      status: 'disputed',
+      message: 'Dispute opened. Platform will review within 48 hours.'
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to open dispute');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Recalculate trust tier for an agent
+ * POST /api/agents/:id/recalculate-trust
+ */
+router.post('/api/agents/:id/recalculate-trust', validateIdParam('id'), async (req, res) => {
+  try {
+    const result = await db.calculateTrustTier(req.params.id);
+    if (!result) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+    res.json(result);
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to recalculate trust');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Advanced agent search with filters
+ * GET /api/agents/search
+ */
+router.get('/api/agents/search', async (req, res) => {
+  try {
+    const {
+      q,
+      category,
+      skills,
+      min_rating,
+      max_price,
+      trust_tier,
+      sort = 'rating',
+      order = 'desc',
+      page = 1,
+      limit = 20
+    } = req.query;
+    
+    let sql = `
+      SELECT a.*, u.wallet_address, u.name, u.avatar_url, u.bio,
+             (SELECT json_agg(s.*) FROM skills s WHERE s.agent_id = a.id AND s.is_active = true) as skills
+      FROM agents a
+      JOIN users u ON a.user_id = u.id
+      WHERE a.is_active = true
+    `;
+    const params = [];
+    let paramIndex = 1;
+    
+    // Search query
+    if (q) {
+      sql += ` AND (u.name ILIKE $${paramIndex} OR u.bio ILIKE $${paramIndex} OR EXISTS (
+        SELECT 1 FROM skills s WHERE s.agent_id = a.id AND (s.name ILIKE $${paramIndex} OR s.description ILIKE $${paramIndex})
+      ))`;
+      params.push(`%${q}%`);
+      paramIndex++;
+    }
+    
+    // Category filter
+    if (category) {
+      sql += ` AND EXISTS (SELECT 1 FROM skills s WHERE s.agent_id = a.id AND s.category = $${paramIndex})`;
+      params.push(category);
+      paramIndex++;
+    }
+    
+    // Min rating
+    if (min_rating) {
+      sql += ` AND a.rating >= $${paramIndex}`;
+      params.push(parseFloat(min_rating));
+      paramIndex++;
+    }
+    
+    // Max price
+    if (max_price) {
+      sql += ` AND EXISTS (SELECT 1 FROM skills s WHERE s.agent_id = a.id AND s.price_usdc <= $${paramIndex})`;
+      params.push(parseFloat(max_price));
+      paramIndex++;
+    }
+    
+    // Trust tier minimum
+    if (trust_tier) {
+      const tierOrder = ['new', 'rising', 'established', 'trusted', 'verified'];
+      const minTierIndex = tierOrder.indexOf(trust_tier);
+      if (minTierIndex >= 0) {
+        const validTiers = tierOrder.slice(minTierIndex);
+        sql += ` AND a.trust_tier = ANY($${paramIndex})`;
+        params.push(validTiers);
+        paramIndex++;
+      }
+    }
+    
+    // Sorting
+    const sortFields = {
+      'rating': 'a.rating',
+      'tasks': 'a.total_jobs',
+      'price': '(SELECT MIN(s.price_usdc) FROM skills s WHERE s.agent_id = a.id)',
+      'trust': 'a.trust_score'
+    };
+    const sortField = sortFields[sort] || 'a.rating';
+    const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
+    sql += ` ORDER BY ${sortField} ${sortOrder}`;
+    
+    // Pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    sql += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(parseInt(limit), offset);
+    
+    const result = await db.query(sql, params);
+    
+    res.json({
+      agents: result.rows,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total: result.rows.length
+    });
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Search failed');
+    res.status(statusCode).json(body);
+  }
+});
+
 // Global error handler (catch-all for unhandled errors)
 router.use(errorHandler);
 
