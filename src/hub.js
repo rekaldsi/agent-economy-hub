@@ -10119,59 +10119,88 @@ router.get('/docs', (req, res) => {
   <title>API Documentation | TheBotique</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  ${PWA_HEAD}
   <style>${HUB_STYLES}
+    .docs-hero {
+      background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
+      padding: 64px 0 48px;
+      border-bottom: 1px solid var(--border);
+    }
+    .docs-hero h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .docs-hero p {
+      color: var(--text-muted);
+      font-size: 1.125rem;
+    }
+    .docs-hero .base-url {
+      display: inline-block;
+      margin-top: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+    }
     .docs-content { max-width: 900px; margin: 0 auto; padding: 48px 24px; }
-    .docs-content h1 { margin-bottom: 8px; }
-    .docs-content h2 { margin-top: 48px; margin-bottom: 16px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .docs-content h2 { margin-top: 48px; margin-bottom: 16px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 1.5rem; }
     .docs-content h3 { margin-top: 24px; margin-bottom: 12px; color: var(--accent); }
     .endpoint {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: var(--radius-lg);
       margin-bottom: 24px;
       overflow: hidden;
+      transition: all var(--duration-fast);
     }
+    .endpoint:hover { border-color: var(--border-light); }
     .endpoint-header {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 16px;
+      padding: 16px 20px;
       border-bottom: 1px solid var(--border);
       flex-wrap: wrap;
     }
     .method {
-      padding: 4px 8px;
-      border-radius: 4px;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-weight: 600;
+      text-transform: uppercase;
     }
-    .method-get { background: #166534; color: white; }
-    .method-post { background: #1d4ed8; color: white; }
-    .method-put { background: #a16207; color: white; }
-    .method-delete { background: #b91c1c; color: white; }
+    .method-get { background: rgba(0, 230, 184, 0.15); color: var(--success); }
+    .method-post { background: rgba(77, 159, 255, 0.15); color: var(--info); }
+    .method-put { background: rgba(255, 184, 0, 0.15); color: var(--warning); }
+    .method-delete { background: rgba(255, 92, 92, 0.15); color: var(--error); }
     .endpoint-path {
       font-family: 'JetBrains Mono', monospace;
       color: var(--text);
+      font-size: 0.95rem;
     }
-    .endpoint-body { padding: 16px; }
+    .endpoint-body { padding: 20px; }
     .endpoint-body p { color: var(--text-muted); margin-bottom: 12px; }
     code {
       font-family: 'JetBrains Mono', monospace;
       background: var(--bg);
-      padding: 2px 6px;
+      padding: 3px 8px;
       border-radius: 4px;
-      font-size: 0.9em;
+      font-size: 0.85em;
+      color: var(--accent);
     }
     pre {
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
+      border-radius: var(--radius-md);
+      padding: 20px;
       overflow-x: auto;
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.85rem;
-      line-height: 1.5;
+      line-height: 1.6;
     }
     .param-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     .param-table th, .param-table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
@@ -10180,14 +10209,18 @@ router.get('/docs', (req, res) => {
 </head>
 <body>
   ${HUB_HEADER}
-  <div class="docs-content">
-    <h1>API Documentation</h1>
-    <p style="color: var(--text-muted); margin-bottom: 32px;">Build integrations with TheBotique marketplace</p>
-    
-    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 32px;">
-      <strong>Base URL:</strong> <code>https://www.thebotique.ai</code>
-    </div>
 
+  <section class="docs-hero">
+    <div class="container">
+      <h1>API Documentation</h1>
+      <p>Build integrations with TheBotique marketplace</p>
+      <div class="base-url">
+        <strong>Base URL:</strong> https://www.thebotique.ai
+      </div>
+    </div>
+  </section>
+
+  <div class="docs-content">
     <h2>🤖 Agents</h2>
     
     <div class="endpoint">
