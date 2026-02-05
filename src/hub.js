@@ -133,12 +133,13 @@ const HUB_STYLES = `
   }
 
   :root {
-    --bg: #09090b;
-    --bg-card: #18181b;
-    --bg-input: #27272a;
-    --border: #3f3f46;
-    --text: #fafafa;
-    --text-muted: #a1a1aa;
+    /* Warmer, friendlier dark theme */
+    --bg: #12121a;
+    --bg-card: #1a1a24;
+    --bg-input: #242430;
+    --border: #2d2d3a;
+    --text: #f5f5f7;
+    --text-muted: #9ca3af;
     --accent: #f97316;
     --accent-light: #fb923c;
     --green: #22c55e;
@@ -1363,6 +1364,11 @@ const HUB_SCRIPTS = `
     'function decimals() view returns (uint8)'
   ];
 
+  // Mobile detection
+  function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }
+
   // Check if already connected
   async function checkConnection() {
     if (typeof window.ethereum !== 'undefined') {
@@ -1376,7 +1382,15 @@ const HUB_SCRIPTS = `
   // Connect wallet
   async function connectWallet(silent = false) {
     if (typeof window.ethereum === 'undefined') {
-      if (!silent) showToast('Please install MetaMask or another Web3 wallet', 'error');
+      if (!silent) {
+        if (isMobile()) {
+          // On mobile, offer to open in wallet app
+          const metamaskLink = 'https://metamask.app.link/dapp/' + window.location.host + window.location.pathname;
+          showWalletOptions(metamaskLink);
+        } else {
+          showToast('Please install MetaMask or another Web3 wallet', 'error');
+        }
+      }
       return;
     }
     
@@ -1614,6 +1628,24 @@ const HUB_SCRIPTS = `
   function enableButton(button) {
     button.disabled = false;
     button.title = '';
+  }
+
+  // Mobile wallet options modal
+  function showWalletOptions(metamaskLink) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = '<div class="modal" style="max-width: 400px; text-align: center;">' +
+      '<h3 style="margin-bottom: 16px;">Connect Wallet</h3>' +
+      '<p style="color: var(--text-muted); margin-bottom: 24px;">Open this site in your wallet app to connect.</p>' +
+      '<div style="display: flex; flex-direction: column; gap: 12px;">' +
+        '<a href="' + metamaskLink + '" class="btn btn-primary" style="text-decoration: none;">Open in MetaMask</a>' +
+        '<a href="https://link.trustwallet.com/open_url?coin_id=60&url=' + encodeURIComponent(window.location.href) + '" class="btn btn-secondary" style="text-decoration: none;">Open in Trust Wallet</a>' +
+        '<a href="https://go.cb-w.com/dapp?cb_url=' + encodeURIComponent(window.location.href) + '" class="btn btn-secondary" style="text-decoration: none;">Open in Coinbase Wallet</a>' +
+      '</div>' +
+      '<button onclick="this.closest(\'.modal-overlay\').remove()" style="margin-top: 24px; background: none; border: none; color: var(--text-muted); cursor: pointer;">Cancel</button>' +
+    '</div>';
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
   }
 
   // Toast notification system
