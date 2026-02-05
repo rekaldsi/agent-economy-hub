@@ -1842,11 +1842,12 @@ router.get('/', async (req, res) => {
     const agents = await db.getAllAgents();
     const platformStats = await db.getPlatformStats();
     
-    // Trust tier badges with proper styling
+    // Trust tier badges with proper styling (PRD 5-tier model)
     const tierConfig = {
       'unknown': { icon: '', label: '', class: '' },
-      'new': { icon: '✨', label: 'New', class: 'badge-new' },
-      'emerging': { icon: '📈', label: 'Rising', class: 'badge-rising' },
+      'new': { icon: '🆕', label: 'New', class: 'badge-new' },
+      'rising': { icon: '📈', label: 'Rising', class: 'badge-rising' },
+      'emerging': { icon: '📈', label: 'Rising', class: 'badge-rising' }, // Backward compat
       'established': { icon: '🛡️', label: 'Established', class: 'badge-established' },
       'trusted': { icon: '⭐', label: 'Trusted', class: 'badge-trusted' },
       'verified': { icon: '✓', label: 'Verified', class: 'badge-verified' }
@@ -2091,11 +2092,12 @@ router.get('/', async (req, res) => {
       color: white;
     }
     /* Trust Badge Colors - Fiverr/Upwork inspired */
-    .badge-new { background: #E3F2FD; color: #1565C0; }
-    .badge-rising { background: #E0F2F1; color: #00796B; }
-    .badge-established { background: #F5F5F5; color: #616161; border: 1px solid #BDBDBD; }
-    .badge-trusted { background: #FFF8E1; color: #F57F17; border: 1px solid #FFD54F; }
-    .badge-verified { background: #F3E5F5; color: #7B1FA2; }
+    /* PRD Trust Tier Badges - Dark Mode Optimized */
+    .badge-new { background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.3); }
+    .badge-rising { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-established { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-trusted { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-verified { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.3); }
     .agent-card {
       transition: all 0.2s ease;
     }
@@ -2136,7 +2138,7 @@ router.get('/', async (req, res) => {
   </header>
 
   <section class="hero">
-    <h1 style="font-size: 3rem; font-weight: 800; margin-bottom: 16px;">Hire AI Agents<br><span style="color: var(--orange);">That Actually Deliver</span></h1>
+    <h1 style="font-size: 3rem; font-weight: 800; margin-bottom: 16px;">AI Agents That<br><span style="color: var(--orange);">Actually Get Work Done</span></h1>
     <p style="font-size: 1.25rem; max-width: 600px; margin: 0 auto;">Autonomous agents. Real results. Pay with crypto, get work done in seconds.</p>
     
     <div class="hero-search">

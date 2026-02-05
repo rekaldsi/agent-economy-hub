@@ -184,6 +184,120 @@ async function initDB() {
         ) THEN
           ALTER TABLE agents ADD COLUMN trust_tier VARCHAR(20) DEFAULT 'new';
         END IF;
+        
+        -- PRD Trust System: Add response_time_avg
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'response_time_avg'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN response_time_avg INTEGER DEFAULT 0;
+        END IF;
+        
+        -- PRD Trust System: Add security_audit_status
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'security_audit_status'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN security_audit_status VARCHAR(20) DEFAULT 'none';
+        END IF;
+        
+        -- PRD Trust System: Add security_audit_at
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'security_audit_at'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN security_audit_at TIMESTAMP;
+        END IF;
+        
+        -- PRD Trust System: Add rentahuman_enabled
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'rentahuman_enabled'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN rentahuman_enabled BOOLEAN DEFAULT false;
+        END IF;
+        
+        -- PRD Trust System: Add trust_score (0-100)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'trust_score'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN trust_score INTEGER DEFAULT 0;
+        END IF;
+        
+        -- PRD: Add tagline to agents
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'tagline'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN tagline VARCHAR(200);
+        END IF;
+        
+        -- PRD: Add verification fields to users
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'users' AND column_name = 'email'
+        ) THEN
+          ALTER TABLE users ADD COLUMN email VARCHAR(255);
+        END IF;
+        
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'users' AND column_name = 'email_verified'
+        ) THEN
+          ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT false;
+        END IF;
+        
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'users' AND column_name = 'identity_verified'
+        ) THEN
+          ALTER TABLE users ADD COLUMN identity_verified BOOLEAN DEFAULT false;
+        END IF;
+        
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'users' AND column_name = 'x_handle'
+        ) THEN
+          ALTER TABLE users ADD COLUMN x_handle VARCHAR(50);
+        END IF;
+        
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'users' AND column_name = 'x_verified_at'
+        ) THEN
+          ALTER TABLE users ADD COLUMN x_verified_at TIMESTAMP;
+        END IF;
+        
+        -- PRD: Add webhook_verified_at to agents
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'webhook_verified_at'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN webhook_verified_at TIMESTAMP;
+        END IF;
+        
+        -- PRD: Add dispute fields to jobs
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'dispute_reason'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN dispute_reason TEXT;
+        END IF;
+        
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'disputed_at'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN disputed_at TIMESTAMP;
+        END IF;
+        
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'human_verified'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN human_verified BOOLEAN DEFAULT false;
+        END IF;
       END $$;
     `);
 
@@ -566,6 +680,122 @@ async function updateAgentCompletionRate(agentId) {
 }
 
 /**
+ * Calculate and update trust tier for an agent
+ * Based on PRD 5-tier model:
+ * Tier 1: New (gray) - Just joined
+ * Tier 2: Rising (blue) - 5+ tasks, 4.0+ rating, <24hr response, no disputes
+ * Tier 3: Established (green) - 25+ tasks, 4.3+ rating, <12hr response, security audit, 90%+ completion
+ * Tier 4: Trusted (gold) - 100+ tasks, 4.5+ rating, <6hr response, 95%+ completion, $10k+ earned
+ * Tier 5: Verified (platinum) - 250+ tasks, 4.7+ rating, <3hr response, 98%+ completion, $50k+ earned, rentahuman
+ */
+async function calculateTrustTier(agentId) {
+  const agentResult = await query(
+    `SELECT a.*, 
+            u.created_at as user_created_at,
+            u.email_verified,
+            u.identity_verified,
+            u.x_verified_at,
+            (SELECT COUNT(*) FROM jobs j WHERE j.agent_id = a.id AND j.status = 'disputed') as dispute_count
+     FROM agents a
+     JOIN users u ON a.user_id = u.id
+     WHERE a.id = $1`,
+    [agentId]
+  );
+  
+  if (agentResult.rows.length === 0) return null;
+  
+  const agent = agentResult.rows[0];
+  const totalJobs = parseInt(agent.total_jobs) || 0;
+  const rating = parseFloat(agent.rating) || 0;
+  const completionRate = parseFloat(agent.completion_rate) || 100;
+  const totalEarned = parseFloat(agent.total_earned) || 0;
+  const responseTimeHrs = (parseInt(agent.response_time_avg) || 0) / 3600; // Convert seconds to hours
+  const hasSecurityAudit = agent.security_audit_status === 'passed';
+  const hasRentahuman = agent.rentahuman_enabled === true;
+  const hasDisputes = parseInt(agent.dispute_count) > 0;
+  const webhookVerified = !!agent.webhook_verified_at;
+  const socialVerified = !!agent.x_verified_at;
+  
+  let tier = 'new';
+  let trustScore = 10; // Base score
+  
+  // Tier 5: Verified (platinum)
+  if (
+    totalJobs >= 250 &&
+    rating >= 4.7 &&
+    responseTimeHrs <= 3 &&
+    completionRate >= 98 &&
+    totalEarned >= 50000 &&
+    hasSecurityAudit &&
+    hasRentahuman
+  ) {
+    tier = 'verified';
+    trustScore = 95;
+  }
+  // Tier 4: Trusted (gold)
+  else if (
+    totalJobs >= 100 &&
+    rating >= 4.5 &&
+    responseTimeHrs <= 6 &&
+    completionRate >= 95 &&
+    totalEarned >= 10000 &&
+    hasSecurityAudit
+  ) {
+    tier = 'trusted';
+    trustScore = 80;
+  }
+  // Tier 3: Established (green)
+  else if (
+    totalJobs >= 25 &&
+    rating >= 4.3 &&
+    responseTimeHrs <= 12 &&
+    completionRate >= 90 &&
+    hasSecurityAudit
+  ) {
+    tier = 'established';
+    trustScore = 60;
+  }
+  // Tier 2: Rising (blue)
+  else if (
+    totalJobs >= 5 &&
+    rating >= 4.0 &&
+    responseTimeHrs <= 24 &&
+    !hasDisputes &&
+    (webhookVerified || socialVerified)
+  ) {
+    tier = 'rising';
+    trustScore = 40;
+  }
+  // Tier 1: New (gray) - default
+  else {
+    tier = 'new';
+    trustScore = Math.min(30, 10 + totalJobs * 2 + (rating > 0 ? rating * 3 : 0));
+  }
+  
+  // Update agent
+  await query(
+    `UPDATE agents SET trust_tier = $1, trust_score = $2 WHERE id = $3`,
+    [tier, Math.round(trustScore), agentId]
+  );
+  
+  return { tier, trustScore: Math.round(trustScore) };
+}
+
+/**
+ * Get trust tier display info
+ */
+function getTrustTierDisplay(tier) {
+  const tiers = {
+    'new': { label: 'New', color: '#6b7280', icon: '🆕', badgeClass: 'badge-new' },
+    'rising': { label: 'Rising', color: '#3b82f6', icon: '📈', badgeClass: 'badge-rising' },
+    'established': { label: 'Established', color: '#10b981', icon: '🛡️', badgeClass: 'badge-established' },
+    'trusted': { label: 'Trusted', color: '#f59e0b', icon: '⭐', badgeClass: 'badge-trusted' },
+    'verified': { label: 'Verified', color: '#8b5cf6', icon: '✓', badgeClass: 'badge-verified' }
+  };
+  return tiers[tier] || tiers['new'];
+}
+
+/**
  * Get platform stats
  */
 async function getPlatformStats() {
@@ -621,5 +851,8 @@ module.exports = {
   getAgentReviewStats,
   addAgentResponse,
   updateAgentCompletionRate,
+  // Trust tier functions
+  calculateTrustTier,
+  getTrustTierDisplay,
   getPlatformStats
 };
