@@ -6719,6 +6719,149 @@ router.put('/api/white-label/customize', async (req, res) => {
   res.json({ success: true });
 });
 
+// ============================================
+// FUTURE VISION: Multi-Agent Workflows
+// ============================================
+
+router.post('/api/workflows', async (req, res) => {
+  const { wallet, name, description, steps } = req.body;
+  if (!wallet || !name || !steps?.length) {
+    return res.status(400).json({ error: 'wallet, name, steps required' });
+  }
+
+  const workflowUuid = uuidv4();
+  const wf = await db.query(`
+    INSERT INTO workflows (workflow_uuid, owner_wallet, name, description)
+    VALUES ($1, $2, $3, $4) RETURNING *
+  `, [workflowUuid, wallet.toLowerCase(), name, description]);
+
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
+    await db.query(`
+      INSERT INTO workflow_steps (workflow_id, step_order, skill_id, name, input_template, condition)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [wf.rows[0].id, i + 1, s.skillId, s.name, s.inputTemplate, s.condition]);
+  }
+
+  res.json({ success: true, workflowUuid, workflowId: wf.rows[0].id });
+});
+
+router.get('/api/workflows', async (req, res) => {
+  const { wallet, public: showPublic } = req.query;
+  let query = 'SELECT * FROM workflows WHERE ';
+  let params = [];
+
+  if (showPublic === 'true') {
+    query += 'is_public = true';
+  } else if (wallet) {
+    query += 'owner_wallet = $1';
+    params = [wallet.toLowerCase()];
+  } else {
+    return res.status(400).json({ error: 'wallet or public=true required' });
+  }
+
+  const result = await db.query(query + ' ORDER BY created_at DESC', params);
+  res.json(result.rows);
+});
+
+router.get('/api/workflows/:uuid', async (req, res) => {
+  const wf = await db.query('SELECT * FROM workflows WHERE workflow_uuid = $1', [req.params.uuid]);
+  if (!wf.rows[0]) return res.status(404).json({ error: 'Workflow not found' });
+
+  const steps = await db.query(
+    'SELECT ws.*, s.name as skill_name FROM workflow_steps ws LEFT JOIN skills s ON ws.skill_id = s.id WHERE ws.workflow_id = $1 ORDER BY step_order',
+    [wf.rows[0].id]
+  );
+
+  res.json({ workflow: wf.rows[0], steps: steps.rows });
+});
+
+router.post('/api/workflows/:uuid/run', async (req, res) => {
+  const { wallet, input } = req.body;
+  if (!wallet) return res.status(400).json({ error: 'wallet required' });
+
+  const wf = await db.query('SELECT * FROM workflows WHERE workflow_uuid = $1', [req.params.uuid]);
+  if (!wf.rows[0]) return res.status(404).json({ error: 'Workflow not found' });
+  if (wf.rows[0].status !== 'active') return res.status(400).json({ error: 'Workflow not active' });
+
+  const runUuid = uuidv4();
+  const run = await db.query(`
+    INSERT INTO workflow_runs (run_uuid, workflow_id, triggered_by, input_data)
+    VALUES ($1, $2, $3, $4) RETURNING *
+  `, [runUuid, wf.rows[0].id, wallet.toLowerCase(), JSON.stringify(input)]);
+
+  await db.query('UPDATE workflows SET total_runs = total_runs + 1 WHERE id = $1', [wf.rows[0].id]);
+
+  // In production: trigger async workflow executor
+  res.json({ success: true, runUuid, status: 'running' });
+});
+
+router.get('/api/workflows/runs/:uuid', async (req, res) => {
+  const run = await db.query('SELECT * FROM workflow_runs WHERE run_uuid = $1', [req.params.uuid]);
+  if (!run.rows[0]) return res.status(404).json({ error: 'Run not found' });
+
+  const steps = await db.query(
+    'SELECT * FROM workflow_step_results WHERE run_id = $1 ORDER BY id',
+    [run.rows[0].id]
+  );
+
+  res.json({ run: run.rows[0], stepResults: steps.rows });
+});
+
+router.put('/api/workflows/:uuid/status', async (req, res) => {
+  const { wallet, status } = req.body;
+  if (!wallet || !['draft', 'active', 'paused', 'archived'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+
+  const wf = await db.query('SELECT * FROM workflows WHERE workflow_uuid = $1', [req.params.uuid]);
+  if (!wf.rows[0]) return res.status(404).json({ error: 'Workflow not found' });
+  if (wf.rows[0].owner_wallet !== wallet.toLowerCase()) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+
+  await db.query('UPDATE workflows SET status = $1 WHERE id = $2', [status, wf.rows[0].id]);
+  res.json({ success: true, status });
+});
+
+// Workflow marketplace
+router.get('/api/workflows/marketplace', async (req, res) => {
+  const result = await db.query(`
+    SELECT w.*, 
+      (SELECT COUNT(*) FROM workflow_steps WHERE workflow_id = w.id) as step_count
+    FROM workflows w 
+    WHERE is_public = true AND status = 'active'
+    ORDER BY total_runs DESC
+    LIMIT 50
+  `);
+  res.json(result.rows);
+});
+
+router.post('/api/workflows/:uuid/fork', async (req, res) => {
+  const { wallet } = req.body;
+  if (!wallet) return res.status(400).json({ error: 'wallet required' });
+
+  const wf = await db.query('SELECT * FROM workflows WHERE workflow_uuid = $1 AND is_public = true', [req.params.uuid]);
+  if (!wf.rows[0]) return res.status(404).json({ error: 'Workflow not found or not public' });
+
+  const steps = await db.query('SELECT * FROM workflow_steps WHERE workflow_id = $1 ORDER BY step_order', [wf.rows[0].id]);
+
+  const newUuid = uuidv4();
+  const newWf = await db.query(`
+    INSERT INTO workflows (workflow_uuid, owner_wallet, name, description, status)
+    VALUES ($1, $2, $3, $4, 'draft') RETURNING *
+  `, [newUuid, wallet.toLowerCase(), wf.rows[0].name + ' (Fork)', wf.rows[0].description]);
+
+  for (const s of steps.rows) {
+    await db.query(`
+      INSERT INTO workflow_steps (workflow_id, step_order, skill_id, name, input_template, condition)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [newWf.rows[0].id, s.step_order, s.skill_id, s.name, s.input_template, s.condition]);
+  }
+
+  res.json({ success: true, workflowUuid: newUuid });
+});
+
 router.post('/api/admin/white-label/activate', async (req, res) => {
   const { wallet, whitelabelId } = req.body;
   if (!isAdmin(wallet)) return res.status(403).json({ error: 'Not authorized' });

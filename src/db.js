@@ -534,6 +534,67 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_whitelabel_domain ON white_labels(custom_domain);
     `);
 
+    // ============================================
+    // FUTURE VISION: Multi-Agent Workflows
+    // ============================================
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS workflows (
+        id SERIAL PRIMARY KEY,
+        workflow_uuid TEXT UNIQUE NOT NULL,
+        owner_wallet TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        is_public BOOLEAN DEFAULT false,
+        status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'paused', 'archived')),
+        total_runs INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS workflow_steps (
+        id SERIAL PRIMARY KEY,
+        workflow_id INTEGER REFERENCES workflows(id) ON DELETE CASCADE,
+        step_order INTEGER NOT NULL,
+        skill_id INTEGER REFERENCES skills(id),
+        name TEXT NOT NULL,
+        input_template TEXT,
+        output_mapping TEXT,
+        condition TEXT,
+        on_success_step INTEGER,
+        on_failure_step INTEGER,
+        timeout_seconds INTEGER DEFAULT 300
+      );
+
+      CREATE TABLE IF NOT EXISTS workflow_runs (
+        id SERIAL PRIMARY KEY,
+        run_uuid TEXT UNIQUE NOT NULL,
+        workflow_id INTEGER REFERENCES workflows(id) ON DELETE CASCADE,
+        triggered_by TEXT NOT NULL,
+        status TEXT DEFAULT 'running' CHECK (status IN ('running', 'completed', 'failed', 'cancelled')),
+        current_step INTEGER DEFAULT 1,
+        input_data JSONB,
+        output_data JSONB,
+        started_at TIMESTAMP DEFAULT NOW(),
+        completed_at TIMESTAMP,
+        total_cost DECIMAL(18,6) DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS workflow_step_results (
+        id SERIAL PRIMARY KEY,
+        run_id INTEGER REFERENCES workflow_runs(id) ON DELETE CASCADE,
+        step_id INTEGER REFERENCES workflow_steps(id),
+        job_uuid TEXT,
+        status TEXT,
+        input_data JSONB,
+        output_data JSONB,
+        started_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        cost DECIMAL(18,6)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_workflows_owner ON workflows(owner_wallet);
+      CREATE INDEX IF NOT EXISTS idx_workflow_runs_workflow ON workflow_runs(workflow_id);
+    `);
+
     // Migration: Messages table for in-app communication
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (
