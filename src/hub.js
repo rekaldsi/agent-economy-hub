@@ -6837,6 +6837,137 @@ router.get('/api/workflows/marketplace', async (req, res) => {
   res.json(result.rows);
 });
 
+// ============================================
+// FUTURE VISION: Automated Task Routing
+// ============================================
+
+router.post('/api/tasks/auto-route', async (req, res) => {
+  const { wallet, description, budget, urgency = 'normal', preferences } = req.body;
+  if (!wallet || !description) {
+    return res.status(400).json({ error: 'wallet, description required' });
+  }
+
+  // Get all active agents with their skills
+  const agents = await db.query(`
+    SELECT a.*, u.wallet_address,
+      json_agg(json_build_object('id', s.id, 'name', s.name, 'price', s.price_usdc, 'category', s.category)) as skills
+    FROM agents a
+    JOIN users u ON a.user_id = u.id
+    LEFT JOIN skills s ON s.agent_id = a.id
+    WHERE a.status = 'active'
+    GROUP BY a.id, u.wallet_address
+  `);
+
+  // Simple matching algorithm (in production: use ML)
+  const keywords = description.toLowerCase().split(/\s+/);
+  const scored = agents.rows.map(agent => {
+    let score = 0;
+    const skills = agent.skills || [];
+    
+    // Keyword matching
+    skills.forEach(skill => {
+      if (!skill.name) return;
+      keywords.forEach(kw => {
+        if (skill.name.toLowerCase().includes(kw)) score += 10;
+        if (skill.category?.toLowerCase().includes(kw)) score += 5;
+      });
+    });
+
+    // Trust tier bonus
+    const tierBonus = { new: 0, rising: 5, established: 10, trusted: 20, verified: 30 };
+    score += tierBonus[agent.trust_tier] || 0;
+
+    // Rating bonus
+    score += (parseFloat(agent.rating) || 0) * 5;
+
+    // Budget filter
+    const minPrice = Math.min(...skills.filter(s => s.price).map(s => parseFloat(s.price)));
+    if (budget && minPrice > parseFloat(budget)) score -= 50;
+
+    // Urgency matching (fast responders for urgent)
+    if (urgency === 'urgent' && agent.response_time_avg < 3600) score += 15;
+
+    return { agent, score, bestSkill: skills[0] };
+  });
+
+  // Sort and return top matches
+  const matches = scored
+    .filter(m => m.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  res.json({
+    query: { description, budget, urgency },
+    matches: matches.map(m => ({
+      agentId: m.agent.id,
+      agentName: m.agent.name,
+      trustTier: m.agent.trust_tier,
+      rating: m.agent.rating,
+      matchScore: m.score,
+      suggestedSkill: m.bestSkill,
+      estimatedPrice: m.bestSkill?.price
+    })),
+    autoSelected: matches[0] ? {
+      agentId: matches[0].agent.id,
+      skillId: matches[0].bestSkill?.id,
+      confidence: Math.min(matches[0].score / 50, 1)
+    } : null
+  });
+});
+
+router.get('/api/recommendations/agents', async (req, res) => {
+  const { wallet, category, recentTasks } = req.query;
+
+  // Get trending agents
+  const trending = await db.query(`
+    SELECT a.*, COUNT(j.id) as recent_jobs
+    FROM agents a
+    LEFT JOIN jobs j ON j.agent_id = a.id AND j.created_at > NOW() - INTERVAL '7 days'
+    WHERE a.status = 'active'
+    GROUP BY a.id
+    ORDER BY recent_jobs DESC, a.rating DESC
+    LIMIT 10
+  `);
+
+  // Get category-specific if provided
+  let categoryAgents = [];
+  if (category) {
+    const catResult = await db.query(`
+      SELECT DISTINCT a.* FROM agents a
+      JOIN skills s ON s.agent_id = a.id
+      WHERE s.category = $1 AND a.status = 'active'
+      ORDER BY a.rating DESC
+      LIMIT 5
+    `, [category]);
+    categoryAgents = catResult.rows;
+  }
+
+  // Get similar to recent (if wallet provided)
+  let similarAgents = [];
+  if (wallet) {
+    const recentResult = await db.query(`
+      SELECT DISTINCT a.* FROM agents a
+      JOIN skills s ON s.agent_id = a.id
+      WHERE s.category IN (
+        SELECT DISTINCT sk.category FROM jobs j
+        JOIN skills sk ON j.skill_id = sk.id
+        WHERE j.requester_wallet = $1
+        LIMIT 3
+      )
+      AND a.status = 'active'
+      ORDER BY a.rating DESC
+      LIMIT 5
+    `, [wallet.toLowerCase()]);
+    similarAgents = recentResult.rows;
+  }
+
+  res.json({
+    trending: trending.rows,
+    forCategory: categoryAgents,
+    basedOnHistory: similarAgents
+  });
+});
+
 router.post('/api/workflows/:uuid/fork', async (req, res) => {
   const { wallet } = req.body;
   if (!wallet) return res.status(400).json({ error: 'wallet required' });
