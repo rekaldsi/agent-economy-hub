@@ -5073,73 +5073,73 @@ router.get('/dashboard', async (req, res) => {
   ${PWA_HEAD}
   <style>${HUB_STYLES}
     /* ========================================
-       DASHBOARD - REFINED FUTURISM v3
-       Premium command center aesthetic
+       DASHBOARD - REFINED FUTURISM v4
+       Clean, compact, mobile-first
        ======================================== */
     
     /* Layout */
     .dashboard-grid {
       display: grid;
-      grid-template-columns: 280px 1fr;
+      grid-template-columns: 240px 1fr;
       min-height: calc(100vh - 65px);
+      gap: 0;
     }
     
     /* Sidebar */
     .sidebar {
-      background: linear-gradient(180deg, var(--bg-card) 0%, rgba(18, 20, 28, 0.95) 100%);
+      background: var(--bg-card);
       border-right: 1px solid var(--border);
       padding: 0;
       position: sticky;
       top: 65px;
       height: calc(100vh - 65px);
       overflow-y: auto;
+      overflow-x: hidden;
       display: flex;
       flex-direction: column;
     }
     
-    /* User Profile Card */
+    /* User Profile Card - Compact */
     .sidebar-profile {
-      padding: 24px 20px;
+      padding: 16px;
       border-bottom: 1px solid var(--border);
-      background: linear-gradient(135deg, rgba(0, 240, 255, 0.05) 0%, rgba(183, 148, 246, 0.05) 100%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
     .profile-avatar {
-      width: 56px;
-      height: 56px;
-      border-radius: 16px;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
       background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
-      margin-bottom: 12px;
-      box-shadow: 0 4px 12px rgba(0, 240, 255, 0.2);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .profile-info {
+      flex: 1;
+      min-width: 0;
     }
     .profile-name {
       font-weight: 600;
-      font-size: 1rem;
-      margin-bottom: 4px;
+      font-size: 0.875rem;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .profile-wallet {
-      font-size: 0.75rem;
+      font-size: 0.65rem;
       color: var(--text-muted);
-      font-family: 'SF Mono', Monaco, monospace;
-      background: var(--bg);
-      padding: 6px 10px;
-      border-radius: 6px;
-      display: inline-block;
+      font-family: monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .profile-role {
-      margin-top: 12px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      display: none;
     }
     .role-hirer {
       background: rgba(77, 159, 255, 0.15);
@@ -5681,18 +5681,34 @@ router.get('/dashboard', async (req, res) => {
         grid-template-columns: repeat(2, 1fr);
       }
     }
+    /* Tablet */
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 200px 1fr;
+      }
+      .main-content {
+        padding: 24px;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+    }
+    
+    /* Mobile */
     @media (max-width: 768px) {
       .dashboard-grid {
         grid-template-columns: 1fr;
       }
       .sidebar {
         position: fixed;
-        left: -100%;
+        left: -280px;
         top: 65px;
         width: 280px;
         height: calc(100vh - 65px);
         z-index: 100;
         transition: left 0.3s ease;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.3);
       }
       .sidebar.open {
         left: 0;
@@ -5702,28 +5718,52 @@ router.get('/dashboard', async (req, res) => {
         position: fixed;
         inset: 0;
         top: 65px;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.6);
         z-index: 99;
+        backdrop-filter: blur(4px);
       }
       .sidebar-overlay.open {
         display: block;
       }
       .main-content {
-        padding: 20px 16px;
+        padding: 16px;
       }
       .page-header {
         flex-direction: column;
-        gap: 16px;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .page-header h1 {
+        font-size: 1.5rem;
+      }
+      .page-header .btn {
+        width: 100%;
       }
       .stats-grid {
         grid-template-columns: 1fr 1fr;
-        gap: 12px;
+        gap: 10px;
       }
       .stat-card {
-        padding: 16px;
+        padding: 14px;
+      }
+      .stat-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+        margin-bottom: 8px;
+      }
+      .stat-label {
+        font-size: 0.65rem;
       }
       .stat-value {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
+      }
+      .jobs-card {
+        border-radius: 12px;
+        overflow-x: auto;
+      }
+      .jobs-table {
+        min-width: 500px;
       }
       .jobs-table th:nth-child(3),
       .jobs-table td:nth-child(3),
@@ -5733,11 +5773,13 @@ router.get('/dashboard', async (req, res) => {
       }
       .tab-bar {
         width: 100%;
+        overflow-x: auto;
       }
       .tab-btn {
         flex: 1;
         padding: 10px 12px;
         font-size: 0.8rem;
+        white-space: nowrap;
       }
       .mobile-menu-toggle {
         display: flex;
@@ -5784,10 +5826,9 @@ router.get('/dashboard', async (req, res) => {
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-profile">
         <div class="profile-avatar" id="profile-avatar">👤</div>
-        <div class="profile-name" id="user-name">Loading...</div>
-        <div class="profile-wallet" id="user-wallet"></div>
-        <div class="profile-role role-hirer" id="user-role">
-          <span>💼</span> Hirer
+        <div class="profile-info">
+          <div class="profile-name" id="user-name">Loading...</div>
+          <div class="profile-wallet" id="user-wallet"></div>
         </div>
       </div>
       
