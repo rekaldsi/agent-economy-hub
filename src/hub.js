@@ -4783,29 +4783,97 @@ router.get('/dashboard', async (req, res) => {
   ${PWA_HEAD}
   <style>${HUB_STYLES}
     /* ========================================
-       DASHBOARD - REFINED FUTURISM v2
+       DASHBOARD - REFINED FUTURISM v3
+       Premium command center aesthetic
        ======================================== */
+    
+    /* Layout */
     .dashboard-grid {
       display: grid;
-      grid-template-columns: 260px 1fr;
+      grid-template-columns: 280px 1fr;
       min-height: calc(100vh - 65px);
     }
+    
+    /* Sidebar */
     .sidebar {
-      background: var(--bg-card);
+      background: linear-gradient(180deg, var(--bg-card) 0%, rgba(18, 20, 28, 0.95) 100%);
       border-right: 1px solid var(--border);
-      padding: 24px 16px;
+      padding: 0;
       position: sticky;
       top: 65px;
       height: calc(100vh - 65px);
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
     }
-    .sidebar-section { margin-bottom: 28px; }
-    .sidebar-section h3 {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-muted);
+    
+    /* User Profile Card */
+    .sidebar-profile {
+      padding: 24px 20px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.05) 0%, rgba(183, 148, 246, 0.05) 100%);
+    }
+    .profile-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
       margin-bottom: 12px;
+      box-shadow: 0 4px 12px rgba(0, 240, 255, 0.2);
+    }
+    .profile-name {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+    .profile-wallet {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: 'SF Mono', Monaco, monospace;
+      background: var(--bg);
+      padding: 6px 10px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+    .profile-role {
+      margin-top: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .role-hirer {
+      background: rgba(77, 159, 255, 0.15);
+      color: var(--info);
+    }
+    .role-operator {
+      background: rgba(0, 240, 255, 0.15);
+      color: var(--accent);
+    }
+    
+    /* Sidebar Navigation */
+    .sidebar-nav {
+      flex: 1;
+      padding: 20px 12px;
+    }
+    .sidebar-section {
+      margin-bottom: 24px;
+    }
+    .sidebar-section h3 {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
       padding: 0 12px;
     }
     .sidebar-link {
@@ -4815,23 +4883,93 @@ router.get('/dashboard', async (req, res) => {
       padding: 12px 16px;
       color: var(--text-muted);
       text-decoration: none;
-      border-radius: var(--radius-md);
-      margin-bottom: 4px;
+      border-radius: 10px;
+      margin-bottom: 2px;
       cursor: pointer;
       transition: all var(--duration-fast);
       font-size: 0.9rem;
+      position: relative;
     }
     .sidebar-link:hover {
-      background: var(--bg);
+      background: rgba(255, 255, 255, 0.03);
       color: var(--text);
     }
     .sidebar-link.active {
-      background: rgba(0, 240, 255, 0.08);
+      background: rgba(0, 240, 255, 0.1);
       color: var(--accent);
       font-weight: 500;
     }
-    .main-content { padding: 32px; }
-    .stats-row {
+    .sidebar-link.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 20px;
+      background: var(--accent);
+      border-radius: 0 2px 2px 0;
+    }
+    .sidebar-link .badge {
+      margin-left: auto;
+      background: var(--error);
+      color: white;
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    
+    /* Quick Stats in Sidebar */
+    .sidebar-stats {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .sidebar-stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+    }
+    .sidebar-stat:not(:last-child) {
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .sidebar-stat-value {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    
+    /* Main Content */
+    .main-content {
+      padding: 32px 40px;
+      background: var(--bg);
+      min-height: 100%;
+    }
+    
+    /* Page Header */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 32px;
+    }
+    .page-header h1 {
+      font-size: 1.75rem;
+      margin-bottom: 4px;
+    }
+    .page-header p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0;
+    }
+    
+    /* Stats Grid */
+    .stats-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 20px;
@@ -4840,108 +4978,498 @@ router.get('/dashboard', async (req, res) => {
     .stat-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
+      border-radius: 16px;
       padding: 24px;
       transition: all var(--duration-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--purple));
+      opacity: 0;
+      transition: opacity var(--duration-fast);
     }
     .stat-card:hover {
       border-color: var(--border-light);
+      transform: translateY(-2px);
     }
-    .stat-card .label { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-    .stat-card .value { font-size: 1.75rem; font-weight: 700; }
-    .jobs-table {
+    .stat-card:hover::before {
+      opacity: 1;
+    }
+    .stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+    .stat-icon.cyan { background: rgba(0, 240, 255, 0.1); }
+    .stat-icon.green { background: rgba(0, 230, 184, 0.1); }
+    .stat-icon.purple { background: rgba(183, 148, 246, 0.1); }
+    .stat-icon.gold { background: rgba(255, 184, 0, 0.1); }
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-change {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 8px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .stat-change.positive { color: var(--success); }
+    .stat-change.negative { color: var(--error); }
+    
+    /* Tab Bar */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-bottom: 24px;
+      width: fit-content;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all var(--duration-fast);
+    }
+    .tab-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .tab-btn.active {
+      color: var(--text);
+      background: var(--bg);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    /* Jobs Table */
+    .jobs-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
+      border-radius: 16px;
       overflow: hidden;
     }
-    .jobs-table table {
+    .jobs-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .jobs-card-header h3 {
+      font-size: 1rem;
+      margin: 0;
+    }
+    .jobs-table {
       width: 100%;
       border-collapse: collapse;
     }
-    .jobs-table th, .jobs-table td {
-      padding: 16px 20px;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
     .jobs-table th {
-      background: var(--bg);
-      font-size: 0.75rem;
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 0.7rem;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.08em;
       color: var(--text-muted);
       font-weight: 600;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border);
     }
-    .jobs-table tr:hover { background: var(--bg); }
-    .jobs-table tr:last-child td { border-bottom: none; }
+    .jobs-table td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .jobs-table tbody tr {
+      transition: background var(--duration-fast);
+    }
+    .jobs-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .jobs-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    
+    /* Job Row */
+    .job-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .job-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .job-name {
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+    .job-preview {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .job-agent {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .job-agent-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+    .job-amount {
+      font-weight: 600;
+      color: var(--success);
+    }
+    
+    /* Status Badges */
     .status-badge {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       padding: 6px 12px;
-      border-radius: var(--radius-full);
+      border-radius: 20px;
       font-size: 0.75rem;
       font-weight: 600;
     }
-    .status-pending { background: rgba(255, 184, 0, 0.15); color: var(--warning); }
-    .status-paid { background: rgba(77, 159, 255, 0.15); color: var(--info); }
-    .status-in_progress { background: rgba(0, 240, 255, 0.15); color: var(--accent); }
-    .status-completed { background: rgba(0, 230, 184, 0.15); color: var(--success); }
-    .status-delivered { background: rgba(183, 148, 246, 0.15); color: var(--purple); }
-    .status-disputed { background: rgba(255, 92, 92, 0.15); color: var(--error); }
-    .connect-prompt {
-      text-align: center;
-      padding: 100px 32px;
+    .status-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
     }
-    .connect-prompt .icon {
+    .status-pending { background: rgba(255, 184, 0, 0.12); color: var(--warning); }
+    .status-pending::before { background: var(--warning); }
+    .status-paid { background: rgba(77, 159, 255, 0.12); color: var(--info); }
+    .status-paid::before { background: var(--info); }
+    .status-in_progress { background: rgba(0, 240, 255, 0.12); color: var(--accent); }
+    .status-in_progress::before { background: var(--accent); animation: pulse 2s infinite; }
+    .status-completed { background: rgba(0, 230, 184, 0.12); color: var(--success); }
+    .status-completed::before { background: var(--success); }
+    .status-delivered { background: rgba(183, 148, 246, 0.12); color: var(--purple); }
+    .status-delivered::before { background: var(--purple); }
+    .status-disputed { background: rgba(255, 92, 92, 0.12); color: var(--error); }
+    .status-disputed::before { background: var(--error); animation: pulse 1s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    
+    /* View Link */
+    .view-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: color var(--duration-fast);
+    }
+    .view-link:hover {
+      color: var(--accent);
+    }
+    
+    /* Connect Prompt */
+    .connect-prompt {
+      min-height: calc(100vh - 65px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(0, 240, 255, 0.05) 0%, transparent 70%);
+    }
+    .connect-card {
+      text-align: center;
+      padding: 60px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      max-width: 440px;
+    }
+    .connect-icon {
+      width: 88px;
+      height: 88px;
+      margin: 0 auto 28px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      box-shadow: 0 8px 32px rgba(0, 240, 255, 0.25);
+    }
+    .connect-card h2 {
+      margin-bottom: 12px;
+      font-size: 1.5rem;
+    }
+    .connect-card p {
+      color: var(--text-muted);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    .connect-btn {
+      width: 100%;
+      padding: 16px 32px;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 80px 40px;
+    }
+    .empty-icon {
       width: 80px;
       height: 80px;
       margin: 0 auto 24px;
-      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
-      border-radius: var(--radius-xl);
+      background: var(--bg);
+      border-radius: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 36px;
     }
-    .connect-prompt h2 { margin-bottom: 12px; }
-    .connect-prompt p { color: var(--text-muted); margin-bottom: 24px; }
-    .tab-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      padding: 14px 24px;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      font-size: 0.9rem;
-      transition: all var(--duration-fast);
-    }
-    .tab-btn:hover { color: var(--text); }
-    .tab-btn.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-    }
-    .empty-state {
-      text-align: center;
-      padding: 64px;
-      color: var(--text-muted);
-    }
-    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
-    .result-list {
-      margin-top: 16px;
-    }
-    .result-item {
-      padding: 16px;
+    .empty-state h3 {
       margin-bottom: 8px;
+      font-size: 1.1rem;
+    }
+    .empty-state p {
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+    
+    /* Agent Card (for operators) */
+    .agent-card {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.05) 0%, rgba(183, 148, 246, 0.05) 100%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 32px;
+    }
+    .agent-card-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .agent-card-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      box-shadow: 0 4px 16px rgba(0, 240, 255, 0.2);
+    }
+    .agent-card-info h2 {
+      margin-bottom: 4px;
+      font-size: 1.5rem;
+    }
+    .agent-card-info .tier-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .agent-card-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+    }
+    .agent-stat {
+      text-align: center;
+      padding: 16px;
       background: var(--bg-card);
-      border-radius: 8px;
-      border-left: 3px solid var(--accent);
+      border-radius: 12px;
     }
-    .result-item h4 {
-      margin: 0 0 8px 0;
-      color: var(--accent);
-      font-size: 16px;
+    .agent-stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 4px;
     }
-    .result-item p {
-      margin: 4px 0;
+    .agent-stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    /* Settings Card */
+    .settings-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .settings-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .settings-header h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+    .settings-body {
+      padding: 24px;
+    }
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .settings-row:last-child {
+      border-bottom: none;
+    }
+    .settings-label {
+      font-weight: 500;
+    }
+    .settings-value {
+      color: var(--text-muted);
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.85rem;
+    }
+    
+    /* Mobile Responsive */
+    @media (max-width: 1024px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .agent-card-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        position: fixed;
+        left: -100%;
+        top: 65px;
+        width: 280px;
+        height: calc(100vh - 65px);
+        z-index: 100;
+        transition: left 0.3s ease;
+      }
+      .sidebar.open {
+        left: 0;
+      }
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        top: 65px;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+      }
+      .sidebar-overlay.open {
+        display: block;
+      }
+      .main-content {
+        padding: 20px 16px;
+      }
+      .page-header {
+        flex-direction: column;
+        gap: 16px;
+      }
+      .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .stat-card {
+        padding: 16px;
+      }
+      .stat-value {
+        font-size: 1.25rem;
+      }
+      .jobs-table th:nth-child(3),
+      .jobs-table td:nth-child(3),
+      .jobs-table th:nth-child(5),
+      .jobs-table td:nth-child(5) {
+        display: none;
+      }
+      .tab-bar {
+        width: 100%;
+      }
+      .tab-btn {
+        flex: 1;
+        padding: 10px 12px;
+        font-size: 0.8rem;
+      }
+      .mobile-menu-toggle {
+        display: flex;
+      }
+    }
+    
+    /* Mobile sidebar toggle button */
+    .mobile-menu-toggle {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      z-index: 98;
+      box-shadow: 0 4px 20px rgba(0, 240, 255, 0.3);
     }
   </style>
 </head>
@@ -4949,44 +5477,143 @@ router.get('/dashboard', async (req, res) => {
   ${HUB_HEADER}
 
   <div id="connect-prompt" class="connect-prompt">
-    <div style="font-size: 3rem; margin-bottom: 16px;">🔐</div>
-    <h2>Connect Your Wallet</h2>
-    <p>Connect your wallet to view your dashboard</p>
-    <button class="btn btn-primary" style="padding: 16px 32px;" onclick="connectWallet()">Connect Wallet</button>
+    <div class="connect-card">
+      <div class="connect-icon">🔐</div>
+      <h2>Welcome to Your Dashboard</h2>
+      <p>Connect your wallet to manage jobs, track earnings, and monitor your agent's performance.</p>
+      <button class="btn btn-primary connect-btn" onclick="connectWallet()">Connect Wallet</button>
+    </div>
   </div>
 
   <div id="dashboard" class="dashboard-grid hidden">
-    <aside class="sidebar">
-      <div class="sidebar-section">
-        <div id="user-info" style="margin-bottom: 24px;">
-          <div style="font-weight: 600;" id="user-name">Loading...</div>
-          <div style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;" id="user-wallet"></div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+    
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-profile">
+        <div class="profile-avatar" id="profile-avatar">👤</div>
+        <div class="profile-name" id="user-name">Loading...</div>
+        <div class="profile-wallet" id="user-wallet"></div>
+        <div class="profile-role role-hirer" id="user-role">
+          <span>💼</span> Hirer
         </div>
       </div>
-      <div class="sidebar-section">
-        <h3>Menu</h3>
-        <div class="sidebar-link active" onclick="showTab('jobs')">📋 My Jobs</div>
-        <div class="sidebar-link" onclick="showTab('earnings')" id="earnings-link" style="display:none;">💰 Earnings</div>
-        <div class="sidebar-link" onclick="showTab('settings')">⚙️ Settings</div>
-      </div>
-      <div class="sidebar-section" id="agent-section" style="display: none;">
-        <h3>Agent</h3>
-        <div class="sidebar-link" onclick="showTab('agent')">🤖 My Agent</div>
-        <div class="sidebar-link" onclick="showTab('earnings')">💰 Earnings</div>
+      
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <h3>Overview</h3>
+          <div class="sidebar-link active" onclick="showTab('overview', this)">
+            <span>📊</span> Dashboard
+          </div>
+          <div class="sidebar-link" onclick="showTab('jobs', this)">
+            <span>📋</span> My Jobs
+            <span class="badge hidden" id="pending-badge">0</span>
+          </div>
+        </div>
+        
+        <div class="sidebar-section" id="agent-section" style="display: none;">
+          <h3>Agent</h3>
+          <div class="sidebar-link" onclick="showTab('agent', this)">
+            <span>🤖</span> My Agent
+          </div>
+          <div class="sidebar-link" onclick="showTab('earnings', this)">
+            <span>💰</span> Earnings
+          </div>
+        </div>
+        
+        <div class="sidebar-section">
+          <h3>Account</h3>
+          <div class="sidebar-link" onclick="showTab('settings', this)">
+            <span>⚙️</span> Settings
+          </div>
+        </div>
+      </nav>
+      
+      <div class="sidebar-stats" id="sidebar-stats">
+        <div class="sidebar-stat">
+          <span class="sidebar-stat-label">Total Spent</span>
+          <span class="sidebar-stat-value" id="stat-spent">$0</span>
+        </div>
+        <div class="sidebar-stat">
+          <span class="sidebar-stat-label">Jobs</span>
+          <span class="sidebar-stat-value" id="stat-jobs">0</span>
+        </div>
       </div>
     </aside>
 
     <main class="main-content">
+      <!-- Overview Tab -->
+      <div id="overview-tab">
+        <div class="page-header">
+          <div>
+            <h1>Dashboard</h1>
+            <p>Welcome back! Here's your activity overview.</p>
+          </div>
+          <a href="/agents" class="btn btn-primary">Browse Agents</a>
+        </div>
+        
+        <div class="stats-grid" id="overview-stats">
+          <div class="stat-card">
+            <div class="stat-icon cyan">📋</div>
+            <div class="stat-label">Active Jobs</div>
+            <div class="stat-value" id="active-jobs">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green">✅</div>
+            <div class="stat-label">Completed</div>
+            <div class="stat-value" id="completed-jobs">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon purple">💰</div>
+            <div class="stat-label">Total Spent</div>
+            <div class="stat-value" id="total-spent">$0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon gold">⭐</div>
+            <div class="stat-label">Avg Rating Given</div>
+            <div class="stat-value" id="avg-rating">—</div>
+          </div>
+        </div>
+        
+        <div class="jobs-card">
+          <div class="jobs-card-header">
+            <h3>Recent Jobs</h3>
+            <a href="#" onclick="showTab('jobs', document.querySelector('[onclick*=jobs]')); return false;" class="view-link">View all →</a>
+          </div>
+          <table class="jobs-table">
+            <thead>
+              <tr>
+                <th>Job</th>
+                <th>Agent</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="recent-jobs">
+              <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><h3>No jobs yet</h3><p>Browse agents to get started!</p><a href="/agents" class="btn btn-primary">Browse Agents</a></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Jobs Tab -->
-      <div id="jobs-tab">
-        <h1 style="margin-bottom: 24px;">My Jobs</h1>
-        <div style="margin-bottom: 16px; border-bottom: 1px solid var(--border);">
+      <div id="jobs-tab" class="hidden">
+        <div class="page-header">
+          <div>
+            <h1>My Jobs</h1>
+            <p>Manage all your jobs in one place</p>
+          </div>
+        </div>
+        
+        <div class="tab-bar">
           <button class="tab-btn active" onclick="filterJobs('all', this)">All</button>
-          <button class="tab-btn" onclick="filterJobs('pending', this)">Pending</button>
+          <button class="tab-btn" onclick="filterJobs('active', this)">Active</button>
           <button class="tab-btn" onclick="filterJobs('completed', this)">Completed</button>
         </div>
-        <div class="jobs-table">
-          <table>
+        
+        <div class="jobs-card">
+          <table class="jobs-table">
             <thead>
               <tr>
                 <th>Job</th>
@@ -4998,52 +5625,104 @@ router.get('/dashboard', async (req, res) => {
               </tr>
             </thead>
             <tbody id="jobs-list">
-              <tr><td colspan="6" class="empty-state">Loading jobs...</td></tr>
+              <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><h3>No jobs yet</h3><p>Browse agents to get started!</p><a href="/agents" class="btn btn-primary">Browse Agents</a></div></td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- Agent Tab -->
+      <!-- Agent Tab (for operators) -->
       <div id="agent-tab" class="hidden">
-        <h1 style="margin-bottom: 24px;">My Agent</h1>
+        <div class="page-header">
+          <div>
+            <h1>My Agent</h1>
+            <p>Manage your agent profile and services</p>
+          </div>
+          <a href="#" class="btn btn-secondary" id="edit-agent-btn">Edit Profile</a>
+        </div>
         <div id="agent-details"></div>
       </div>
 
-      <!-- Earnings Tab -->
+      <!-- Earnings Tab (for operators) -->
       <div id="earnings-tab" class="hidden">
-        <h1 style="margin-bottom: 24px;">Earnings</h1>
-        <div class="stats-row">
-          <div class="stat-card">
-            <div class="label">Total Earned</div>
-            <div class="value" style="color: var(--green);" id="total-earned">$0.00</div>
-          </div>
-          <div class="stat-card">
-            <div class="label">Jobs Completed</div>
-            <div class="value" id="jobs-completed">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="label">Avg. per Job</div>
-            <div class="value" id="avg-per-job">$0.00</div>
-          </div>
-          <div class="stat-card">
-            <div class="label">Rating</div>
-            <div class="value" id="agent-rating">⭐ 5.0</div>
+        <div class="page-header">
+          <div>
+            <h1>Earnings</h1>
+            <p>Track your agent's revenue</p>
           </div>
         </div>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon green">💵</div>
+            <div class="stat-label">Total Earned</div>
+            <div class="stat-value" style="color: var(--success);" id="total-earned">$0.00</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon cyan">✅</div>
+            <div class="stat-label">Jobs Completed</div>
+            <div class="stat-value" id="jobs-completed">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon purple">📊</div>
+            <div class="stat-label">Avg. per Job</div>
+            <div class="stat-value" id="avg-per-job">$0.00</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon gold">⭐</div>
+            <div class="stat-label">Rating</div>
+            <div class="stat-value" id="agent-rating">5.0</div>
+          </div>
+        </div>
+        
         <div id="earnings-jobs"></div>
       </div>
 
       <!-- Settings Tab -->
       <div id="settings-tab" class="hidden">
-        <h1 style="margin-bottom: 24px;">Settings</h1>
-        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px;">
-          <h3 style="margin-bottom: 16px;">Wallet</h3>
-          <p style="font-family: monospace; color: var(--text-muted);" id="settings-wallet"></p>
-          <button class="btn btn-secondary" style="margin-top: 16px;" onclick="disconnectWallet()">Disconnect Wallet</button>
+        <div class="page-header">
+          <div>
+            <h1>Settings</h1>
+            <p>Manage your account preferences</p>
+          </div>
+        </div>
+        
+        <div class="settings-card">
+          <div class="settings-header">
+            <span>🔐</span>
+            <h3>Wallet</h3>
+          </div>
+          <div class="settings-body">
+            <div class="settings-row">
+              <span class="settings-label">Connected Address</span>
+              <span class="settings-value" id="settings-wallet"></span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Network</span>
+              <span class="settings-value">Base Mainnet</span>
+            </div>
+            <div style="margin-top: 20px;">
+              <button class="btn btn-secondary" onclick="disconnectWallet()">Disconnect Wallet</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="settings-card">
+          <div class="settings-header">
+            <span>🔔</span>
+            <h3>Notifications</h3>
+          </div>
+          <div class="settings-body">
+            <div class="settings-row">
+              <span class="settings-label">Email Notifications</span>
+              <span class="settings-value">Coming soon</span>
+            </div>
+          </div>
         </div>
       </div>
     </main>
+    
+    <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰</button>
   </div>
 
   <script>
@@ -5053,12 +5732,23 @@ router.get('/dashboard', async (req, res) => {
     let agentData = null;
     let jobsData = [];
 
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebarOverlay').classList.remove('open');
+    }
+
     async function loadDashboard() {
       if (!connected) return;
 
       document.getElementById('connect-prompt').classList.add('hidden');
       document.getElementById('dashboard').classList.remove('hidden');
-      document.getElementById('user-wallet').textContent = userAddress.slice(0,6) + '...' + userAddress.slice(-4);
+      
+      const shortAddr = userAddress.slice(0,6) + '...' + userAddress.slice(-4);
+      document.getElementById('user-wallet').textContent = shortAddr;
       document.getElementById('settings-wallet').textContent = userAddress;
 
       // Load user data
@@ -5072,7 +5762,11 @@ router.get('/dashboard', async (req, res) => {
           if (userData.agent) {
             agentData = userData.agent;
             document.getElementById('agent-section').style.display = 'block';
-            document.getElementById('earnings-link').style.display = 'block';
+            document.getElementById('profile-avatar').textContent = '🤖';
+            document.getElementById('user-role').innerHTML = '<span>🤖</span> Agent Operator';
+            document.getElementById('user-role').classList.remove('role-hirer');
+            document.getElementById('user-role').classList.add('role-operator');
+            loadAgentDetails();
           }
         }
       } catch (e) { console.error(e); }
@@ -5086,91 +5780,173 @@ router.get('/dashboard', async (req, res) => {
         const res = await fetch('/api/users/' + userAddress + '/jobs');
         if (res.ok) {
           jobsData = await res.json();
-          renderJobs(jobsData);
+          renderJobs(jobsData, 'jobs-list');
+          renderJobs(jobsData.slice(0, 5), 'recent-jobs');
+          updateStats();
         }
       } catch (e) {
         console.error(e);
-        document.getElementById('jobs-list').innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load jobs</td></tr>';
+        document.getElementById('jobs-list').innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">❌</div><h3>Failed to load</h3><p>Please try again later</p></div></td></tr>';
       }
     }
 
-    function renderJobs(jobs) {
-      const tbody = document.getElementById('jobs-list');
+    function updateStats() {
+      const activeJobs = jobsData.filter(j => ['pending', 'paid', 'in_progress', 'delivered'].includes(j.status)).length;
+      const completedJobs = jobsData.filter(j => j.status === 'completed').length;
+      const totalSpent = jobsData.reduce((sum, j) => sum + Number(j.price_usdc || 0), 0);
+      
+      document.getElementById('active-jobs').textContent = activeJobs;
+      document.getElementById('completed-jobs').textContent = completedJobs;
+      document.getElementById('total-spent').textContent = '$' + totalSpent.toFixed(0);
+      document.getElementById('stat-spent').textContent = '$' + totalSpent.toFixed(0);
+      document.getElementById('stat-jobs').textContent = jobsData.length;
+      
+      // Update pending badge
+      const pendingBadge = document.getElementById('pending-badge');
+      if (activeJobs > 0) {
+        pendingBadge.textContent = activeJobs;
+        pendingBadge.classList.remove('hidden');
+      }
+    }
+
+    function loadAgentDetails() {
+      if (!agentData) return;
+      
+      const tierColors = {
+        new: 'var(--tier-new)',
+        rising: 'var(--tier-rising)',
+        established: 'var(--tier-established)',
+        trusted: 'var(--tier-trusted)',
+        verified: 'var(--tier-verified)'
+      };
+      const tierColor = tierColors[agentData.trust_tier] || tierColors.new;
+      
+      document.getElementById('agent-details').innerHTML = \`
+        <div class="agent-card">
+          <div class="agent-card-header">
+            <div class="agent-card-avatar">🤖</div>
+            <div class="agent-card-info">
+              <h2>\${agentData.name}</h2>
+              <span class="tier-badge" style="background: \${tierColor}20; color: \${tierColor};">
+                ✓ \${agentData.trust_tier?.charAt(0).toUpperCase() + agentData.trust_tier?.slice(1) || 'New'}
+              </span>
+            </div>
+          </div>
+          <div class="agent-card-stats">
+            <div class="agent-stat">
+              <div class="agent-stat-value">\${agentData.jobs_completed || 0}</div>
+              <div class="agent-stat-label">Jobs Done</div>
+            </div>
+            <div class="agent-stat">
+              <div class="agent-stat-value">⭐ \${Number(agentData.avg_rating || 5).toFixed(1)}</div>
+              <div class="agent-stat-label">Rating</div>
+            </div>
+            <div class="agent-stat">
+              <div class="agent-stat-value">\${agentData.review_count || 0}</div>
+              <div class="agent-stat-label">Reviews</div>
+            </div>
+            <div class="agent-stat">
+              <div class="agent-stat-value">\${agentData.skills?.length || 0}</div>
+              <div class="agent-stat-label">Services</div>
+            </div>
+          </div>
+        </div>
+        <a href="/agent/\${agentData.id}" class="btn btn-secondary">View Public Profile →</a>
+      \`;
+      
+      // Update earnings tab
+      const totalEarned = agentData.total_earned || 0;
+      const jobsDone = agentData.jobs_completed || 0;
+      document.getElementById('total-earned').textContent = '$' + Number(totalEarned).toFixed(2);
+      document.getElementById('jobs-completed').textContent = jobsDone;
+      document.getElementById('avg-per-job').textContent = jobsDone > 0 ? '$' + (totalEarned / jobsDone).toFixed(2) : '$0.00';
+      document.getElementById('agent-rating').textContent = Number(agentData.avg_rating || 5).toFixed(1);
+    }
+
+    function renderJobs(jobs, targetId) {
+      const tbody = document.getElementById(targetId);
+      if (!tbody) return;
+      
       if (jobs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No jobs yet. <a href="/" style="color: var(--accent);">Browse agents</a> to get started!</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><h3>No jobs yet</h3><p>Browse agents to get started!</p><a href="/agents" class="btn btn-primary">Browse Agents</a></div></td></tr>';
         return;
       }
 
-      const statusIcons = {
-        in_progress: '⚙️',
-        delivered: '📦',
-        disputed: '⚠️',
-        refunded: '↩️',
-        pending: '⏳',
-        paid: '🔄',
-        completed: '✅',
-        failed: '❌'
+      const statusLabels = {
+        in_progress: 'In Progress',
+        delivered: 'Delivered',
+        disputed: 'Disputed',
+        refunded: 'Refunded',
+        pending: 'Pending',
+        paid: 'Processing',
+        completed: 'Completed',
+        failed: 'Failed'
+      };
+
+      const jobIcons = {
+        'Image Generation': '🎨',
+        'Content Writing': '✍️',
+        'Code Review': '💻',
+        'Data Analysis': '📊',
+        'Translation': '🌐',
+        'default': '⚡'
       };
 
       tbody.innerHTML = jobs.map(job => {
-        const statusIcon = statusIcons[job.status] || '❓';
-
-        // Generate result preview
-        let resultPreview = '';
-        if (job.output_data) {
-          const output = typeof job.output_data === 'string' ? JSON.parse(job.output_data) : job.output_data;
-          if (output.images) {
-            resultPreview = \`🎨 \${output.images.length} image\${output.images.length > 1 ? 's' : ''} generated\`;
-          } else if (output.ideas) {
-            resultPreview = \`💡 \${output.ideas.length} ideas generated\`;
-          } else if (output.error) {
-            resultPreview = '❌ Error occurred';
-          } else {
-            resultPreview = '✅ Result ready';
-          }
-        } else {
-          resultPreview = job.status === 'paid' ? '🔄 Processing...' : '⏳ Pending';
-        }
-
+        const statusLabel = statusLabels[job.status] || job.status;
+        const jobIcon = jobIcons[job.skill_name] || jobIcons.default;
+        
         return \`
           <tr>
-            <td style="max-width: 200px;">
-              <div>\${job.skill_name || 'Service'}</div>
-              <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">\${resultPreview}</div>
-            </td>
-            <td>\${job.agent_name || 'Agent'}</td>
-            <td style="color: var(--green);">$\${Number(job.price_usdc).toFixed(2)}</td>
             <td>
-              <span style="font-size: 20px; display: inline-block;">\${statusIcon}</span>
+              <div class="job-info">
+                <div class="job-icon">\${jobIcon}</div>
+                <div>
+                  <div class="job-name">\${job.skill_name || 'Service'}</div>
+                  <div class="job-preview">#\${job.job_uuid.slice(0,8)}</div>
+                </div>
+              </div>
             </td>
+            <td>
+              <div class="job-agent">
+                <div class="job-agent-avatar">🤖</div>
+                <span>\${job.agent_name || 'Agent'}</span>
+              </div>
+            </td>
+            <td class="job-amount">$\${Number(job.price_usdc).toFixed(2)}</td>
+            <td><span class="status-badge status-\${job.status}">\${statusLabel}</span></td>
             <td style="color: var(--text-muted);">\${new Date(job.created_at).toLocaleDateString()}</td>
-            <td><a href="/job/\${job.job_uuid}" style="color: var(--accent);">View →</a></td>
+            <td><a href="/job/\${job.job_uuid}" class="view-link">View →</a></td>
           </tr>
         \`;
       }).join('');
     }
 
     function filterJobs(status, btn) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-bar .tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       
-      if (status === 'all') {
-        renderJobs(jobsData);
-      } else {
-        renderJobs(jobsData.filter(j => j.status === status));
+      let filtered = jobsData;
+      if (status === 'active') {
+        filtered = jobsData.filter(j => ['pending', 'paid', 'in_progress', 'delivered'].includes(j.status));
+      } else if (status === 'completed') {
+        filtered = jobsData.filter(j => j.status === 'completed');
       }
+      renderJobs(filtered, 'jobs-list');
     }
 
-    function showTab(tab) {
+    function showTab(tab, el) {
       document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
-      event.target.classList.add('active');
+      if (el) el.classList.add('active');
       
+      document.getElementById('overview-tab').classList.add('hidden');
       document.getElementById('jobs-tab').classList.add('hidden');
       document.getElementById('agent-tab').classList.add('hidden');
       document.getElementById('earnings-tab').classList.add('hidden');
       document.getElementById('settings-tab').classList.add('hidden');
       
       document.getElementById(tab + '-tab').classList.remove('hidden');
+      closeSidebar();
     }
 
     window.addEventListener('load', async () => {
