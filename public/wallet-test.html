@@ -1,184 +1,263 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Wallet Test | TheBotique</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallet Test - TheBotique</title>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, sans-serif;
-      background: #0A0B0D;
-      color: #fff;
-      padding: 40px;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    .status {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      min-height: 100vh;
       padding: 20px;
-      border-radius: 12px;
-      margin: 20px 0;
-      font-family: monospace;
     }
-    .success { background: rgba(0, 230, 184, 0.15); border: 1px solid #00E6B8; }
-    .error { background: rgba(255, 92, 92, 0.15); border: 1px solid #FF5C5C; }
-    .warning { background: rgba(255, 184, 0, 0.15); border: 1px solid #FFB800; }
-    .info { background: rgba(0, 240, 255, 0.15); border: 1px solid #00F0FF; }
+    .container { max-width: 600px; margin: 0 auto; }
+    h1 { color: #00F0FF; margin-bottom: 20px; font-size: 24px; }
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 { font-size: 16px; margin-bottom: 15px; color: #888; }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #666;
+    }
+    .dot.green { background: #00ff88; }
+    .dot.red { background: #ff4444; }
+    .dot.yellow { background: #ffaa00; }
     button {
-      background: linear-gradient(135deg, #00F0FF, #00B8C4);
+      background: linear-gradient(135deg, #00F0FF, #00a0aa);
       color: #000;
       border: none;
-      padding: 16px 32px;
-      font-size: 16px;
+      padding: 12px 24px;
+      border-radius: 8px;
       font-weight: 600;
-      border-radius: 50px;
       cursor: pointer;
       width: 100%;
-      margin: 10px 0;
+      margin-top: 10px;
+      font-size: 16px;
     }
+    button:hover { opacity: 0.9; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    h1 { margin-bottom: 20px; }
-    #log { white-space: pre-wrap; font-size: 12px; }
+    .log {
+      background: #000;
+      border-radius: 8px;
+      padding: 15px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .log-entry { margin-bottom: 5px; }
+    .log-entry.error { color: #ff6b6b; }
+    .log-entry.success { color: #51cf66; }
+    .log-entry.info { color: #74c0fc; }
+    .address {
+      font-family: monospace;
+      font-size: 14px;
+      word-break: break-all;
+      color: #00F0FF;
+    }
   </style>
 </head>
 <body>
-  <h1>🔐 Wallet Connection Test</h1>
-  
-  <div id="checks" class="status info">Running checks...</div>
-  
-  <button id="connectBtn" onclick="testConnect()">Connect Wallet</button>
-  <button onclick="location.reload()">Refresh Page</button>
-  
-  <h3 style="margin-top: 30px;">Debug Log:</h3>
-  <div id="log" class="status info"></div>
+  <div class="container">
+    <h1>🔧 Wallet Connection Test</h1>
+    
+    <div class="card">
+      <h2>ENVIRONMENT</h2>
+      <div class="status">
+        <div class="dot" id="dot-ethereum"></div>
+        <span>window.ethereum: <span id="has-ethereum">checking...</span></span>
+      </div>
+      <div class="status">
+        <div class="dot" id="dot-provider"></div>
+        <span>Provider: <span id="provider-name">unknown</span></span>
+      </div>
+      <div class="status">
+        <div class="dot" id="dot-chain"></div>
+        <span>Chain ID: <span id="chain-id">-</span></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>CONNECTION</h2>
+      <div class="status">
+        <div class="dot" id="dot-connected"></div>
+        <span>Status: <span id="connection-status">disconnected</span></span>
+      </div>
+      <div id="address-display" style="display:none; margin-top:10px;">
+        <span style="color:#888;">Address:</span><br>
+        <span class="address" id="wallet-address"></span>
+      </div>
+      <button id="connect-btn" onclick="testConnect()">Connect Wallet</button>
+    </div>
+
+    <div class="card">
+      <h2>DEBUG LOG</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
 
   <script>
-    const log = (msg) => {
-      console.log(msg);
-      document.getElementById('log').textContent += new Date().toISOString().slice(11,19) + ' ' + msg + '\n';
+    const log = (msg, type = 'info') => {
+      const logEl = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry ' + type;
+      entry.textContent = new Date().toLocaleTimeString() + ' | ' + msg;
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
     };
 
-    // Run checks on load
-    window.addEventListener('load', () => {
-      const checks = document.getElementById('checks');
-      let html = '';
-      
-      // Check 1: ethers.js
-      if (typeof ethers !== 'undefined') {
-        html += '✅ ethers.js loaded (v' + ethers.version + ')\n';
-        log('ethers.js loaded successfully');
-      } else {
-        html += '❌ ethers.js NOT loaded\n';
-        log('ERROR: ethers.js failed to load');
-      }
-      
-      // Check 2: window.ethereum
-      if (typeof window.ethereum !== 'undefined') {
-        html += '✅ Wallet provider detected\n';
-        log('Wallet provider: ' + (window.ethereum.isMetaMask ? 'MetaMask' : 'Other'));
-        
-        // Check if already connected
-        window.ethereum.request({ method: 'eth_accounts' }).then(accounts => {
-          if (accounts.length > 0) {
-            html += '✅ Already connected: ' + accounts[0].slice(0,10) + '...\n';
-            log('Already connected: ' + accounts[0]);
-          }
-          checks.innerHTML = '<pre>' + html + '</pre>';
-        });
-      } else {
-        html += '⚠️ No wallet provider detected\n';
-        html += '\nYou need:\n';
-        html += '• Desktop: Install MetaMask extension\n';
-        html += '• Mobile: Open this page IN the MetaMask app browser\n';
-        log('No window.ethereum - wallet not installed or not in dApp browser');
-        checks.className = 'status warning';
-      }
-      
-      checks.innerHTML = '<pre>' + html + '</pre>';
-    });
+    const updateDot = (id, color) => {
+      document.getElementById(id).className = 'dot ' + color;
+    };
 
-    async function testConnect() {
-      const btn = document.getElementById('connectBtn');
-      btn.disabled = true;
-      btn.textContent = 'Connecting...';
+    // Check environment on load
+    window.addEventListener('load', async () => {
+      log('Page loaded, checking environment...');
       
-      log('--- Starting connection ---');
-      
-      try {
-        // Step 1: Request accounts
-        log('Requesting accounts...');
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        log('Got accounts: ' + accounts[0]);
+      // Check window.ethereum
+      if (typeof window.ethereum !== 'undefined') {
+        updateDot('dot-ethereum', 'green');
+        document.getElementById('has-ethereum').textContent = 'YES ✓';
+        log('window.ethereum detected', 'success');
         
-        // Step 2: Create provider
-        log('Creating provider...');
-        const provider = new ethers.BrowserProvider(window.ethereum);
+        // Detect provider
+        let providerName = 'Unknown';
+        if (window.ethereum.isMetaMask) providerName = 'MetaMask';
+        else if (window.ethereum.isCoinbaseWallet) providerName = 'Coinbase Wallet';
+        else if (window.ethereum.isRabby) providerName = 'Rabby';
+        else if (window.ethereum.isBraveWallet) providerName = 'Brave Wallet';
+        else if (window.ethereum.isTrust) providerName = 'Trust Wallet';
         
-        // Step 3: Get network
-        log('Getting network...');
-        const network = await provider.getNetwork();
-        log('Network: chainId=' + network.chainId + ' name=' + network.name);
+        document.getElementById('provider-name').textContent = providerName;
+        updateDot('dot-provider', 'green');
+        log('Provider: ' + providerName, 'success');
         
-        // Step 4: Check if Base
-        if (network.chainId !== 8453n) {
-          log('Not on Base (8453), attempting to switch...');
-          try {
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: '0x2105' }]
-            });
-            log('Switched to Base');
-          } catch (e) {
-            if (e.code === 4902) {
-              log('Base not found, adding network...');
-              await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                  chainId: '0x2105',
-                  chainName: 'Base',
-                  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-                  rpcUrls: ['https://mainnet.base.org'],
-                  blockExplorerUrls: ['https://basescan.org']
-                }]
-              });
-            } else {
-              log('Switch failed: ' + e.message);
-            }
+        // Get chain ID
+        try {
+          const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+          const chainInt = parseInt(chainId, 16);
+          const chainNames = {
+            1: 'Ethereum Mainnet',
+            8453: 'Base',
+            84532: 'Base Sepolia',
+            137: 'Polygon',
+            42161: 'Arbitrum'
+          };
+          document.getElementById('chain-id').textContent = chainInt + ' (' + (chainNames[chainInt] || 'Unknown') + ')';
+          updateDot('dot-chain', chainInt === 8453 ? 'green' : 'yellow');
+          log('Chain ID: ' + chainInt, chainInt === 8453 ? 'success' : 'info');
+          if (chainInt !== 8453) {
+            log('⚠️ Not on Base (8453). TheBotique uses Base for USDC payments.', 'error');
           }
+        } catch (e) {
+          log('Failed to get chain ID: ' + e.message, 'error');
         }
         
-        // Step 5: Get USDC balance
-        log('Getting USDC balance...');
-        const usdc = new ethers.Contract(
-          '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-          ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'],
-          provider
-        );
-        const balance = await usdc.balanceOf(accounts[0]);
-        const decimals = await usdc.decimals();
-        const formatted = (Number(balance) / 10**Number(decimals)).toFixed(2);
-        log('USDC Balance: ' + formatted);
+        // Check if already connected
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          if (accounts.length > 0) {
+            showConnected(accounts[0]);
+            log('Already connected: ' + accounts[0], 'success');
+          }
+        } catch (e) {
+          log('Failed to check existing connection: ' + e.message, 'error');
+        }
         
-        // Success!
-        document.getElementById('checks').className = 'status success';
-        document.getElementById('checks').innerHTML = '<pre>✅ CONNECTED!\n\nAddress: ' + accounts[0] + '\nNetwork: Base (8453)\nUSDC Balance: $' + formatted + '</pre>';
-        log('--- Connection successful! ---');
-        
-        btn.textContent = 'Connected ✓';
-        
-      } catch (error) {
-        log('ERROR: ' + error.message);
-        log('Code: ' + error.code);
-        
-        let msg = 'Connection failed';
-        if (error.code === 4001) msg = 'You rejected the connection request';
-        else if (error.code === -32002) msg = 'Request pending - check your wallet popup';
-        
-        document.getElementById('checks').className = 'status error';
-        document.getElementById('checks').innerHTML = '<pre>❌ ' + msg + '\n\nError: ' + error.message + '</pre>';
-        
-        btn.disabled = false;
-        btn.textContent = 'Try Again';
+      } else {
+        updateDot('dot-ethereum', 'red');
+        document.getElementById('has-ethereum').textContent = 'NO ✗';
+        log('No wallet detected! Install MetaMask or use a Web3 browser.', 'error');
       }
+    });
+
+    function showConnected(address) {
+      updateDot('dot-connected', 'green');
+      document.getElementById('connection-status').textContent = 'CONNECTED';
+      document.getElementById('wallet-address').textContent = address;
+      document.getElementById('address-display').style.display = 'block';
+      document.getElementById('connect-btn').textContent = 'Connected ✓';
+      document.getElementById('connect-btn').disabled = true;
+    }
+
+    async function testConnect() {
+      const btn = document.getElementById('connect-btn');
+      btn.textContent = 'Connecting...';
+      btn.disabled = true;
+      
+      log('Requesting wallet connection...');
+      
+      try {
+        if (!window.ethereum) {
+          throw new Error('No wallet provider found');
+        }
+        
+        const accounts = await window.ethereum.request({ 
+          method: 'eth_requestAccounts' 
+        });
+        
+        if (accounts.length > 0) {
+          showConnected(accounts[0]);
+          log('Connected successfully!', 'success');
+          log('Address: ' + accounts[0], 'success');
+          
+          // Get balance
+          try {
+            const balance = await window.ethereum.request({
+              method: 'eth_getBalance',
+              params: [accounts[0], 'latest']
+            });
+            const ethBalance = parseInt(balance, 16) / 1e18;
+            log('ETH Balance: ' + ethBalance.toFixed(4) + ' ETH', 'info');
+          } catch (e) {
+            log('Could not fetch balance: ' + e.message, 'error');
+          }
+        }
+      } catch (error) {
+        log('Connection failed: ' + error.message, 'error');
+        if (error.code === 4001) {
+          log('User rejected the connection request', 'error');
+        } else if (error.code === -32002) {
+          log('Connection request already pending - check your wallet', 'error');
+        }
+        btn.textContent = 'Connect Wallet';
+        btn.disabled = false;
+      }
+    }
+
+    // Listen for account changes
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        log('Account changed: ' + (accounts[0] || 'disconnected'), 'info');
+        if (accounts.length > 0) {
+          showConnected(accounts[0]);
+        } else {
+          location.reload();
+        }
+      });
+      
+      window.ethereum.on('chainChanged', (chainId) => {
+        log('Chain changed to: ' + parseInt(chainId, 16), 'info');
+        location.reload();
+      });
     }
   </script>
 </body>
