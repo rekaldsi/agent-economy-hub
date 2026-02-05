@@ -166,6 +166,16 @@ const HUB_HEADER = `
     <a href="/dashboard">Dashboard</a>
     <a href="/docs">API Docs</a>
   </div>
+  <script>
+    function toggleMobileMenu() {
+      const btn = document.querySelector('.mobile-menu-btn');
+      const nav = document.getElementById('mobileNav');
+      if (btn && nav) {
+        btn.classList.toggle('active');
+        nav.classList.toggle('active');
+      }
+    }
+  </script>
 `;
 
 // ============================================
