@@ -6915,6 +6915,130 @@ router.post('/api/tasks/auto-route', async (req, res) => {
   });
 });
 
+// ============================================
+// FUTURE VISION: Blockchain Reputation
+// ============================================
+
+// On-chain reputation attestations (EAS-style)
+router.get('/api/reputation/:wallet', async (req, res) => {
+  const wallet = req.params.wallet.toLowerCase();
+
+  // Get user stats
+  const userResult = await db.query('SELECT * FROM users WHERE wallet_address = $1', [wallet]);
+  const user = userResult.rows[0];
+
+  // Get agent if exists
+  const agentResult = await db.query(`
+    SELECT a.* FROM agents a JOIN users u ON a.user_id = u.id WHERE u.wallet_address = $1
+  `, [wallet]);
+  const agent = agentResult.rows[0];
+
+  // Calculate reputation score
+  let reputation = {
+    wallet,
+    onChainScore: 0,
+    components: {},
+    attestations: []
+  };
+
+  if (agent) {
+    // Agent reputation
+    const completedJobs = parseInt(agent.total_jobs) || 0;
+    const rating = parseFloat(agent.rating) || 0;
+    const completionRate = parseFloat(agent.completion_rate) || 100;
+
+    reputation.components = {
+      taskCompletion: Math.min(completedJobs / 100, 1) * 25,
+      qualityScore: (rating / 5) * 30,
+      reliability: (completionRate / 100) * 20,
+      tenure: Math.min((Date.now() - new Date(agent.created_at)) / (365 * 24 * 60 * 60 * 1000), 1) * 15,
+      verification: agent.x_verified_at ? 10 : 0
+    };
+
+    reputation.onChainScore = Math.round(
+      Object.values(reputation.components).reduce((a, b) => a + b, 0)
+    );
+
+    // Generate attestation data (for on-chain)
+    reputation.attestations = [
+      {
+        type: 'TaskCompletion',
+        value: completedJobs,
+        timestamp: new Date().toISOString(),
+        signature: null // Would be signed by platform
+      },
+      {
+        type: 'AverageRating',
+        value: rating,
+        timestamp: new Date().toISOString(),
+        signature: null
+      }
+    ];
+  }
+
+  // Get hirer reputation
+  const hirerStats = await db.query(`
+    SELECT COUNT(*) as jobs_posted,
+      COUNT(CASE WHEN status = 'completed' THEN 1 END) as jobs_completed,
+      COUNT(CASE WHEN status = 'disputed' THEN 1 END) as disputes
+    FROM jobs WHERE requester_wallet = $1
+  `, [wallet]);
+
+  if (hirerStats.rows[0]) {
+    const h = hirerStats.rows[0];
+    reputation.hirerScore = {
+      jobsPosted: parseInt(h.jobs_posted),
+      completionRate: h.jobs_posted > 0 ? (h.jobs_completed / h.jobs_posted) * 100 : 0,
+      disputeRate: h.jobs_posted > 0 ? (h.disputes / h.jobs_posted) * 100 : 0
+    };
+  }
+
+  res.json(reputation);
+});
+
+router.post('/api/reputation/attest', async (req, res) => {
+  const { wallet, targetWallet, attestationType, value, signature } = req.body;
+  
+  // In production: verify signature, write to blockchain
+  // For now: store attestation intent
+  
+  res.json({
+    success: true,
+    attestation: {
+      from: wallet,
+      to: targetWallet,
+      type: attestationType,
+      value,
+      timestamp: new Date().toISOString(),
+      txHash: null // Would be returned after on-chain tx
+    },
+    message: 'Attestation queued for on-chain submission'
+  });
+});
+
+router.get('/api/reputation/leaderboard', async (req, res) => {
+  const result = await db.query(`
+    SELECT a.id, a.name, a.trust_tier, a.rating, a.total_jobs, a.completion_rate,
+      u.wallet_address,
+      (COALESCE(a.total_jobs, 0) * 0.25 + 
+       COALESCE(a.rating, 0) * 6 + 
+       COALESCE(a.completion_rate, 0) * 0.2) as reputation_score
+    FROM agents a
+    JOIN users u ON a.user_id = u.id
+    WHERE a.status = 'active'
+    ORDER BY reputation_score DESC
+    LIMIT 50
+  `);
+
+  res.json({
+    leaderboard: result.rows.map((r, i) => ({
+      rank: i + 1,
+      ...r,
+      reputationScore: Math.round(parseFloat(r.reputation_score))
+    }))
+  });
+});
+
 router.get('/api/recommendations/agents', async (req, res) => {
   const { wallet, category, recentTasks } = req.query;
 
