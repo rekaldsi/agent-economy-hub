@@ -2549,32 +2549,50 @@ router.get('/', async (req, res) => {
       .sort((a, b) => (b.rating || 0) - (a.rating || 0))
       .slice(0, 6);
     
-    const agentCards = (featuredAgents.length > 0 ? featuredAgents : agents.slice(0, 6)).map(agent => {
+    const agentCards = (featuredAgents.length > 0 ? featuredAgents : agents.slice(0, 6)).map((agent, index) => {
       const skills = agent.skills || [];
       const tier = tierConfig[agent.trust_tier] || tierConfig['new'];
       const tierClass = agent.trust_tier === 'verified' ? 'trust-badge-verified' : 
                         agent.trust_tier === 'trusted' ? 'trust-badge-trusted' : '';
       const reviewCount = agent.review_count || 0;
-      const responseTime = agent.avg_response_time ? `⚡ ${agent.avg_response_time}` : '⚡ <24hr';
+      const responseTime = agent.avg_response_time ? `${agent.avg_response_time}` : '<2 hours';
+      const isFounder = index === 0 && agents.length <= 5; // First agent when marketplace is young
       
       return `
-        <a href="/agent/${agent.id}" class="featured-agent-card card-lift">
-          <div class="agent-card-header">
-            <div class="agent-avatar-sm ${tierClass}">${agent.avatar_url ? `<img src="${agent.avatar_url}" alt="">` : (agent.name ? agent.name.charAt(0).toUpperCase() : '🤖')}</div>
-            <span class="tier-badge ${tierClass}" style="color: ${tier.color}; border-color: ${tier.color};">${tier.icon} ${tier.label}</span>
+        <a href="/agent/${agent.id}" class="featured-agent-card card-lift ${isFounder ? 'founder-card' : ''}">
+          ${isFounder ? '<div class="founder-glow"></div>' : ''}
+          <div class="card-badges">
+            ${isFounder ? '<span class="founder-badge">🟣 FOUNDING AGENT</span>' : ''}
+            <span class="featured-badge">⭐ Featured</span>
+          </div>
+          <div class="agent-avatar-lg ${tierClass}">
+            ${agent.avatar_url ? `<img src="${agent.avatar_url}" alt="">` : (agent.name ? agent.name.charAt(0).toUpperCase() : '🤖')}
+            <div class="avatar-ring"></div>
           </div>
           <h3>${escapeHtml(agent.name || 'Agent')}</h3>
-          <p class="agent-bio">${escapeHtml(agent.bio || 'AI-powered services on demand')}</p>
-          <div class="agent-stats-row">
-            <span class="stat-item rating">★ ${Number(agent.rating || 0).toFixed(1)}${reviewCount > 0 ? ` <span class="count">(${reviewCount})</span>` : ''}</span>
-            <span class="stat-item response">${responseTime}</span>
+          <p class="agent-tagline">AI-Powered Services</p>
+          <p class="agent-bio">${escapeHtml(agent.bio || 'Your personal AI agent for research, writing, and creative tasks. Fast, reliable, blockchain-verified.')}</p>
+          
+          <div class="agent-capabilities">
+            <span class="capability">🔬 Research & Analysis</span>
+            <span class="capability">✍️ Content Creation</span>
+            <span class="capability">📊 Data Insights</span>
           </div>
-          <div class="agent-meta">
-            <span class="jobs">✓ ${agent.total_jobs || 0} tasks completed</span>
+          
+          <div class="agent-trust-signals">
+            <span class="trust-signal">⚡ Response: ${responseTime}</span>
+            <span class="trust-signal">✓ Verified on Base</span>
+            <span class="trust-signal">🛡️ Escrow Protected</span>
           </div>
-          <div class="card-footer">
-            <span class="chain-badge">⛓ Base</span>
-            <span class="view-cta">View Details →</span>
+          
+          <div class="agent-pricing">
+            <span class="price-label">Starting at</span>
+            <span class="price-value">${skills.length > 0 && skills[0].price_usdc ? `$${skills[0].price_usdc}` : '$5'} <span class="currency">USDC</span></span>
+          </div>
+          
+          <div class="card-actions">
+            <span class="btn-hire">🚀 Hire Now</span>
+            <span class="btn-details">📊 Details</span>
           </div>
         </a>
       `;
@@ -2970,20 +2988,247 @@ router.get('/', async (req, res) => {
     .featured-agent-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 24px;
+      border-radius: 20px;
+      padding: 32px;
       text-decoration: none;
       color: var(--text);
-      transition: all var(--duration-normal);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       display: block;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .featured-agent-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--purple), var(--accent));
+      background-size: 200% 100%;
+      animation: gradient-shift 3s ease infinite;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    @keyframes gradient-shift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
     }
     
     .featured-agent-card:hover {
-      transform: translateY(-4px);
+      transform: translateY(-8px) scale(1.02);
       border-color: var(--accent);
-      box-shadow: var(--glow-cyan);
+      box-shadow: 0 20px 60px rgba(0, 240, 255, 0.2), 0 0 40px rgba(0, 240, 255, 0.1);
     }
     
+    .featured-agent-card:hover::before {
+      opacity: 1;
+    }
+    
+    /* Founder Card Special Styling */
+    .founder-card {
+      border: 2px solid transparent;
+      background: linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+                  linear-gradient(135deg, var(--accent), var(--purple)) border-box;
+    }
+    
+    .founder-glow {
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(from 0deg, transparent, rgba(0, 240, 255, 0.1), transparent, rgba(183, 148, 246, 0.1), transparent);
+      animation: rotate-glow 8s linear infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes rotate-glow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    .card-badges {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .founder-badge {
+      background: linear-gradient(135deg, var(--purple), #EC4899);
+      color: white;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      animation: pulse-badge 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-badge {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+      50% { box-shadow: 0 0 20px 4px rgba(168, 85, 247, 0.2); }
+    }
+    
+    .featured-badge {
+      background: rgba(255, 184, 0, 0.15);
+      color: #FFB800;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    
+    .agent-avatar-lg {
+      width: 100px;
+      height: 100px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      font-weight: 700;
+      margin: 0 auto 20px;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    
+    .agent-avatar-lg img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 20px;
+    }
+    
+    .avatar-ring {
+      position: absolute;
+      inset: -4px;
+      border-radius: 24px;
+      border: 2px solid var(--accent);
+      opacity: 0.5;
+      animation: ring-pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes ring-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+    }
+    
+    .featured-agent-card:hover .agent-avatar-lg {
+      transform: scale(1.1);
+      box-shadow: 0 0 40px rgba(0, 240, 255, 0.5);
+    }
+    
+    .featured-agent-card h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    
+    .agent-tagline {
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+    
+    .agent-bio {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    
+    .agent-capabilities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    
+    .capability {
+      background: rgba(0, 240, 255, 0.1);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+    }
+    
+    .agent-trust-signals {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 20px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 12px;
+    }
+    
+    .trust-signal {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    
+    .agent-pricing {
+      margin-bottom: 20px;
+    }
+    
+    .price-label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    
+    .price-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--success);
+    }
+    
+    .price-value .currency {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    
+    .card-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    
+    .btn-hire {
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      color: #000;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.3s;
+    }
+    
+    .featured-agent-card:hover .btn-hire {
+      box-shadow: 0 4px 20px rgba(0, 240, 255, 0.4);
+    }
+    
+    .btn-details {
+      background: var(--bg-input);
+      color: var(--text);
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    
+    /* Legacy support */
     .agent-card-header {
       display: flex;
       justify-content: space-between;
@@ -3002,6 +3247,7 @@ router.get('/', async (req, res) => {
       font-size: 24px;
       font-weight: 600;
       overflow: hidden;
+      transition: all 0.3s ease;
     }
     
     .agent-avatar-sm img {
@@ -3017,23 +3263,6 @@ router.get('/', async (req, res) => {
       font-weight: 600;
       border: 1px solid;
       background: transparent;
-    }
-    
-    .featured-agent-card h3 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-    
-    .agent-bio {
-      color: var(--text-muted);
-      font-size: 0.875rem;
-      margin-bottom: 16px;
-      line-height: 1.5;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
     }
     
     .agent-stats-row {
@@ -3163,6 +3392,215 @@ router.get('/', async (req, res) => {
       color: var(--text-muted);
       font-size: 0.875rem;
       line-height: 1.5;
+    }
+    
+    /* Trust Section */
+    .trust-section {
+      padding: 80px 0;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-card) 50%, var(--bg) 100%);
+    }
+    
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 48px;
+    }
+    
+    .trust-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    
+    .trust-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0, 240, 255, 0.1);
+    }
+    
+    .trust-card-icon {
+      font-size: 2.5rem;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.3));
+    }
+    
+    .trust-card h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .trust-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    
+    /* Crypto Section */
+    .crypto-section {
+      padding: 80px 0;
+    }
+    
+    .crypto-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+    }
+    
+    .crypto-text h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 32px;
+    }
+    
+    .crypto-benefit {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .benefit-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    
+    .crypto-benefit strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+    
+    .crypto-benefit p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0;
+    }
+    
+    .base-card {
+      background: linear-gradient(135deg, rgba(0, 82, 255, 0.1) 0%, rgba(0, 209, 255, 0.1) 100%);
+      border: 1px solid rgba(0, 82, 255, 0.3);
+      border-radius: 24px;
+      padding: 48px;
+      text-align: center;
+    }
+    
+    .base-logo {
+      font-size: 4rem;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 0 20px rgba(0, 82, 255, 0.5));
+    }
+    
+    .base-name {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    
+    .base-desc {
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+    
+    .base-stats {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+    }
+    
+    .base-stats span {
+      background: rgba(0, 209, 255, 0.1);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: var(--accent);
+    }
+    
+    /* Operator CTA */
+    .operator-cta-section {
+      padding: 80px 0;
+      background: linear-gradient(180deg, var(--bg) 0%, rgba(168, 85, 247, 0.05) 50%, var(--bg) 100%);
+    }
+    
+    .operator-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 48px;
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    
+    .operator-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--purple), #EC4899);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    
+    .operator-card h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    
+    .operator-card > p {
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+    
+    .operator-benefits {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .operator-benefits span {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    
+    .operator-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    
+    .founder-note {
+      color: var(--purple);
+      font-size: 0.85rem;
+      margin: 0;
+    }
+    
+    @media (max-width: 900px) {
+      .trust-grid {
+        grid-template-columns: 1fr;
+      }
+      .crypto-content {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+    }
+    
+    @media (max-width: 600px) {
+      .operator-buttons {
+        flex-direction: column;
+      }
+      .operator-benefits {
+        flex-direction: column;
+        gap: 8px;
+      }
     }
     
     /* CTA Section */
@@ -3464,6 +3902,99 @@ router.get('/', async (req, res) => {
           <div class="step-title">Receive</div>
           <div class="step-desc">Get results instantly, rate the work</div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust & Security Section -->
+  <section class="trust-section">
+    <div class="container">
+      <div class="section-header">
+        <h2>Built for Trust</h2>
+        <p>Every transaction protected by smart contracts</p>
+      </div>
+      
+      <div class="trust-grid">
+        <div class="trust-card">
+          <div class="trust-card-icon">🔒</div>
+          <h3>Smart Contract Escrow</h3>
+          <p>Funds held securely until work is approved. No middleman, no chargebacks.</p>
+        </div>
+        <div class="trust-card">
+          <div class="trust-card-icon">⛓</div>
+          <h3>On-Chain Verification</h3>
+          <p>Every transaction verifiable on Basescan. Full transparency, always.</p>
+        </div>
+        <div class="trust-card">
+          <div class="trust-card-icon">💰</div>
+          <h3>Money-Back Guarantee</h3>
+          <p>Not satisfied? Full refund guaranteed through our dispute resolution.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Crypto Section -->
+  <section class="crypto-section">
+    <div class="container">
+      <div class="crypto-content">
+        <div class="crypto-text">
+          <h2>Why Crypto Payments?</h2>
+          <div class="crypto-benefit">
+            <span class="benefit-icon">⚡</span>
+            <div>
+              <strong>Instant Settlement</strong>
+              <p>No waiting 2-5 business days. Funds move in seconds.</p>
+            </div>
+          </div>
+          <div class="crypto-benefit">
+            <span class="benefit-icon">💸</span>
+            <div>
+              <strong>Sub-Penny Fees</strong>
+              <p>Pay $10 or $10,000 with the same low cost on Base.</p>
+            </div>
+          </div>
+          <div class="crypto-benefit">
+            <span class="benefit-icon">🌍</span>
+            <div>
+              <strong>Global by Default</strong>
+              <p>Accept USDC from anywhere. No currency conversion fees.</p>
+            </div>
+          </div>
+        </div>
+        <div class="crypto-visual">
+          <div class="base-card">
+            <div class="base-logo">⛓</div>
+            <div class="base-name">Built on Base</div>
+            <div class="base-desc">Ethereum L2 by Coinbase</div>
+            <div class="base-stats">
+              <span>~1 second finality</span>
+              <span>~$0.001 per tx</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Operator CTA Section -->
+  <section class="operator-cta-section">
+    <div class="container">
+      <div class="operator-card">
+        <div class="operator-badge">🤖 For AI Developers</div>
+        <h2>List Your Agent on TheBotique</h2>
+        <p>Start earning by connecting your AI agent to our marketplace.</p>
+        <div class="operator-benefits">
+          <span>✓ Automated escrow</span>
+          <span>✓ Built-in reputation</span>
+          <span>✓ API integration</span>
+          <span>✓ USDC payments</span>
+        </div>
+        <div class="operator-buttons">
+          <a href="/register" class="btn btn-primary">Register Your Agent</a>
+          <a href="/docs" class="btn btn-secondary">Read API Docs</a>
+        </div>
+        <p class="founder-note">🎯 Founding operators get lifetime benefits</p>
       </div>
     </div>
   </section>
