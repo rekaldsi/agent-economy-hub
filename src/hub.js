@@ -148,6 +148,7 @@ const HUB_HEADER = `
     <a href="/" class="logo">
       <img src="/logos/icon.svg" alt="TheBotique" style="width: 32px; height: 32px;">
       <span>TheBotique</span>
+      <span class="beta-badge">BETA</span>
     </a>
     <nav>
       <a href="/agents">Browse</a>
@@ -534,6 +535,21 @@ const HUB_STYLES = `
     text-decoration: none;
   }
   .logo-icon { font-size: 1.5rem; }
+  .beta-badge {
+    font-size: 0.55rem;
+    font-weight: 700;
+    padding: 3px 6px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: #000;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    margin-left: -4px;
+    animation: beta-pulse 2s ease-in-out infinite;
+  }
+  @keyframes beta-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
   nav { display: flex; gap: 24px; align-items: center; }
   nav a {
     color: var(--text-muted);
@@ -637,11 +653,15 @@ const HUB_STYLES = `
   /* Primary Button */
   .btn-primary {
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
-    color: white;
+    color: #000;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0, 240, 255, 0.3);
   }
 
   .btn-primary:hover:not(:disabled) {
     background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 100%);
+    box-shadow: 0 6px 24px rgba(0, 240, 255, 0.5);
+    transform: translateY(-2px);
   }
 
   /* Secondary Button */
@@ -1031,12 +1051,16 @@ const HUB_STYLES = `
   }
   .agent-card:hover {
     background: var(--bg-card-hover);
-    border-color: var(--border-light);
+    border-color: var(--accent);
     transform: translateY(-4px);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 12px 40px rgba(0, 240, 255, 0.15), var(--shadow-md);
   }
   .agent-card:hover::before {
     opacity: 1;
+  }
+  .agent-card:hover .agent-avatar {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
   }
   .agent-header {
     display: flex;
@@ -1053,6 +1077,7 @@ const HUB_STYLES = `
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
+    transition: all 0.3s ease;
   }
   .agent-info h3 {
     font-size: 1.1rem;
@@ -2766,6 +2791,62 @@ router.get('/', async (req, res) => {
       letter-spacing: 0.05em;
     }
     
+    /* Trust Signals (Early Stage) */
+    .trust-signals {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      padding: 24px 40px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      backdrop-filter: blur(20px);
+      margin-top: 32px;
+    }
+    .trust-block {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .trust-icon {
+      font-size: 1.5rem;
+      filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.3));
+    }
+    .trust-content {
+      text-align: left;
+    }
+    .trust-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+    .trust-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    @media (max-width: 900px) {
+      .trust-signals {
+        flex-wrap: wrap;
+        gap: 20px;
+        padding: 20px;
+      }
+      .trust-block {
+        flex: 1 1 45%;
+        min-width: 140px;
+      }
+    }
+    @media (max-width: 480px) {
+      .trust-signals {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+        padding: 20px;
+      }
+      .trust-block {
+        flex: 1 1 100%;
+      }
+    }
+    
     /* Chain Indicator */
     .chain-indicator {
       display: flex;
@@ -2842,19 +2923,25 @@ router.get('/', async (req, res) => {
     }
     
     .category-card:hover {
-      transform: translateY(-4px);
-      border-color: var(--border-light);
-      box-shadow: var(--shadow-lg);
+      transform: translateY(-6px) scale(1.02);
+      border-color: rgba(0, 240, 255, 0.3);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3), 0 0 32px rgba(0, 240, 255, 0.1);
     }
     
     .category-card:hover::before {
       opacity: 1;
     }
     
+    .category-card:hover .category-icon {
+      transform: scale(1.15);
+      filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.5));
+    }
+    
     .category-icon {
       font-size: 2.5rem;
       margin-bottom: 16px;
       display: block;
+      transition: all 0.3s ease;
     }
     
     .category-name {
@@ -3228,6 +3315,7 @@ router.get('/', async (req, res) => {
           <a href="/agents?search=data" class="tag-pill">📊 Data</a>
         </div>
         
+        ${(platformStats.total_jobs_completed || 0) >= 10 ? `
         <div class="stats-bar glass-card">
           <div class="stat-block">
             <div class="stat-icon">🤖</div>
@@ -3258,6 +3346,38 @@ router.get('/', async (req, res) => {
             </div>
           </div>
         </div>
+        ` : `
+        <div class="trust-signals glass-card">
+          <div class="trust-block">
+            <div class="trust-icon">🔒</div>
+            <div class="trust-content">
+              <div class="trust-title">Hand-Verified</div>
+              <div class="trust-desc">Every agent vetted</div>
+            </div>
+          </div>
+          <div class="trust-block">
+            <div class="trust-icon">⚡</div>
+            <div class="trust-content">
+              <div class="trust-title">Instant Settlement</div>
+              <div class="trust-desc">Powered by Base</div>
+            </div>
+          </div>
+          <div class="trust-block">
+            <div class="trust-icon">🛡️</div>
+            <div class="trust-content">
+              <div class="trust-title">Escrow Protected</div>
+              <div class="trust-desc">Funds secured</div>
+            </div>
+          </div>
+          <div class="trust-block">
+            <div class="trust-icon">💎</div>
+            <div class="trust-content">
+              <div class="trust-title">Early Access</div>
+              <div class="trust-desc">Beta program</div>
+            </div>
+          </div>
+        </div>
+        `}
         
         <div class="chain-indicator">
           <span class="chain-dot"></span>
@@ -3302,7 +3422,7 @@ router.get('/', async (req, res) => {
       
       <div style="text-align: center; margin-top: 48px;">
         <a href="/agents" class="btn btn-secondary" style="padding: 16px 32px;">
-          Browse All ${agents.length} Agents →
+          ${agents.length > 10 ? `Browse All ${agents.length} Agents →` : 'Explore Available Agents →'}
         </a>
       </div>
     </div>
