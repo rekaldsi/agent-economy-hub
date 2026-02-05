@@ -511,6 +511,29 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_tickets_status ON support_tickets(status);
     `);
 
+    // Migration: White-Label Deployments (Phase 3)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS white_labels (
+        id SERIAL PRIMARY KEY,
+        owner_wallet TEXT NOT NULL,
+        subdomain TEXT UNIQUE,
+        custom_domain TEXT UNIQUE,
+        company_name TEXT NOT NULL,
+        logo_url TEXT,
+        primary_color TEXT DEFAULT '#f97316',
+        secondary_color TEXT DEFAULT '#8b5cf6',
+        plan TEXT DEFAULT 'starter' CHECK (plan IN ('starter', 'growth', 'enterprise')),
+        monthly_fee DECIMAL(10,2),
+        revenue_share DECIMAL(5,2) DEFAULT 10.00,
+        status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'suspended')),
+        created_at TIMESTAMP DEFAULT NOW(),
+        activated_at TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_whitelabel_owner ON white_labels(owner_wallet);
+      CREATE INDEX IF NOT EXISTS idx_whitelabel_domain ON white_labels(custom_domain);
+    `);
+
     // Migration: Messages table for in-app communication
     await client.query(`
       CREATE TABLE IF NOT EXISTS messages (

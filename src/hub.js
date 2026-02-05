@@ -6660,6 +6660,76 @@ router.get('/api/support/tickets/:uuid', async (req, res) => {
   res.json({ ticket: ticket.rows[0], messages: messages.rows });
 });
 
+// ============================================
+// WHITE-LABEL (Phase 3)
+// ============================================
+
+const WHITE_LABEL_PLANS = {
+  starter: { price: 299, revenueShare: 15, agents: 10, features: ['Custom branding', 'Subdomain'] },
+  growth: { price: 799, revenueShare: 10, agents: 50, features: ['Custom domain', 'API access', 'Priority support'] },
+  enterprise: { price: 1999, revenueShare: 5, agents: 'unlimited', features: ['Full customization', 'Dedicated support', 'SLA'] }
+};
+
+router.get('/api/white-label/plans', (req, res) => res.json(WHITE_LABEL_PLANS));
+
+router.post('/api/white-label/apply', async (req, res) => {
+  const { wallet, companyName, subdomain, plan = 'starter' } = req.body;
+  if (!wallet || !companyName) {
+    return res.status(400).json({ error: 'wallet, companyName required' });
+  }
+
+  const existing = await db.query('SELECT * FROM white_labels WHERE owner_wallet = $1', [wallet.toLowerCase()]);
+  if (existing.rows[0]) {
+    return res.status(409).json({ error: 'Already have a white-label application' });
+  }
+
+  const planConfig = WHITE_LABEL_PLANS[plan];
+  const result = await db.query(`
+    INSERT INTO white_labels (owner_wallet, company_name, subdomain, plan, monthly_fee, revenue_share)
+    VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
+  `, [wallet.toLowerCase(), companyName, subdomain, plan, planConfig.price, planConfig.revenueShare]);
+
+  res.json({ success: true, application: result.rows[0] });
+});
+
+router.get('/api/white-label/status', async (req, res) => {
+  const { wallet } = req.query;
+  if (!wallet) return res.status(400).json({ error: 'wallet required' });
+
+  const result = await db.query('SELECT * FROM white_labels WHERE owner_wallet = $1', [wallet.toLowerCase()]);
+  res.json(result.rows[0] || null);
+});
+
+router.put('/api/white-label/customize', async (req, res) => {
+  const { wallet, logoUrl, primaryColor, secondaryColor, customDomain } = req.body;
+  if (!wallet) return res.status(400).json({ error: 'wallet required' });
+
+  const wl = await db.query('SELECT * FROM white_labels WHERE owner_wallet = $1', [wallet.toLowerCase()]);
+  if (!wl.rows[0]) return res.status(404).json({ error: 'No white-label found' });
+
+  await db.query(`
+    UPDATE white_labels SET 
+      logo_url = COALESCE($1, logo_url),
+      primary_color = COALESCE($2, primary_color),
+      secondary_color = COALESCE($3, secondary_color),
+      custom_domain = COALESCE($4, custom_domain)
+    WHERE owner_wallet = $5
+  `, [logoUrl, primaryColor, secondaryColor, customDomain, wallet.toLowerCase()]);
+
+  res.json({ success: true });
+});
+
+router.post('/api/admin/white-label/activate', async (req, res) => {
+  const { wallet, whitelabelId } = req.body;
+  if (!isAdmin(wallet)) return res.status(403).json({ error: 'Not authorized' });
+
+  await db.query(`
+    UPDATE white_labels SET status = 'active', activated_at = NOW() WHERE id = $1
+  `, [whitelabelId]);
+
+  res.json({ success: true });
+});
+
 router.post('/api/support/tickets/:uuid/reply', async (req, res) => {
   const { wallet, message } = req.body;
   if (!wallet || !message) return res.status(400).json({ error: 'wallet, message required' });
