@@ -3087,8 +3087,16 @@ router.get('/', async (req, res) => {
       border: none;
       background: transparent;
       color: var(--text);
-      outline: none;
+      outline: none !important;
+      box-shadow: none !important;
+      -webkit-appearance: none;
       min-width: 0;
+    }
+    
+    .hero-search input:focus {
+      outline: none !important;
+      box-shadow: none !important;
+      border: none !important;
     }
     
     .hero-search input::placeholder {
