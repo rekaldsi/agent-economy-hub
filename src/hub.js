@@ -739,7 +739,7 @@ const HUB_STYLES = `
     visibility: hidden !important;
     opacity: 0;
     position: fixed;
-    top: 65px;
+    top: 69px; /* Header height: 16px padding × 2 + 36px logo + 1px border */
     left: 0;
     right: 0;
     bottom: 0;
@@ -7014,7 +7014,7 @@ router.get('/dashboard', async (req, res) => {
     .dashboard-grid {
       display: grid;
       grid-template-columns: 240px 1fr;
-      min-height: calc(100vh - 65px);
+      min-height: calc(100vh - 69px);
       gap: 0;
     }
     
@@ -7023,7 +7023,7 @@ router.get('/dashboard', async (req, res) => {
       display: none;
       position: fixed;
       inset: 0;
-      top: 65px;
+      top: 69px;
       background: rgba(0, 0, 0, 0.6);
       z-index: 99;
       backdrop-filter: blur(4px);
@@ -7038,8 +7038,8 @@ router.get('/dashboard', async (req, res) => {
       border-right: 1px solid var(--border);
       padding: 0;
       position: sticky;
-      top: 65px;
-      height: calc(100vh - 65px);
+      top: 69px;
+      height: calc(100vh - 69px);
       overflow-y: auto;
       overflow-x: hidden;
       display: flex;
@@ -7452,7 +7452,7 @@ router.get('/dashboard', async (req, res) => {
     
     /* Connect Prompt */
     .connect-prompt {
-      min-height: calc(100vh - 65px);
+      min-height: calc(100vh - 69px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -7666,9 +7666,9 @@ router.get('/dashboard', async (req, res) => {
       .sidebar {
         position: fixed;
         left: -280px;
-        top: 65px;
+        top: 69px;
         width: 280px;
-        height: calc(100vh - 65px);
+        height: calc(100vh - 69px);
         z-index: 100;
         transition: left 0.3s ease;
         box-shadow: 4px 0 20px rgba(0,0,0,0.3);
@@ -7680,7 +7680,7 @@ router.get('/dashboard', async (req, res) => {
         display: none;
         position: fixed;
         inset: 0;
-        top: 65px;
+        top: 69px;
         background: rgba(0, 0, 0, 0.6);
         z-index: 99;
         backdrop-filter: blur(4px);
