@@ -481,6 +481,35 @@ const HUB_STYLES = `
   .modal-overlay .modal-body {
     padding: 24px;
   }
+  /* Modal Responsive */
+  @media (max-width: 768px) {
+    .modal-overlay {
+      padding: 16px;
+    }
+    .modal-overlay .modal {
+      max-width: 100%;
+      width: 100%;
+      max-height: 85vh;
+    }
+    .modal-overlay .modal-header {
+      padding: 16px 20px;
+    }
+    .modal-overlay .modal-body {
+      padding: 20px;
+    }
+    .modal-overlay .modal-close {
+      min-width: 44px;
+      min-height: 44px;
+    }
+    .modal-buttons, .modal-overlay .btn-row {
+      flex-direction: column;
+      gap: 12px;
+    }
+    .modal-buttons .btn, .modal-overlay .btn {
+      width: 100%;
+      min-height: 48px;
+    }
+  }
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -1856,6 +1885,30 @@ const HUB_STYLES = `
     color: var(--text-muted);
     font-size: 0.8rem;
     opacity: 0.7;
+  }
+  
+  /* Footer Responsive */
+  @media (max-width: 768px) {
+    footer {
+      margin-top: 48px;
+      padding: 32px 16px;
+    }
+    footer nav {
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+    footer nav a {
+      min-height: 44px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+    }
+    footer .container {
+      flex-direction: column;
+      gap: 20px;
+      text-align: center;
+    }
   }
 `;
 
@@ -3690,9 +3743,9 @@ router.get('/', async (req, res) => {
       .hero-title { font-size: 1.75rem; line-height: 1.2; }
       .hero-subtitle { font-size: 0.9rem; margin-bottom: 20px; }
       .hero-search input { padding: 12px 14px; padding-right: 100px; font-size: 0.9rem; }
-      .hero-search button { padding: 8px 14px; font-size: 0.85rem; }
+      .hero-search button { padding: 12px 18px; font-size: 0.85rem; min-height: 44px; }
       .popular-tags { gap: 6px; margin-bottom: 20px; }
-      .tag-pill { padding: 6px 12px; font-size: 0.75rem; }
+      .tag-pill { padding: 10px 14px; font-size: 0.75rem; min-height: 44px; display: inline-flex; align-items: center; }
       .stats-bar { gap: 12px; padding: 16px; }
       .stat-icon { font-size: 1rem; }
       .stat-block .number { font-size: 1.25rem; }
@@ -3701,7 +3754,7 @@ router.get('/', async (req, res) => {
       .section-header h2 { font-size: 1.5rem; margin-bottom: 8px; }
       .section-header p { font-size: 0.85rem; }
       .categories-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .category-card { padding: 14px 12px; }
+      .category-card { padding: 14px 12px; min-height: 100px; }
       .category-card .icon { font-size: 1.5rem; margin-bottom: 8px; }
       .category-card .name { font-size: 0.85rem; }
       .category-card .desc { font-size: 0.7rem; }
@@ -3718,7 +3771,56 @@ router.get('/', async (req, res) => {
       .cta-card h2 { font-size: 1.25rem; margin-bottom: 8px; }
       .cta-card p { font-size: 0.85rem; margin-bottom: 20px; }
       .cta-buttons { flex-direction: column; gap: 10px; }
-      .cta-buttons .btn { width: 100%; }
+      .cta-buttons .btn { width: 100%; min-height: 48px; }
+    }
+    
+    /* Global Touch Target Fixes */
+    @media (max-width: 768px) {
+      /* Ensure all interactive elements meet 44px touch target */
+      .btn, button:not(.modal-close) {
+        min-height: 44px;
+      }
+      .btn-sm {
+        min-height: 44px;
+        padding: 10px 16px;
+      }
+      /* Tab buttons */
+      .profile-tab, .tab-btn {
+        min-height: 44px;
+        padding: 12px 16px;
+      }
+      /* Nav links */
+      .mobile-nav a, nav a {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+      }
+      /* Modal close button */
+      .modal-close, .modal-overlay .modal-close {
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      /* Service card buttons */
+      .service-card .btn {
+        min-height: 44px;
+      }
+      /* Skill tags when clickable */
+      .skill-tag.skill-clickable {
+        min-height: 40px;
+        padding: 10px 14px;
+      }
+      /* Toggle switches - larger touch area */
+      .toggle {
+        min-width: 50px;
+        min-height: 30px;
+      }
+      /* FAQ items */
+      .faq-question {
+        min-height: 52px;
+      }
     }
   </style>
 </head>
@@ -4502,14 +4604,20 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
       .agent-hero-content { grid-template-columns: 1fr; }
       .pricing-card { position: static; margin-top: 24px; }
       .agent-identity { flex-direction: column; align-items: center; text-align: center; }
-      .agent-stats-row { justify-content: center; }
+      .agent-stats-row { justify-content: center; flex-wrap: wrap; gap: 20px; }
       .reviews-summary { flex-direction: column; gap: 24px; }
     }
     
     @media (max-width: 480px) {
       .agent-avatar-lg { width: 80px; height: 80px; font-size: 32px; border-radius: 16px; }
       .agent-meta h1 { font-size: 1.5rem; }
-      .profile-tab { padding: 12px 16px; }
+      .profile-tab { padding: 12px 16px; min-height: 44px; }
+      .service-card { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .service-action { width: 100%; justify-content: space-between; }
+      .service-action .btn { min-height: 44px; flex: 1; }
+      .category-header { min-height: 52px; }
+      .pricing-card .btn { min-height: 48px; }
+      .stat-item { min-width: 70px; text-align: center; }
     }
   </style>
 </head>
@@ -5200,8 +5308,14 @@ router.get('/agents', async (req, res) => {
     @media (max-width: 768px) {
       .browse-hero h1 { font-size: 1.75rem; }
       .search-bar { flex-direction: column; }
+      .search-bar input { min-height: 48px; }
+      .search-bar .btn { min-height: 48px; width: 100%; }
       .filter-row { justify-content: center; }
+      .filter-select { min-height: 44px; }
       .agents-grid { grid-template-columns: 1fr; }
+      .category-pill { min-height: 44px; padding: 12px 18px; }
+      .view-btn { min-height: 44px; min-width: 44px; }
+      .agent-card { padding: 20px; }
     }
   </style>
 </head>
@@ -5523,6 +5637,10 @@ router.get('/register', async (req, res) => {
       .register-form { padding: 24px; margin: 0 16px 48px; }
       .skill-row { grid-template-columns: 1fr; }
       .step span:not(.step-num) { display: none; }
+      .step { padding: 10px 14px; min-height: 44px; }
+      .btn-row .btn { min-height: 48px; }
+      .add-skill-btn { min-height: 48px; }
+      .remove-skill { min-height: 44px; min-width: 44px; }
     }
   </style>
 </head>
@@ -6505,6 +6623,94 @@ router.get('/dashboard', async (req, res) => {
       cursor: pointer;
       z-index: 98;
       box-shadow: 0 4px 20px rgba(0, 240, 255, 0.3);
+    }
+    
+    /* Dashboard Mobile Responsive Enhancements */
+    @media (max-width: 768px) {
+      /* Larger touch target for sidebar toggle */
+      .mobile-menu-toggle {
+        width: 60px;
+        height: 60px;
+        bottom: 20px;
+        right: 20px;
+        font-size: 28px;
+      }
+      /* Sidebar links touch targets */
+      .sidebar-link {
+        min-height: 48px;
+        padding: 14px 16px;
+      }
+      /* Stats grid - prevent overflow */
+      .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .stat-card {
+        padding: 16px;
+        min-height: auto;
+      }
+      /* Jobs table - horizontal scroll indicator */
+      .jobs-card {
+        position: relative;
+      }
+      .jobs-card::after {
+        content: '← Scroll →';
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        opacity: 0.6;
+        pointer-events: none;
+      }
+      /* Settings rows */
+      .settings-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 16px 0;
+      }
+      .settings-row .toggle {
+        margin-left: auto;
+      }
+      /* Agent card stats */
+      .agent-card-stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .agent-stat {
+        padding: 12px;
+      }
+      /* Pricing card buttons full width */
+      .pricing-card .btn {
+        width: 100%;
+        min-height: 48px;
+      }
+      /* Role tabs */
+      #role-tabs {
+        width: 100%;
+      }
+      #role-tabs .tab-btn {
+        flex: 1;
+        min-height: 44px;
+        font-size: 0.85rem;
+      }
+    }
+    
+    @media (max-width: 375px) {
+      /* Extra small phones - single column stats */
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      /* Connect card padding */
+      .connect-card {
+        padding: 24px 16px;
+      }
+      /* Wallet button grid single column */
+      .wallet-btn-grid {
+        grid-template-columns: 1fr !important;
+      }
     }
   </style>
 </head>
@@ -12478,6 +12684,27 @@ router.get('/docs', (req, res) => {
     .param-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     .param-table th, .param-table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
     .param-table th { color: var(--text-muted); font-weight: 500; }
+    
+    /* Docs Responsive */
+    @media (max-width: 768px) {
+      .docs-hero h1 { font-size: 1.75rem; }
+      .docs-hero .base-url { font-size: 0.75rem; padding: 10px 14px; word-break: break-all; }
+      .docs-content { padding: 32px 16px; }
+      .docs-content h2 { font-size: 1.25rem; }
+      .endpoint { margin-bottom: 20px; }
+      .endpoint-header { padding: 14px 16px; }
+      .endpoint-path { font-size: 0.8rem; word-break: break-all; }
+      .endpoint-body { padding: 16px; }
+      pre { padding: 14px; font-size: 0.75rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .param-table { font-size: 0.8rem; display: block; overflow-x: auto; }
+      .param-table th, .param-table td { padding: 8px 6px; white-space: nowrap; }
+      code { font-size: 0.8em; padding: 2px 6px; }
+      .docs-content .btn { min-height: 48px; }
+    }
+    @media (max-width: 480px) {
+      .docs-content { padding: 24px 12px; }
+      .endpoint-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    }
   </style>
 </head>
 <body>
@@ -13037,6 +13264,15 @@ router.get('/support', (req, res) => {
     @media (max-width: 768px) {
       .support-hero h1 { font-size: 1.75rem; }
       .contact-methods { flex-direction: column; }
+      .contact-btn { 
+        min-height: 48px; 
+        width: 100%;
+        justify-content: center;
+      }
+      .faq-question {
+        min-height: 52px;
+        padding: 16px 20px;
+      }
     }
   </style>
 </head>
