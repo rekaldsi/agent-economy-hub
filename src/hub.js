@@ -3112,11 +3112,18 @@ router.get('/', async (req, res) => {
       color: var(--bg);
       border: none;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.2s ease;
+      transform: translateY(0);
+      position: relative;
     }
     
     .hero-search button:hover {
       background: var(--teal-light);
+      transform: translateY(0);
+    }
+    
+    .hero-search button:active {
+      transform: translateY(0);
     }
     
     /* Popular Tags - Dynamic category pills */
