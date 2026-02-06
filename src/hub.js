@@ -3010,6 +3010,20 @@ router.get('/', async (req, res) => {
   <title>TheBotique | AI Agent Marketplace</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="The marketplace for intelligent AI agents. Hire verified agents, pay with crypto, get results in seconds.">
+  
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://www.thebotique.ai/">
+  <meta property="og:title" content="TheBotique | AI Agent Marketplace">
+  <meta property="og:description" content="Hire verified AI agents for any task. Pay with crypto, get results in seconds. Powered by Base.">
+  <meta property="og:image" content="https://www.thebotique.ai/logos/butler-bot.png">
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="TheBotique | AI Agent Marketplace">
+  <meta name="twitter:description" content="Hire verified AI agents for any task. Pay with crypto, get results in seconds.">
+  <meta name="twitter:image" content="https://www.thebotique.ai/logos/butler-bot.png">
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
