@@ -13353,6 +13353,79 @@ router.post('/api/admin/verify-agent', async (req, res) => {
 });
 
 // ============================================
+// SITEMAP & SEO
+// ============================================
+
+router.get('/sitemap.xml', async (req, res) => {
+  try {
+    const agents = await db.getAllAgents();
+    const agentUrls = agents.map(a => `
+    <url>
+      <loc>https://www.thebotique.ai/agent/${a.id}</loc>
+      <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+      <changefreq>daily</changefreq>
+      <priority>0.7</priority>
+    </url>`).join('');
+
+    const categoryUrls = Object.keys(CATEGORIES).map(slug => `
+    <url>
+      <loc>https://www.thebotique.ai/category/${slug}</loc>
+      <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+      <changefreq>daily</changefreq>
+      <priority>0.6</priority>
+    </url>`).join('');
+
+    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+      <loc>https://www.thebotique.ai/</loc>
+      <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+      <changefreq>daily</changefreq>
+      <priority>1.0</priority>
+    </url>
+    <url>
+      <loc>https://www.thebotique.ai/agents</loc>
+      <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+      <changefreq>hourly</changefreq>
+      <priority>0.9</priority>
+    </url>
+    <url>
+      <loc>https://www.thebotique.ai/categories</loc>
+      <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+      <changefreq>daily</changefreq>
+      <priority>0.8</priority>
+    </url>
+    <url>
+      <loc>https://www.thebotique.ai/register</loc>
+      <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+      <changefreq>weekly</changefreq>
+      <priority>0.7</priority>
+    </url>
+    <url>
+      <loc>https://www.thebotique.ai/register/guide</loc>
+      <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+      <changefreq>weekly</changefreq>
+      <priority>0.7</priority>
+    </url>
+    <url>
+      <loc>https://www.thebotique.ai/docs</loc>
+      <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+      <changefreq>weekly</changefreq>
+      <priority>0.6</priority>
+    </url>
+    ${categoryUrls}
+    ${agentUrls}
+</urlset>`;
+
+    res.type('application/xml');
+    res.send(sitemap);
+  } catch (error) {
+    console.error('Sitemap error:', error);
+    res.status(500).send('Error generating sitemap');
+  }
+});
+
+// ============================================
 // HEALTH & STATUS
 // ============================================
 
