@@ -166,6 +166,7 @@ const PWA_SCRIPT = `
 // UNIFIED HEADER COMPONENT
 // ============================================
 const HUB_HEADER = `
+  <a href="#main-content" class="skip-link">Skip to main content</a>
   <header>
     <a href="/" class="logo">
       <img src="/logos/butler-bot.png" alt="TheBotique" class="logo-icon">
@@ -435,6 +436,40 @@ const HUB_STYLES = `
   ::selection {
     background: var(--accent);
     color: white;
+  }
+
+  /* ============================================
+     ACCESSIBILITY: Skip Link
+     ============================================ */
+  .skip-link {
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: #000;
+    padding: 12px 24px;
+    border-radius: 0 0 8px 8px;
+    font-weight: 600;
+    z-index: 10000;
+    transition: top 0.2s ease;
+    text-decoration: none;
+  }
+  .skip-link:focus {
+    top: 0;
+    outline: none;
+  }
+
+  /* ============================================
+     ACCESSIBILITY: Reduced Motion
+     ============================================ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   /* ============================================
@@ -2973,7 +3008,7 @@ router.get('/', async (req, res) => {
             <span class="featured-badge">⭐ Featured</span>
           </div>
           <div class="agent-avatar-lg ${tierClass}">
-            ${agent.avatar_url ? `<img src="${agent.avatar_url}" alt="">` : (agent.name ? agent.name.charAt(0).toUpperCase() : '🤖')}
+            ${agent.avatar_url ? `<img src="${agent.avatar_url}" alt="${escapeHtml(agent.name || 'Agent')} avatar">` : `<span role="img" aria-label="${escapeHtml(agent.name || 'Agent')} avatar">${agent.name ? agent.name.charAt(0).toUpperCase() : '🤖'}</span>`}
             <div class="avatar-ring"></div>
           </div>
           <h3>${escapeHtml(agent.name || 'Agent')}</h3>
@@ -4657,7 +4692,7 @@ router.get('/', async (req, res) => {
   ${HUB_HEADER}
 
   <!-- Hero Section -->
-  <section class="hero-section">
+  <section class="hero-section" id="main-content">
     <div class="hero-bg"></div>
     <canvas id="node-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.5;"></canvas>
     
@@ -5446,13 +5481,13 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
   ${HUB_HEADER}
 
   <!-- Agent Hero Section -->
-  <section class="agent-hero">
+  <section class="agent-hero" id="main-content">
     <div class="container">
       <div class="agent-hero-content">
         <div>
           <div class="agent-identity">
             <div class="agent-avatar-lg">
-              ${agent.avatar_url ? `<img src="${agent.avatar_url}" style="width: 100%; height: 100%; border-radius: 24px; object-fit: cover;">` : '🤖'}
+              ${agent.avatar_url ? `<img src="${agent.avatar_url}" alt="${escapeHtml(agent.name)} avatar" style="width: 100%; height: 100%; border-radius: 24px; object-fit: cover;">` : `<span role="img" aria-label="${escapeHtml(agent.name)} avatar">🤖</span>`}
             </div>
             <div class="agent-meta">
               <h1>${escapeHtml(agent.name)}</h1>
@@ -5842,7 +5877,7 @@ router.get('/agents', async (req, res) => {
         <a href="/agent/${agent.id}" class="agent-card">
           <div class="card-header">
             <div class="avatar">
-              ${agent.avatar_url ? `<img src="${agent.avatar_url}" alt="">` : (agent.name ? agent.name.charAt(0).toUpperCase() : '🤖')}
+              ${agent.avatar_url ? `<img src="${agent.avatar_url}" alt="${escapeHtml(agent.name || 'Agent')} avatar">` : `<span role="img" aria-label="${escapeHtml(agent.name || 'Agent')} avatar">${agent.name ? agent.name.charAt(0).toUpperCase() : '🤖'}</span>`}
             </div>
             <span class="tier-badge" style="color: ${tier.color}; border-color: ${tier.color};">${tier.icon} ${tier.label}</span>
           </div>
@@ -7888,7 +7923,7 @@ router.get('/dashboard', async (req, res) => {
       </nav>
     </aside>
 
-    <main class="main-content">
+    <main class="main-content" id="main-content">
       <!-- Role Tab Bar (shown when user is both hirer AND operator) -->
       <div id="role-tabs" class="tab-bar hidden" style="margin-bottom: 20px; background: var(--bg-card); border-radius: 12px; padding: 4px;">
         <button class="tab-btn active" onclick="switchRole('hirer', this)" style="flex: 1;">👤 Hirer View</button>
