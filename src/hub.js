@@ -716,11 +716,16 @@ const HUB_STYLES = `
   }
 
   @media (max-width: 768px) {
-    header nav { display: none; }
-    .mobile-menu-btn { display: flex; }
+    header nav { display: none !important; visibility: hidden !important; }
+    .mobile-menu-btn { display: flex !important; }
     h1 { font-size: 1.75rem; }
     h2 { font-size: 1.5rem; }
     .container { padding: 16px; }
+  }
+  
+  /* Ensure nav hidden on mobile - extra specificity */
+  @media (max-width: 900px) {
+    header > nav { display: none !important; }
   }
 
   /* ============================================
