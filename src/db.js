@@ -808,6 +808,50 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_jobs_human_escalation ON jobs(human_escalation_status) WHERE human_escalation_status != 'none';
     `);
 
+    // Migration: Credits System for A2A payments
+    await client.query(`
+      -- Credits balance on users
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'users' AND column_name = 'credits_balance'
+        ) THEN
+          ALTER TABLE users ADD COLUMN credits_balance DECIMAL(18,6) DEFAULT 0;
+        END IF;
+      END $$;
+      
+      -- Credit transactions table for audit trail
+      CREATE TABLE IF NOT EXISTS credit_transactions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        amount DECIMAL(18,6) NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('deposit', 'withdrawal', 'job_payment', 'job_earning', 'refund', 'platform_fee')),
+        description TEXT,
+        reference_id TEXT,
+        job_id INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
+        balance_after DECIMAL(18,6) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_credit_tx_user ON credit_transactions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_credit_tx_type ON credit_transactions(type);
+      CREATE INDEX IF NOT EXISTS idx_credit_tx_created ON credit_transactions(created_at);
+      
+      -- Platform settings table
+      CREATE TABLE IF NOT EXISTS platform_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+      
+      -- Set default platform fee (5%)
+      INSERT INTO platform_settings (key, value) VALUES ('platform_fee_percent', '5')
+      ON CONFLICT (key) DO NOTHING;
+    `);
+    
+    logger.info('Credits system tables initialized');
+
     // One-time API key rotation (set ROTATE_API_KEY=agentId in Railway to trigger)
     if (process.env.ROTATE_API_KEY) {
       const agentId = parseInt(process.env.ROTATE_API_KEY) || 1;
@@ -1697,6 +1741,178 @@ async function seedDemoAgents() {
   }
 }
 
+// ============================================
+// CREDITS SYSTEM FUNCTIONS
+// ============================================
+
+/**
+ * Get user's credit balance
+ */
+async function getCreditsBalance(userId) {
+  const result = await query(
+    'SELECT credits_balance FROM users WHERE id = $1',
+    [userId]
+  );
+  return result.rows[0]?.credits_balance || 0;
+}
+
+/**
+ * Get platform fee percentage
+ */
+async function getPlatformFee() {
+  const result = await query(
+    "SELECT value FROM platform_settings WHERE key = 'platform_fee_percent'"
+  );
+  return parseFloat(result.rows[0]?.value || '5');
+}
+
+/**
+ * Add credits to a user account (deposit)
+ */
+async function addCredits(userId, amount, description = 'Credit deposit', referenceId = null) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Update balance
+    const balanceResult = await client.query(
+      'UPDATE users SET credits_balance = credits_balance + $1 WHERE id = $2 RETURNING credits_balance',
+      [amount, userId]
+    );
+    const newBalance = balanceResult.rows[0].credits_balance;
+    
+    // Log transaction
+    await client.query(`
+      INSERT INTO credit_transactions (user_id, amount, type, description, reference_id, balance_after)
+      VALUES ($1, $2, 'deposit', $3, $4, $5)
+    `, [userId, amount, description, referenceId, newBalance]);
+    
+    await client.query('COMMIT');
+    return { success: true, balance: newBalance };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Deduct credits for a job payment
+ * Returns { success, balance, agentAmount, platformFee } or { success: false, error }
+ */
+async function deductCreditsForJob(hirerId, agentUserId, amount, jobId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Check hirer balance
+    const hirerBalance = await client.query(
+      'SELECT credits_balance FROM users WHERE id = $1 FOR UPDATE',
+      [hirerId]
+    );
+    const currentBalance = parseFloat(hirerBalance.rows[0]?.credits_balance || 0);
+    
+    if (currentBalance < amount) {
+      await client.query('ROLLBACK');
+      return { success: false, error: 'Insufficient credits', required: amount, available: currentBalance };
+    }
+    
+    // Get platform fee
+    const feeResult = await client.query("SELECT value FROM platform_settings WHERE key = 'platform_fee_percent'");
+    const feePercent = parseFloat(feeResult.rows[0]?.value || '5');
+    const platformFee = amount * (feePercent / 100);
+    const agentAmount = amount - platformFee;
+    
+    // Deduct from hirer
+    const newHirerBalance = await client.query(
+      'UPDATE users SET credits_balance = credits_balance - $1 WHERE id = $2 RETURNING credits_balance',
+      [amount, hirerId]
+    );
+    
+    // Log hirer transaction
+    await client.query(`
+      INSERT INTO credit_transactions (user_id, amount, type, description, job_id, balance_after)
+      VALUES ($1, $2, 'job_payment', $3, $4, $5)
+    `, [hirerId, -amount, `Payment for job`, jobId, newHirerBalance.rows[0].credits_balance]);
+    
+    // Add to agent
+    const newAgentBalance = await client.query(
+      'UPDATE users SET credits_balance = credits_balance + $1 WHERE id = $2 RETURNING credits_balance',
+      [agentAmount, agentUserId]
+    );
+    
+    // Log agent earning
+    await client.query(`
+      INSERT INTO credit_transactions (user_id, amount, type, description, job_id, balance_after)
+      VALUES ($1, $2, 'job_earning', $3, $4, $5)
+    `, [agentUserId, agentAmount, `Earning from job (${feePercent}% platform fee)`, jobId, newAgentBalance.rows[0].credits_balance]);
+    
+    // Log platform fee (to a special platform account if we have one, or just record it)
+    await client.query(`
+      INSERT INTO credit_transactions (user_id, amount, type, description, job_id, balance_after)
+      VALUES ($1, $2, 'platform_fee', $3, $4, $5)
+    `, [agentUserId, -platformFee, `Platform fee (${feePercent}%)`, jobId, newAgentBalance.rows[0].credits_balance]);
+    
+    await client.query('COMMIT');
+    
+    return {
+      success: true,
+      hirerBalance: newHirerBalance.rows[0].credits_balance,
+      agentBalance: newAgentBalance.rows[0].credits_balance,
+      agentAmount,
+      platformFee,
+      feePercent
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Refund credits for a cancelled/disputed job
+ */
+async function refundCredits(userId, amount, jobId, description = 'Job refund') {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    const balanceResult = await client.query(
+      'UPDATE users SET credits_balance = credits_balance + $1 WHERE id = $2 RETURNING credits_balance',
+      [amount, userId]
+    );
+    
+    await client.query(`
+      INSERT INTO credit_transactions (user_id, amount, type, description, job_id, balance_after)
+      VALUES ($1, $2, 'refund', $3, $4, $5)
+    `, [userId, amount, description, jobId, balanceResult.rows[0].credits_balance]);
+    
+    await client.query('COMMIT');
+    return { success: true, balance: balanceResult.rows[0].credits_balance };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Get credit transaction history for a user
+ */
+async function getCreditHistory(userId, limit = 50) {
+  const result = await query(`
+    SELECT * FROM credit_transactions 
+    WHERE user_id = $1 
+    ORDER BY created_at DESC 
+    LIMIT $2
+  `, [userId, limit]);
+  return result.rows;
+}
+
 module.exports = {
   pool,
   query,
@@ -1744,5 +1960,12 @@ module.exports = {
   // Demo data
   seedDemoAgents,
   // Dynamic categories
-  getActiveCategories
+  getActiveCategories,
+  // Credits system
+  getCreditsBalance,
+  getPlatformFee,
+  addCredits,
+  deductCreditsForJob,
+  refundCredits,
+  getCreditHistory
 };

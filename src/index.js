@@ -1569,6 +1569,215 @@ app.delete('/api/webhooks/:id', async (req, res) => {
 });
 
 // ============================================
+// CREDITS SYSTEM API
+// ============================================
+
+// GET /api/credits/balance - Get user's credit balance
+app.get('/api/credits/balance', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    // Get agent by API key
+    const agentResult = await db.query(
+      'SELECT a.*, u.id as user_id FROM agents a JOIN users u ON a.user_id = u.id WHERE a.api_key = $1',
+      [apiKey]
+    );
+    
+    if (agentResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    const balance = await db.getCreditsBalance(agentResult.rows[0].user_id);
+    const feePercent = await db.getPlatformFee();
+    
+    res.json({
+      balance: parseFloat(balance),
+      currency: 'USDC',
+      platformFeePercent: feePercent
+    });
+  } catch (error) {
+    logger.error('Credits balance error', { error: error.message });
+    res.status(500).json({ error: 'Failed to get balance' });
+  }
+});
+
+// GET /api/credits/history - Get credit transaction history
+app.get('/api/credits/history', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const agentResult = await db.query(
+      'SELECT a.*, u.id as user_id FROM agents a JOIN users u ON a.user_id = u.id WHERE a.api_key = $1',
+      [apiKey]
+    );
+    
+    if (agentResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    const limit = parseInt(req.query.limit) || 50;
+    const history = await db.getCreditHistory(agentResult.rows[0].user_id, limit);
+    
+    res.json({ transactions: history });
+  } catch (error) {
+    logger.error('Credits history error', { error: error.message });
+    res.status(500).json({ error: 'Failed to get history' });
+  }
+});
+
+// POST /api/credits/deposit - Deposit credits (after USDC payment)
+app.post('/api/credits/deposit', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const { amount, txHash } = req.body;
+    
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Valid amount required' });
+    }
+    
+    const agentResult = await db.query(
+      'SELECT a.*, u.id as user_id, u.wallet_address FROM agents a JOIN users u ON a.user_id = u.id WHERE a.api_key = $1',
+      [apiKey]
+    );
+    
+    if (agentResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    // Optional: Verify on-chain deposit if txHash provided
+    if (txHash) {
+      // TODO: Verify USDC deposit to platform wallet
+      // For now, trust the txHash as reference
+    }
+    
+    const result = await db.addCredits(
+      agentResult.rows[0].user_id,
+      amount,
+      `Credit deposit${txHash ? ` (tx: ${txHash.slice(0, 10)}...)` : ''}`,
+      txHash
+    );
+    
+    logger.info('Credits deposited', { userId: agentResult.rows[0].user_id, amount, txHash });
+    
+    res.json({
+      success: true,
+      balance: parseFloat(result.balance),
+      deposited: amount
+    });
+  } catch (error) {
+    logger.error('Credits deposit error', { error: error.message });
+    res.status(500).json({ error: 'Failed to deposit credits' });
+  }
+});
+
+// POST /api/credits/pay-job - Pay for a job using credits
+app.post('/api/credits/pay-job', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const { jobUuid } = req.body;
+    
+    if (!jobUuid) {
+      return res.status(400).json({ error: 'jobUuid required' });
+    }
+    
+    // Get hirer
+    const hirerResult = await db.query(
+      'SELECT a.*, u.id as user_id FROM agents a JOIN users u ON a.user_id = u.id WHERE a.api_key = $1',
+      [apiKey]
+    );
+    
+    if (hirerResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    const hirerId = hirerResult.rows[0].user_id;
+    
+    // Get job
+    const job = await db.getJob(jobUuid);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    
+    if (job.status !== 'pending') {
+      return res.status(400).json({ error: `Job status is ${job.status}, cannot pay` });
+    }
+    
+    // Get agent's user_id
+    const agentResult = await db.query(
+      'SELECT user_id FROM agents WHERE id = $1',
+      [job.agent_id]
+    );
+    
+    if (agentResult.rows.length === 0) {
+      return res.status(500).json({ error: 'Agent not found' });
+    }
+    
+    // Process credit payment
+    const result = await db.deductCreditsForJob(
+      hirerId,
+      agentResult.rows[0].user_id,
+      parseFloat(job.price_usdc),
+      job.id
+    );
+    
+    if (!result.success) {
+      return res.status(400).json({
+        error: result.error,
+        required: result.required,
+        available: result.available
+      });
+    }
+    
+    // Update job status to paid
+    await db.updateJobStatus(job.id, 'paid', { paid_at: new Date() });
+    
+    logger.info('Job paid with credits', { jobUuid, hirerId, amount: job.price_usdc, platformFee: result.platformFee });
+    
+    res.json({
+      success: true,
+      job: { uuid: jobUuid, status: 'paid' },
+      payment: {
+        amount: parseFloat(job.price_usdc),
+        agentReceived: result.agentAmount,
+        platformFee: result.platformFee,
+        feePercent: result.feePercent
+      },
+      hirerBalance: parseFloat(result.hirerBalance)
+    });
+  } catch (error) {
+    logger.error('Credits pay-job error', { error: error.message });
+    res.status(500).json({ error: 'Failed to pay for job' });
+  }
+});
+
+// GET /api/credits/fee - Get current platform fee
+app.get('/api/credits/fee', async (req, res) => {
+  try {
+    const feePercent = await db.getPlatformFee();
+    res.json({
+      platformFeePercent: feePercent,
+      description: `${feePercent}% deducted from each job payment`
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get fee' });
+  }
+});
+
+// ============================================
 // PHASE 2: AGENT SELF-REGISTRATION API
 // ============================================
 
