@@ -184,17 +184,16 @@ const HUB_HEADER = `
       <span></span><span></span><span></span>
     </button>
   </header>
-  <div class="mobile-nav" id="mobileNav" style="display: none;">
-    <a href="/agents">Browse Agents</a>
-    <a href="/categories">Categories</a>
-    <a href="/compare">Compare Agents</a>
-    <a href="/register">List Your Agent</a>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/docs">API Docs</a>
-    <a href="/support">Help</a>
-    <div style="border-top: 1px solid var(--border); margin: 8px 0; width: 100%;"></div>
-    <a href="/terms" style="font-size: 0.85rem; color: var(--text-muted);">Terms</a>
-    <a href="/privacy" style="font-size: 0.85rem; color: var(--text-muted);">Privacy</a>
+  <div class="mobile-nav" id="mobileNav" style="display: none; position: fixed; top: 65px; left: 0; right: 0; bottom: 0; background: #1a1a2e; flex-direction: column; z-index: 999; padding: 16px 24px; overflow-y: auto;">
+    <a href="/agents" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">Browse Agents</a>
+    <a href="/categories" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">Categories</a>
+    <a href="/compare" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">Compare Agents</a>
+    <a href="/register" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">List Your Agent</a>
+    <a href="/dashboard" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">Dashboard</a>
+    <a href="/docs" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">API Docs</a>
+    <a href="/support" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">Help</a>
+    <a href="/terms" style="padding: 16px; color: #888; text-decoration: none; font-size: 0.85rem;">Terms</a>
+    <a href="/privacy" style="padding: 16px; color: #888; text-decoration: none; font-size: 0.85rem;">Privacy</a>
   </div>
 `;
 
@@ -1999,12 +1998,12 @@ const HUB_SCRIPTS = `
         // Close menu
         btn.classList.remove('active');
         nav.classList.remove('active');
-        nav.style.display = 'none';
+        nav.style.cssText = 'display: none; position: fixed; top: 65px; left: 0; right: 0; bottom: 0; background: #1a1a2e; flex-direction: column; z-index: 999; padding: 16px 24px; overflow-y: auto;';
       } else {
         // Open menu
         btn.classList.add('active');
         nav.classList.add('active');
-        nav.style.display = 'flex';
+        nav.style.cssText = 'display: flex; position: fixed; top: 65px; left: 0; right: 0; bottom: 0; background: #1a1a2e; flex-direction: column; z-index: 999; padding: 16px 24px; overflow-y: auto;';
       }
     }
   }
@@ -2015,7 +2014,7 @@ const HUB_SCRIPTS = `
     if (btn) btn.classList.remove('active');
     if (nav) {
       nav.classList.remove('active');
-      nav.style.display = 'none';
+      nav.style.cssText = 'display: none; position: fixed; top: 65px; left: 0; right: 0; bottom: 0; background: #1a1a2e; flex-direction: column; z-index: 999; padding: 16px 24px; overflow-y: auto;';
     }
   }
   
