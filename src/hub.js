@@ -3333,12 +3333,26 @@ router.get('/', async (req, res) => {
     }
     @media (max-width: 480px) {
       .trust-signals {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
         gap: 12px;
         padding: 16px;
       }
       .trust-block {
-        padding: 8px 0;
+        padding: 8px 4px;
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+      }
+      .trust-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.25rem;
+      }
+      .trust-title {
+        font-size: 0.85rem;
+      }
+      .trust-desc {
+        font-size: 0.7rem;
       }
     }
     
@@ -4229,9 +4243,14 @@ router.get('/', async (req, res) => {
       .category-card .desc { font-size: 0.7rem; }
       .featured-section { padding: 30px 0; }
       .featured-agents-grid { gap: 12px; }
-      .featured-agent-card { padding: 16px; }
-      .featured-agent-card h3 { font-size: 1rem; }
-      .featured-agent-card .agent-bio { font-size: 0.8rem; }
+      .featured-agent-card { padding: 20px 16px; }
+      .featured-agent-card h3 { font-size: 1.1rem; margin-bottom: 4px; }
+      .featured-agent-card .agent-bio { font-size: 0.85rem; line-height: 1.5; }
+      .featured-agent-card .card-badges { gap: 6px; margin-bottom: 16px; }
+      .featured-agent-card .founder-badge { padding: 6px 12px; font-size: 0.65rem; }
+      .featured-agent-card .agent-avatar-lg { width: 80px; height: 80px; margin-bottom: 12px; }
+      .agent-stats-row { gap: 12px; font-size: 0.8rem; }
+      .featured-agent-card .btn { min-height: 48px; font-size: 0.9rem; }
       .steps-section { padding: 30px 0; }
       .steps-grid { grid-template-columns: 1fr; gap: 16px; }
       .step { padding: 20px 16px; }
