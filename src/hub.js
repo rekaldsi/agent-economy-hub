@@ -537,6 +537,7 @@ const HUB_STYLES = `
     font-weight: 700;
     line-height: 1.2;
     margin-bottom: 0.5em;
+    letter-spacing: -0.02em;
   }
 
   h1 { font-size: 2.5rem; }
@@ -896,8 +897,8 @@ const HUB_STYLES = `
   .card:hover {
     background: var(--bg-card-hover);
     border-color: var(--border-light);
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-md);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md), 0 0 20px rgba(0, 240, 255, 0.08);
   }
   
   .card:hover .card-title {
@@ -1186,15 +1187,18 @@ const HUB_STYLES = `
   .agent-card:hover {
     background: var(--bg-card-hover);
     border-color: var(--accent);
-    transform: translateY(-4px);
+    transform: translateY(-4px) scale(1.01);
     box-shadow: 0 12px 40px rgba(0, 240, 255, 0.15), var(--shadow-md);
   }
   .agent-card:hover::before {
     opacity: 1;
   }
   .agent-card:hover .agent-avatar {
-    transform: scale(1.05);
-    box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+    transform: scale(1.08);
+    box-shadow: 0 0 24px rgba(0, 240, 255, 0.5);
+  }
+  .agent-card:hover h3 {
+    color: var(--accent);
   }
   .agent-header {
     display: flex;
@@ -1211,11 +1215,15 @@ const HUB_STYLES = `
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
-    transition: all 0.3s ease;
+    transition: all var(--duration-normal) var(--ease-spring);
+    flex-shrink: 0;
   }
   .agent-info h3 {
     font-size: 1.1rem;
     font-weight: 600;
+    transition: color var(--duration-fast);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
   .agent-info p {
     color: var(--text-muted);
@@ -3048,10 +3056,10 @@ router.get('/', async (req, res) => {
     
     /* Stats Bar - Enhanced */
     .stats-bar {
-      display: flex;
-      justify-content: center;
-      gap: 32px;
-      padding: 28px 40px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      padding: 24px 32px;
       background: rgba(15, 23, 42, 0.6);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
@@ -3066,15 +3074,18 @@ router.get('/', async (req, res) => {
       display: flex;
       align-items: center;
       gap: 12px;
+      justify-content: center;
     }
     
     .stat-icon {
       font-size: 1.5rem;
       opacity: 0.8;
+      flex-shrink: 0;
     }
     
     .stat-content {
       text-align: left;
+      min-width: 0;
     }
     
     .stat-block .number {
@@ -3090,14 +3101,15 @@ router.get('/', async (req, res) => {
       margin-top: 2px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      white-space: nowrap;
     }
     
     /* Trust Signals (Early Stage) */
     .trust-signals {
-      display: flex;
-      justify-content: center;
-      gap: 32px;
-      padding: 24px 40px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      padding: 24px 32px;
       background: rgba(255, 255, 255, 0.02);
       border: 1px solid var(--border);
       border-radius: 20px;
@@ -3112,14 +3124,17 @@ router.get('/', async (req, res) => {
     .trust-icon {
       font-size: 1.5rem;
       filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.3));
+      flex-shrink: 0;
     }
     .trust-content {
       text-align: left;
+      min-width: 0;
     }
     .trust-title {
       font-weight: 600;
       font-size: 0.9rem;
       color: var(--text);
+      white-space: nowrap;
     }
     .trust-desc {
       font-size: 0.75rem;
@@ -3127,24 +3142,19 @@ router.get('/', async (req, res) => {
     }
     @media (max-width: 900px) {
       .trust-signals {
-        flex-wrap: wrap;
-        gap: 20px;
-        padding: 20px;
-      }
-      .trust-block {
-        flex: 1 1 45%;
-        min-width: 140px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        padding: 20px 24px;
       }
     }
     @media (max-width: 480px) {
       .trust-signals {
-        flex-direction: column;
-        gap: 16px;
-        align-items: flex-start;
-        padding: 20px;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 16px;
       }
       .trust-block {
-        flex: 1 1 100%;
+        padding: 8px 0;
       }
     }
     
@@ -3235,7 +3245,7 @@ router.get('/', async (req, res) => {
     }
     
     .category-card:hover {
-      transform: translateY(-6px) scale(1.02);
+      transform: translateY(-4px) scale(1.02);
       border-color: rgba(0, 240, 255, 0.3);
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3), 0 0 32px rgba(0, 240, 255, 0.1);
     }
@@ -3245,21 +3255,26 @@ router.get('/', async (req, res) => {
     }
     
     .category-card:hover .category-icon {
-      transform: scale(1.15);
+      transform: scale(1.1) translateY(-2px);
       filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.5));
+    }
+    
+    .category-card:hover .category-name {
+      color: var(--accent);
     }
     
     .category-icon {
       font-size: 2.5rem;
       margin-bottom: 16px;
       display: block;
-      transition: all 0.3s ease;
+      transition: all var(--duration-normal) var(--ease-spring);
     }
     
     .category-name {
       font-weight: 600;
       font-size: 1.125rem;
       margin-bottom: 8px;
+      transition: color var(--duration-fast);
     }
     
     .category-desc {
@@ -3320,6 +3335,11 @@ router.get('/', async (req, res) => {
     
     .featured-agent-card:hover::before {
       opacity: 1;
+    }
+    
+    .featured-agent-card:hover h3 {
+      color: var(--accent);
+      transition: color var(--duration-fast);
     }
     
     /* Founder Card Special Styling */
@@ -3437,6 +3457,10 @@ router.get('/', async (req, res) => {
       font-size: 0.9rem;
       margin-bottom: 20px;
       line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
     
     .agent-capabilities {
@@ -3667,19 +3691,24 @@ router.get('/', async (req, res) => {
       align-items: center;
       justify-content: center;
       font-size: 28px;
-      transition: all 0.3s ease;
+      transition: all var(--duration-normal) var(--ease-spring);
       box-shadow: 0 4px 16px rgba(0, 240, 255, 0.2);
     }
     
     .step:hover .step-icon {
-      transform: scale(1.1) rotate(5deg);
+      transform: scale(1.08) rotate(3deg);
       box-shadow: 0 8px 24px rgba(0, 240, 255, 0.4);
+    }
+    
+    .step:hover .step-title {
+      color: var(--accent);
     }
     
     .step-title {
       font-weight: 600;
       font-size: 1.125rem;
       margin-bottom: 8px;
+      transition: color var(--duration-fast);
     }
     
     .step-desc {
@@ -3707,7 +3736,7 @@ router.get('/', async (req, res) => {
       border-radius: 16px;
       padding: 32px;
       text-align: center;
-      transition: all 0.3s ease;
+      transition: all var(--duration-normal);
     }
     
     .trust-card:hover {
@@ -3716,16 +3745,26 @@ router.get('/', async (req, res) => {
       box-shadow: 0 12px 40px rgba(0, 240, 255, 0.1);
     }
     
+    .trust-card:hover .trust-card-icon {
+      transform: scale(1.1);
+    }
+    
+    .trust-card:hover h3 {
+      color: var(--accent);
+    }
+    
     .trust-card-icon {
       font-size: 2.5rem;
       margin-bottom: 16px;
       filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.3));
+      transition: transform var(--duration-normal) var(--ease-spring);
     }
     
     .trust-card h3 {
       font-size: 1.125rem;
       font-weight: 600;
       margin-bottom: 8px;
+      transition: color var(--duration-fast);
     }
     
     .trust-card p {
@@ -3947,17 +3986,16 @@ router.get('/', async (req, res) => {
       .popular-tags { margin-bottom: 24px; gap: 8px; }
       .tag-pill { padding: 8px 14px; font-size: 0.8rem; }
       .stats-bar { 
-        display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 16px;
         padding: 20px;
         max-width: 100%;
       }
-      .stat-block { flex-direction: column; text-align: center; gap: 8px; }
+      .stat-block { flex-direction: column; text-align: center; gap: 6px; }
       .stat-content { text-align: center; }
       .stat-icon { font-size: 1.25rem; }
       .stat-block .number { font-size: 1.5rem; }
-      .stat-block .label { font-size: 0.7rem; }
+      .stat-block .label { font-size: 0.7rem; white-space: normal; }
       .chain-indicator { font-size: 0.7rem; margin-top: 16px; }
       .categories-section { padding: 40px 0; }
       .section-header { margin-bottom: 24px; }
@@ -3990,9 +4028,10 @@ router.get('/', async (req, res) => {
       .hero-search button { padding: 12px 18px; font-size: 0.85rem; min-height: 44px; }
       .popular-tags { gap: 6px; margin-bottom: 20px; }
       .tag-pill { padding: 10px 14px; font-size: 0.75rem; min-height: 44px; display: inline-flex; align-items: center; }
-      .stats-bar { gap: 12px; padding: 16px; }
+      .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px; }
       .stat-icon { font-size: 1rem; }
       .stat-block .number { font-size: 1.25rem; }
+      .stat-block { gap: 4px; }
       .chain-indicator { font-size: 0.65rem; flex-wrap: wrap; text-align: center; }
       .categories-section { padding: 30px 0; }
       .section-header h2 { font-size: 1.5rem; margin-bottom: 8px; }
@@ -4028,8 +4067,9 @@ router.get('/', async (req, res) => {
       .hero-search button { width: 100%; min-height: 48px; }
       .popular-tags { gap: 6px; }
       .tag-pill { padding: 10px 12px; font-size: 0.7rem; min-height: 44px; }
-      .stats-bar { flex-direction: column; gap: 16px; padding: 16px; }
-      .stat-block { width: 100%; justify-content: center; }
+      .stats-bar { grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px; }
+      .stat-block { width: 100%; justify-content: center; gap: 4px; }
+      .stat-block .number { font-size: 1.1rem; }
       .categories-grid { grid-template-columns: 1fr; gap: 8px; }
       .category-card { padding: 16px 14px; }
       .section-header h2 { font-size: 1.25rem; }
@@ -13893,7 +13933,7 @@ router.get('/support', (req, res) => {
     .faq-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
     .faq-question { padding: 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
     .faq-question:hover { background: var(--bg-elevated); }
-    .faq-answer { padding: 0 20px 20px; color: var(--text-muted); line-height: 1.7; display: none; }
+    .faq-answer { padding: 20px; padding-top: 0; color: var(--text-muted); line-height: 1.7; display: none; }
     .faq-item.open .faq-answer { display: block; }
     .faq-item.open .faq-arrow { transform: rotate(180deg); }
     .faq-arrow { transition: transform 0.2s; }
