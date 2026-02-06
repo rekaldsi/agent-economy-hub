@@ -1632,107 +1632,66 @@ async function getTrustByWallet(walletAddress) {
  * Seed demo agents for marketplace testing
  * Creates DataDive (Data/Research) and PixelForge (Image/Creative)
  */
+/**
+ * Setup MrMagoochi as Founding Agent and remove demo agents
+ * Runs on every startup but is idempotent
+ */
 async function seedDemoAgents() {
   const client = await pool.connect();
   try {
-    logger.info('Checking for demo agents...');
+    logger.info('Running agent setup migrations...');
     
-    // Demo Agent 1: DataDive
-    const dataDiveWallet = '0xda7a01ve000000000000000000000000000d1ve';
-    const existingDataDive = await client.query(
-      'SELECT id FROM users WHERE wallet_address = $1',
-      [dataDiveWallet]
-    );
+    // Remove demo agents with fake wallets (one-time cleanup)
+    const demoWallets = [
+      '0xda7a01ve000000000000000000000000000d1ve',  // DataDive
+      '0xp1xel000000000000000000000000000f0rge'     // PixelForge
+    ];
     
-    if (existingDataDive.rows.length === 0) {
-      logger.info('Creating DataDive agent...');
+    for (const wallet of demoWallets) {
+      const result = await client.query(`
+        SELECT u.id as user_id, a.id as agent_id 
+        FROM users u LEFT JOIN agents a ON a.user_id = u.id 
+        WHERE u.wallet_address = $1
+      `, [wallet]);
       
-      // Create user
-      const userResult = await client.query(`
-        INSERT INTO users (wallet_address, user_type, name, bio, avatar_url)
-        VALUES ($1, 'agent', 'DataDive', 'Your data analysis expert. I extract insights from any dataset.', 'https://api.dicebear.com/7.x/bottts/svg?seed=DataDive&backgroundColor=3b82f6')
-        RETURNING id
-      `, [dataDiveWallet]);
-      
-      // Create agent
-      const agentResult = await client.query(`
-        INSERT INTO agents (user_id, webhook_url, api_key, total_jobs, total_earned, rating, review_count, trust_tier, trust_score, tagline, is_active)
-        VALUES ($1, 'https://datadive.example.com/webhook', $2, 47, 1250.00, 4.70, 32, 'rising', 45, 'Data extraction & insights specialist', true)
-        RETURNING id
-      `, [userResult.rows[0].id, 'hub_' + require('crypto').randomBytes(24).toString('hex')]);
-      
-      const agentId = agentResult.rows[0].id;
-      
-      // Add skills
-      const dataDiveSkills = [
-        ['CSV Data Analysis', 'Upload any CSV file and get comprehensive insights, statistics, and visualizations. Includes data cleaning and anomaly detection.', 'Data/Research', 15.00, '30-60 min'],
-        ['Market Research Report', 'In-depth market analysis for any industry. Includes competitor landscape, trends, and opportunities.', 'Data/Research', 50.00, '2-4 hours'],
-        ['Competitive Analysis', 'Detailed comparison of competitors including pricing, features, positioning, and SWOT analysis.', 'Data/Research', 35.00, '1-2 hours'],
-        ['Data Extraction', 'Extract structured data from websites, PDFs, or documents. Clean, formatted output in your preferred format.', 'Data/Research', 10.00, '15-30 min']
-      ];
-      
-      for (const [name, desc, cat, price, time] of dataDiveSkills) {
-        await client.query(`
-          INSERT INTO skills (agent_id, name, description, category, price_usdc, estimated_time, is_active)
-          VALUES ($1, $2, $3, $4, $5, $6, true)
-        `, [agentId, name, desc, cat, price, time]);
+      if (result.rows.length > 0) {
+        const { user_id, agent_id } = result.rows[0];
+        if (agent_id) {
+          await client.query('DELETE FROM skills WHERE agent_id = $1', [agent_id]);
+          await client.query('DELETE FROM agents WHERE id = $1', [agent_id]);
+        }
+        await client.query('DELETE FROM users WHERE id = $1', [user_id]);
+        logger.info('Removed demo agent', { wallet: wallet.slice(0, 10) });
       }
-      
-      logger.info('DataDive agent created', { agentId, skills: dataDiveSkills.length });
-    } else {
-      logger.info('DataDive already exists');
     }
     
-    // Demo Agent 2: PixelForge
-    const pixelForgeWallet = '0xp1xel000000000000000000000000000f0rge';
-    const existingPixelForge = await client.query(
-      'SELECT id FROM users WHERE wallet_address = $1',
-      [pixelForgeWallet]
-    );
+    // Setup MrMagoochi as Founding Agent (idempotent)
+    const mrMagoochiWallet = '0xa193128362e6de28e6d51eebc98505672ffeb3c5';
     
-    if (existingPixelForge.rows.length === 0) {
-      logger.info('Creating PixelForge agent...');
-      
-      // Create user
-      const userResult = await client.query(`
-        INSERT INTO users (wallet_address, user_type, name, bio, avatar_url)
-        VALUES ($1, 'agent', 'PixelForge', 'Creative AI artist specializing in visual content.', 'https://api.dicebear.com/7.x/bottts/svg?seed=PixelForge&backgroundColor=a855f7')
-        RETURNING id
-      `, [pixelForgeWallet]);
-      
-      // Create agent
-      const agentResult = await client.query(`
-        INSERT INTO agents (user_id, webhook_url, api_key, total_jobs, total_earned, rating, review_count, trust_tier, trust_score, tagline, is_active)
-        VALUES ($1, 'https://pixelforge.example.com/webhook', $2, 156, 2840.00, 4.90, 98, 'established', 68, 'AI-powered visual content creator', true)
-        RETURNING id
-      `, [userResult.rows[0].id, 'hub_' + require('crypto').randomBytes(24).toString('hex')]);
-      
-      const agentId = agentResult.rows[0].id;
-      
-      // Add skills
-      const pixelForgeSkills = [
-        ['Logo Design', 'Professional logo design with multiple concepts and revisions. Includes vector files (SVG, AI) and various formats.', 'Image/Creative', 25.00, '1-2 hours'],
-        ['Social Media Graphics', 'Eye-catching graphics for Instagram, Twitter, LinkedIn, etc. Sized perfectly for each platform.', 'Image/Creative', 8.00, '15-30 min'],
-        ['Product Mockup', 'Realistic product mockups for t-shirts, mugs, packaging, app screens, and more. High-res images included.', 'Image/Creative', 12.00, '30-45 min'],
-        ['AI Art Generation', 'Custom AI-generated artwork based on your description. Multiple style options and iterations included.', 'Image/Creative', 5.00, '5-15 min']
-      ];
-      
-      for (const [name, desc, cat, price, time] of pixelForgeSkills) {
-        await client.query(`
-          INSERT INTO skills (agent_id, name, description, category, price_usdc, estimated_time, is_active)
-          VALUES ($1, $2, $3, $4, $5, $6, true)
-        `, [agentId, name, desc, cat, price, time]);
-      }
-      
-      logger.info('PixelForge agent created', { agentId, skills: pixelForgeSkills.length });
-    } else {
-      logger.info('PixelForge already exists');
-    }
+    // Update user profile
+    await client.query(`
+      UPDATE users SET
+        bio = COALESCE(NULLIF(bio, ''), 'Founding Agent of TheBotique. Creative strategist, researcher, and AI specialist. From brainstorms to code reviews — 40+ services across creative, research, technical, and visual domains.'),
+        avatar_url = COALESCE(avatar_url, 'https://api.dicebear.com/7.x/bottts/svg?seed=MrMagoochi&backgroundColor=0f172a')
+      WHERE wallet_address = $1
+    `, [mrMagoochiWallet]);
     
-    logger.info('Demo agents seeding complete');
+    // Update agent as founder
+    await client.query(`
+      UPDATE agents SET
+        trust_tier = 'verified',
+        trust_score = GREATEST(trust_score, 100),
+        is_founder = true,
+        tagline = COALESCE(NULLIF(tagline, ''), 'AI-Powered Services')
+      WHERE user_id = (SELECT id FROM users WHERE wallet_address = $1)
+    `, [mrMagoochiWallet]);
+    
+    logger.info('MrMagoochi configured as Founding Agent');
+    logger.info('Agent setup complete');
+    
   } catch (error) {
-    logger.error('Error seeding demo agents', { error: error.message });
-    // Don't throw - this is non-critical
+    logger.error('Error in agent setup', { error: error.message });
+    // Don't throw - non-critical
   } finally {
     client.release();
   }
