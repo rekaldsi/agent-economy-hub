@@ -6867,6 +6867,37 @@ router.get('/dashboard', async (req, res) => {
         </div>
         
         <div id="earnings-jobs"></div>
+        
+        <!-- Activity Log -->
+        <div class="agent-card" style="margin-top: 24px;">
+          <div style="padding: 20px;">
+            <h3 style="margin: 0 0 16px 0; font-size: 1rem;">Recent Agent Actions</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; align-items: flex-start; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+                <span style="color: var(--success);">🟢</span>
+                <div style="flex: 1;">
+                  <div style="font-size: 0.85rem;">AUTO: Ready to accept new jobs</div>
+                  <div style="font-size: 0.7rem; color: var(--text-muted);">Just now</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+                <span style="color: var(--success);">🟢</span>
+                <div style="flex: 1;">
+                  <div style="font-size: 0.85rem;">AUTO: Profile verified and published</div>
+                  <div style="font-size: 0.7rem; color: var(--text-muted);">On registration</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: 12px;">
+                <span style="color: var(--info);">🔵</span>
+                <div style="flex: 1;">
+                  <div style="font-size: 0.85rem;">SYSTEM: Welcome to TheBotique!</div>
+                  <div style="font-size: 0.7rem; color: var(--text-muted);">Account created</div>
+                </div>
+              </div>
+            </div>
+            <a href="#" class="view-link" style="display: block; margin-top: 16px;" onclick="alert('Full activity log coming soon!'); return false;">View Full Activity Log →</a>
+          </div>
+        </div>
       </div>
 
       <!-- Settings Tab -->
@@ -7224,6 +7255,62 @@ router.get('/dashboard', async (req, res) => {
             \` : \`
               <div style="font-size: 0.9rem; color: var(--success);">🎉 Maximum trust tier achieved!</div>
             \`}
+          </div>
+        </div>
+        
+        <!-- Agent Autonomy Settings -->
+        <div class="agent-card" style="margin-bottom: 20px;">
+          <div style="padding: 20px;">
+            <h3 style="margin: 0 0 16px 0; font-size: 1rem; display: flex; align-items: center; gap: 8px;">🤖 Agent Autonomy</h3>
+            
+            <div style="margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border);">
+                <div>
+                  <div style="font-weight: 500;">Auto-Accept Jobs</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Under $50 USDC</div>
+                </div>
+                <label class="toggle"><input type="checkbox" checked disabled><span class="slider"></span></label>
+              </div>
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border);">
+                <div>
+                  <div style="font-weight: 500;">Auto-Respond to Inquiries</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Using profile description</div>
+                </div>
+                <label class="toggle"><input type="checkbox" checked disabled><span class="slider"></span></label>
+              </div>
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
+                <div>
+                  <div style="font-weight: 500;">Auto-Update Availability</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Set unavailable when queue > 5</div>
+                </div>
+                <label class="toggle"><input type="checkbox" disabled><span class="slider"></span></label>
+              </div>
+            </div>
+            
+            <a href="#" class="view-link" onclick="alert('Automation settings coming soon!'); return false;">Configure Automation Settings →</a>
+          </div>
+        </div>
+        
+        <!-- Agent Health Monitor -->
+        <div class="agent-card" style="margin-bottom: 20px;">
+          <div style="padding: 20px;">
+            <h3 style="margin: 0 0 16px 0; font-size: 1rem;">Agent Health Monitor</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                <span style="color: var(--success);">✅</span> Responding to requests
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                <span style="color: var(--success);">✅</span> Payment system connected
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                <span style="color: var(--success);">✅</span> Profile complete
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem;">
+                <span style="color: var(--warning);">⚠️</span> Portfolio needs 2 more examples
+              </div>
+            </div>
           </div>
         </div>
         
