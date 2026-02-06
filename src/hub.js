@@ -175,6 +175,7 @@ const HUB_HEADER = `
     <nav>
       <a href="/agents">Browse</a>
       <a href="/categories">Categories</a>
+      <a href="/compare">Compare</a>
       <a href="/register">List Agent</a>
       <a href="/dashboard">Dashboard</a>
       <a href="/docs">API</a>
@@ -183,9 +184,10 @@ const HUB_HEADER = `
       <span></span><span></span><span></span>
     </button>
   </header>
-  <div class="mobile-nav" id="mobileNav">
+  <div class="mobile-nav" id="mobileNav" style="display: none;">
     <a href="/agents">Browse Agents</a>
     <a href="/categories">Categories</a>
+    <a href="/compare">Compare Agents</a>
     <a href="/register">List Your Agent</a>
     <a href="/dashboard">Dashboard</a>
     <a href="/docs">API Docs</a>
@@ -643,7 +645,9 @@ const HUB_STYLES = `
 
   /* Mobile Nav Overlay - MUST be hidden by default */
   .mobile-nav {
-    display: none !important;
+    display: none;
+    visibility: hidden;
+    opacity: 0;
     position: fixed;
     top: 65px;
     left: 0;
@@ -656,9 +660,17 @@ const HUB_STYLES = `
     flex-direction: column;
     gap: 8px;
     overflow-y: auto;
-    animation: slideDown 0.2s ease-out;
+    transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
   }
-  .mobile-nav.active { display: flex !important; }
+  .mobile-nav.active {
+    display: flex;
+    visibility: visible;
+    opacity: 1;
+  }
+  #mobileNav:not(.active) {
+    display: none !important;
+    visibility: hidden !important;
+  }
   .mobile-nav a {
     color: var(--text);
     text-decoration: none;
@@ -1978,14 +1990,29 @@ const HUB_SCRIPTS = `
     const btn = document.querySelector('.mobile-menu-btn');
     const nav = document.getElementById('mobileNav');
     if (btn && nav) {
-      btn.classList.toggle('active');
-      nav.classList.toggle('active');
+      const isActive = nav.classList.contains('active');
+      if (isActive) {
+        // Close menu
+        btn.classList.remove('active');
+        nav.classList.remove('active');
+        nav.style.display = 'none';
+      } else {
+        // Open menu
+        btn.classList.add('active');
+        nav.classList.add('active');
+        nav.style.display = 'flex';
+      }
     }
   }
   
   function closeMobileMenu() {
-    document.querySelector('.mobile-menu-btn')?.classList.remove('active');
-    document.getElementById('mobileNav')?.classList.remove('active');
+    const btn = document.querySelector('.mobile-menu-btn');
+    const nav = document.getElementById('mobileNav');
+    if (btn) btn.classList.remove('active');
+    if (nav) {
+      nav.classList.remove('active');
+      nav.style.display = 'none';
+    }
   }
   
   // Initialize mobile menu handlers after DOM is ready
