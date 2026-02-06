@@ -166,7 +166,6 @@ const PWA_SCRIPT = `
 // UNIFIED HEADER COMPONENT
 // ============================================
 const HUB_HEADER = `
-  <style>#mobileNav{display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important}#mobileNav.active{display:flex!important;visibility:visible!important;height:auto!important;overflow:auto!important}</style>
   <header>
     <a href="/" class="logo">
       <img src="/logos/icon.svg" alt="TheBotique" style="width: 32px; height: 32px;">
@@ -181,21 +180,21 @@ const HUB_HEADER = `
       <a href="/dashboard">Dashboard</a>
       <a href="/docs">API</a>
     </nav>
-    <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobileNav">
       <span></span><span></span><span></span>
     </button>
   </header>
-  <div class="mobile-nav" id="mobileNav" style="display: none; position: fixed; top: 65px; left: 0; right: 0; bottom: 0; background: #1a1a2e; flex-direction: column; z-index: 999; padding: 16px 24px; overflow-y: auto;">
-    <a href="/agents" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">Browse Agents</a>
-    <a href="/categories" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">Categories</a>
-    <a href="/compare" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">Compare Agents</a>
-    <a href="/register" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">List Your Agent</a>
-    <a href="/dashboard" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">Dashboard</a>
-    <a href="/docs" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">API Docs</a>
-    <a href="/support" style="padding: 16px; color: #fff; text-decoration: none; border-bottom: 1px solid #333;">Help</a>
-    <a href="/terms" style="padding: 16px; color: #888; text-decoration: none; font-size: 0.85rem;">Terms</a>
-    <a href="/privacy" style="padding: 16px; color: #888; text-decoration: none; font-size: 0.85rem;">Privacy</a>
-  </div>
+  <nav class="mobile-nav" id="mobileNav" aria-label="Mobile navigation">
+    <a href="/agents">Browse Agents</a>
+    <a href="/categories">Categories</a>
+    <a href="/compare">Compare Agents</a>
+    <a href="/register">List Your Agent</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/docs">API Docs</a>
+    <a href="/support">Help</a>
+    <a href="/terms">Terms</a>
+    <a href="/privacy">Privacy</a>
+  </nav>
 `;
 
 // ============================================
@@ -649,8 +648,8 @@ const HUB_STYLES = `
 
   /* Mobile Nav Overlay - MUST be hidden by default */
   .mobile-nav {
-    display: none;
-    visibility: hidden;
+    display: none !important;
+    visibility: hidden !important;
     opacity: 0;
     position: fixed;
     top: 65px;
@@ -658,35 +657,47 @@ const HUB_STYLES = `
     right: 0;
     bottom: 0;
     background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
     padding: 16px 24px;
-    z-index: 49;
+    z-index: 999;
     flex-direction: column;
-    gap: 8px;
+    gap: 0;
     overflow-y: auto;
-    transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
+    -webkit-overflow-scrolling: touch;
+    transition: opacity 0.25s ease-out;
   }
   .mobile-nav.active {
-    display: flex;
-    visibility: visible;
+    display: flex !important;
+    visibility: visible !important;
     opacity: 1;
-  }
-  #mobileNav:not(.active) {
-    display: none !important;
-    visibility: hidden !important;
   }
   .mobile-nav a {
     color: var(--text);
     text-decoration: none;
-    padding: 12px 16px;
-    border-radius: 8px;
-    transition: background 0.2s;
-    min-height: 44px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s, color 0.2s;
+    min-height: 52px;
     display: flex;
     align-items: center;
+    font-size: 1rem;
   }
-  .mobile-nav a:hover { background: var(--bg-input); }
-  .mobile-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .mobile-nav a:last-child {
+    border-bottom: none;
+  }
+  .mobile-nav a:nth-last-child(-n+2) {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    min-height: 48px;
+  }
+  .mobile-nav a:hover,
+  .mobile-nav a:active { 
+    background: var(--bg-input);
+    color: var(--accent);
+  }
+  .mobile-nav a:focus-visible { 
+    outline: 2px solid var(--accent); 
+    outline-offset: -2px;
+  }
   @keyframes slideDown {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -1673,6 +1684,127 @@ const HUB_STYLES = `
   }
 
   /* ============================================
+     RESPONSIVE - TABLET PORTRAIT (768px - 899px)
+     Optimized 2-column layouts for iPad portrait
+     ============================================ */
+  @media (min-width: 768px) and (max-width: 899px) {
+    /* Agents grid - explicit 2-column for tablet portrait */
+    .agents-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    
+    /* Agent and featured cards - optimized tablet padding */
+    .agent-card,
+    .featured-agent-card {
+      padding: 20px;
+    }
+    
+    .agent-avatar {
+      width: 48px;
+      height: 48px;
+      font-size: 1.25rem;
+    }
+    
+    .agent-avatar-lg {
+      width: 80px;
+      height: 80px;
+      font-size: 32px;
+    }
+    
+    /* Stats bar - tighter tablet layout */
+    .stats-bar {
+      gap: 24px;
+      padding: 24px 32px;
+    }
+    
+    .stat-block .number {
+      font-size: 1.5rem;
+    }
+    
+    /* Trust signals - 2x2 grid optimized */
+    .trust-signals {
+      gap: 20px;
+      padding: 20px 24px;
+    }
+    
+    /* Steps grid - 2 columns */
+    .steps-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    
+    .step-icon {
+      width: 52px;
+      height: 52px;
+      font-size: 24px;
+    }
+    
+    /* Hero search - better tablet fit */
+    .hero-search {
+      max-width: 90%;
+    }
+    
+    .hero-search input {
+      padding: 16px 24px;
+      padding-right: 130px;
+    }
+    
+    /* Featured agent card specifics */
+    .featured-agent-card h3 {
+      font-size: 1.25rem;
+    }
+    
+    .agent-bio {
+      font-size: 0.85rem;
+      -webkit-line-clamp: 3;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    
+    /* Card actions - tighter */
+    .card-actions {
+      gap: 8px;
+    }
+    
+    .btn-hire,
+    .btn-details {
+      padding: 10px 16px;
+      font-size: 0.85rem;
+    }
+    
+    /* Trust grid - single column at tablet portrait */
+    .trust-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    
+    /* Crypto section - stack */
+    .crypto-content {
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+    
+    /* Operator card - tighter */
+    .operator-card {
+      padding: 28px 24px;
+    }
+    
+    /* CTA buttons - stack on narrow tablet */
+    .cta-buttons {
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+    
+    .cta-buttons .btn {
+      width: 100%;
+      max-width: 300px;
+    }
+  }
+
+  /* ============================================
      RESPONSIVE - MOBILE (320px - 767px)
      ============================================ */
   @media (max-width: 767px) {
@@ -1989,41 +2121,56 @@ const HUB_FOOTER = `
 `;
 
 const HUB_SCRIPTS = `
-  // Mobile Menu Toggle
+  // Mobile Menu Toggle - Class-based only, no inline styles
   function toggleMobileMenu() {
     const btn = document.querySelector('.mobile-menu-btn');
     const nav = document.getElementById('mobileNav');
-    if (btn && nav) {
-      const isActive = nav.classList.contains('active');
-      if (isActive) {
-        // Close menu
-        btn.classList.remove('active');
-        nav.classList.remove('active');
-        nav.style.cssText = 'display: none; position: fixed; top: 65px; left: 0; right: 0; bottom: 0; background: #1a1a2e; flex-direction: column; z-index: 999; padding: 16px 24px; overflow-y: auto;';
-      } else {
-        // Open menu
-        btn.classList.add('active');
-        nav.classList.add('active');
-        nav.style.cssText = 'display: flex; position: fixed; top: 65px; left: 0; right: 0; bottom: 0; background: #1a1a2e; flex-direction: column; z-index: 999; padding: 16px 24px; overflow-y: auto;';
-      }
+    if (!btn || !nav) return;
+    
+    const isActive = nav.classList.contains('active');
+    if (isActive) {
+      closeMobileMenu();
+    } else {
+      // Open menu
+      btn.classList.add('active');
+      btn.setAttribute('aria-expanded', 'true');
+      nav.classList.add('active');
+      // Prevent body scroll when menu is open
+      document.body.style.overflow = 'hidden';
     }
   }
   
   function closeMobileMenu() {
     const btn = document.querySelector('.mobile-menu-btn');
     const nav = document.getElementById('mobileNav');
-    if (btn) btn.classList.remove('active');
+    if (btn) {
+      btn.classList.remove('active');
+      btn.setAttribute('aria-expanded', 'false');
+    }
     if (nav) {
       nav.classList.remove('active');
-      nav.style.cssText = 'display: none; position: fixed; top: 65px; left: 0; right: 0; bottom: 0; background: #1a1a2e; flex-direction: column; z-index: 999; padding: 16px 24px; overflow-y: auto;';
     }
+    // Restore body scroll
+    document.body.style.overflow = '';
   }
   
   // Initialize mobile menu handlers after DOM is ready
   document.addEventListener('DOMContentLoaded', function() {
+    const nav = document.getElementById('mobileNav');
+    const btn = document.querySelector('.mobile-menu-btn');
+    
+    // Ensure menu is closed on page load
+    if (nav) nav.classList.remove('active');
+    if (btn) {
+      btn.classList.remove('active');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+    
     // Close mobile menu on link click
-    document.querySelectorAll('.mobile-nav a').forEach(a => {
-      a.addEventListener('click', closeMobileMenu);
+    document.querySelectorAll('.mobile-nav a').forEach(function(a) {
+      a.addEventListener('click', function() {
+        closeMobileMenu();
+      });
     });
     
     // Close mobile menu when clicking outside
@@ -2040,6 +2187,13 @@ const HUB_SCRIPTS = `
     // Close mobile menu on escape key
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
+        closeMobileMenu();
+      }
+    });
+    
+    // Close menu on window resize to desktop
+    window.addEventListener('resize', function() {
+      if (window.innerWidth > 768) {
         closeMobileMenu();
       }
     });
