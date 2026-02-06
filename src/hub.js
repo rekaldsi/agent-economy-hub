@@ -735,8 +735,8 @@ const HUB_STYLES = `
 
   /* Mobile Nav Overlay - MUST be hidden by default */
   .mobile-nav {
-    display: none !important;
-    visibility: hidden !important;
+    display: none;
+    visibility: hidden;
     opacity: 0;
     position: fixed;
     top: 69px; /* Header height: 16px padding × 2 + 36px logo + 1px border */
@@ -755,7 +755,12 @@ const HUB_STYLES = `
   .mobile-nav.active {
     display: flex !important;
     visibility: visible !important;
-    opacity: 1;
+    opacity: 1 !important;
+  }
+  /* Extra specificity for hidden state */
+  .mobile-nav:not(.active) {
+    display: none !important;
+    visibility: hidden !important;
   }
   .mobile-nav a {
     color: var(--text);
@@ -802,16 +807,28 @@ const HUB_STYLES = `
   }
 
   @media (max-width: 768px) {
-    header nav { display: none !important; visibility: hidden !important; }
+    /* Hide desktop nav on mobile */
+    header nav:not(.mobile-nav) { 
+      display: none !important; 
+      visibility: hidden !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+    }
     .mobile-menu-btn { display: flex !important; }
     h1 { font-size: 1.75rem; }
     h2 { font-size: 1.5rem; }
     .container { padding: 16px; }
   }
   
-  /* Ensure nav hidden on mobile - extra specificity */
+  /* Ensure desktop nav hidden on tablet and below - stronger specificity */
   @media (max-width: 900px) {
-    header > nav { display: none !important; }
+    header > nav:not(.mobile-nav) { 
+      display: none !important;
+      visibility: hidden !important;
+      position: absolute !important;
+      left: -9999px !important;
+    }
   }
 
   /* ============================================
