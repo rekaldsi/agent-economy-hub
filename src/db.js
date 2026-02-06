@@ -728,6 +728,9 @@ async function initDB() {
   } finally {
     client.release();
   }
+  
+  // Seed demo agents (runs on every startup, safe - checks for existing)
+  await seedDemoAgents();
 }
 
 // Helper functions
@@ -1465,6 +1468,116 @@ async function getTrustByWallet(walletAddress) {
   };
 }
 
+/**
+ * Seed demo agents for marketplace testing
+ * Creates DataDive (Data/Research) and PixelForge (Image/Creative)
+ */
+async function seedDemoAgents() {
+  const client = await pool.connect();
+  try {
+    logger.info('Checking for demo agents...');
+    
+    // Demo Agent 1: DataDive
+    const dataDiveWallet = '0xda7a01ve000000000000000000000000000d1ve';
+    const existingDataDive = await client.query(
+      'SELECT id FROM users WHERE wallet_address = $1',
+      [dataDiveWallet]
+    );
+    
+    if (existingDataDive.rows.length === 0) {
+      logger.info('Creating DataDive agent...');
+      
+      // Create user
+      const userResult = await client.query(`
+        INSERT INTO users (wallet_address, user_type, name, bio, avatar_url)
+        VALUES ($1, 'agent', 'DataDive', 'Your data analysis expert. I extract insights from any dataset.', 'https://api.dicebear.com/7.x/bottts/svg?seed=DataDive&backgroundColor=3b82f6')
+        RETURNING id
+      `, [dataDiveWallet]);
+      
+      // Create agent
+      const agentResult = await client.query(`
+        INSERT INTO agents (user_id, webhook_url, api_key, total_jobs, total_earned, rating, review_count, trust_tier, trust_score, tagline, is_active)
+        VALUES ($1, 'https://datadive.example.com/webhook', $2, 47, 1250.00, 4.70, 32, 'rising', 45, 'Data extraction & insights specialist', true)
+        RETURNING id
+      `, [userResult.rows[0].id, 'hub_' + require('crypto').randomBytes(24).toString('hex')]);
+      
+      const agentId = agentResult.rows[0].id;
+      
+      // Add skills
+      const dataDiveSkills = [
+        ['CSV Data Analysis', 'Upload any CSV file and get comprehensive insights, statistics, and visualizations. Includes data cleaning and anomaly detection.', 'Data/Research', 15.00, '30-60 min'],
+        ['Market Research Report', 'In-depth market analysis for any industry. Includes competitor landscape, trends, and opportunities.', 'Data/Research', 50.00, '2-4 hours'],
+        ['Competitive Analysis', 'Detailed comparison of competitors including pricing, features, positioning, and SWOT analysis.', 'Data/Research', 35.00, '1-2 hours'],
+        ['Data Extraction', 'Extract structured data from websites, PDFs, or documents. Clean, formatted output in your preferred format.', 'Data/Research', 10.00, '15-30 min']
+      ];
+      
+      for (const [name, desc, cat, price, time] of dataDiveSkills) {
+        await client.query(`
+          INSERT INTO skills (agent_id, name, description, category, price_usdc, estimated_time, is_active)
+          VALUES ($1, $2, $3, $4, $5, $6, true)
+        `, [agentId, name, desc, cat, price, time]);
+      }
+      
+      logger.info('DataDive agent created', { agentId, skills: dataDiveSkills.length });
+    } else {
+      logger.info('DataDive already exists');
+    }
+    
+    // Demo Agent 2: PixelForge
+    const pixelForgeWallet = '0xp1xel000000000000000000000000000f0rge';
+    const existingPixelForge = await client.query(
+      'SELECT id FROM users WHERE wallet_address = $1',
+      [pixelForgeWallet]
+    );
+    
+    if (existingPixelForge.rows.length === 0) {
+      logger.info('Creating PixelForge agent...');
+      
+      // Create user
+      const userResult = await client.query(`
+        INSERT INTO users (wallet_address, user_type, name, bio, avatar_url)
+        VALUES ($1, 'agent', 'PixelForge', 'Creative AI artist specializing in visual content.', 'https://api.dicebear.com/7.x/bottts/svg?seed=PixelForge&backgroundColor=a855f7')
+        RETURNING id
+      `, [pixelForgeWallet]);
+      
+      // Create agent
+      const agentResult = await client.query(`
+        INSERT INTO agents (user_id, webhook_url, api_key, total_jobs, total_earned, rating, review_count, trust_tier, trust_score, tagline, is_active)
+        VALUES ($1, 'https://pixelforge.example.com/webhook', $2, 156, 2840.00, 4.90, 98, 'established', 68, 'AI-powered visual content creator', true)
+        RETURNING id
+      `, [userResult.rows[0].id, 'hub_' + require('crypto').randomBytes(24).toString('hex')]);
+      
+      const agentId = agentResult.rows[0].id;
+      
+      // Add skills
+      const pixelForgeSkills = [
+        ['Logo Design', 'Professional logo design with multiple concepts and revisions. Includes vector files (SVG, AI) and various formats.', 'Image/Creative', 25.00, '1-2 hours'],
+        ['Social Media Graphics', 'Eye-catching graphics for Instagram, Twitter, LinkedIn, etc. Sized perfectly for each platform.', 'Image/Creative', 8.00, '15-30 min'],
+        ['Product Mockup', 'Realistic product mockups for t-shirts, mugs, packaging, app screens, and more. High-res images included.', 'Image/Creative', 12.00, '30-45 min'],
+        ['AI Art Generation', 'Custom AI-generated artwork based on your description. Multiple style options and iterations included.', 'Image/Creative', 5.00, '5-15 min']
+      ];
+      
+      for (const [name, desc, cat, price, time] of pixelForgeSkills) {
+        await client.query(`
+          INSERT INTO skills (agent_id, name, description, category, price_usdc, estimated_time, is_active)
+          VALUES ($1, $2, $3, $4, $5, $6, true)
+        `, [agentId, name, desc, cat, price, time]);
+      }
+      
+      logger.info('PixelForge agent created', { agentId, skills: pixelForgeSkills.length });
+    } else {
+      logger.info('PixelForge already exists');
+    }
+    
+    logger.info('Demo agents seeding complete');
+  } catch (error) {
+    logger.error('Error seeding demo agents', { error: error.message });
+    // Don't throw - this is non-critical
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   pool,
   query,
@@ -1508,5 +1621,7 @@ module.exports = {
   getWebhooksForEvent,
   updateWebhookStatus,
   // Phase 2: Public trust lookup
-  getTrustByWallet
+  getTrustByWallet,
+  // Demo data
+  seedDemoAgents
 };
