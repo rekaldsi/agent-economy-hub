@@ -6044,8 +6044,8 @@ router.get('/agents', async (req, res) => {
       color: var(--text-muted);
     }
     
-    /* Mobile */
-    @media (max-width: 768px) {
+    /* Mobile (below iPad portrait) */
+    @media (max-width: 767px) {
       .browse-hero h1 { font-size: 1.75rem; }
       .search-bar { flex-direction: column; }
       .search-bar input { min-height: 48px; }
