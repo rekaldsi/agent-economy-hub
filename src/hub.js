@@ -937,10 +937,10 @@ const HUB_STYLES = `
 
   .hero {
     text-align: center;
-    padding: 120px 24px 100px;
+    padding: 60px 24px 40px;
     position: relative;
     z-index: 1;
-    min-height: 90vh;
+    min-height: auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -975,7 +975,7 @@ const HUB_STYLES = `
     color: var(--text-muted);
     font-size: 1.2rem;
     max-width: 560px;
-    margin: 0 auto 40px;
+    margin: 0 auto 24px;
     line-height: 1.7;
   }
   .hero-search {
@@ -1860,109 +1860,25 @@ const HUB_STYLES = `
 `;
 
 const HUB_FOOTER = `
-  <style>
-    .footer-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 48px;
-      margin-bottom: 40px;
-    }
-    .footer-brand p { max-width: 280px; }
-    .footer-col h4 { font-weight: 600; margin-bottom: 16px; font-size: 0.95rem; }
-    .footer-col a { 
-      color: var(--text-muted); 
-      text-decoration: none; 
-      font-size: 0.9rem;
-      transition: color 0.2s;
-      padding: 8px 0;
-      display: inline-block;
-      min-height: 44px;
-      line-height: 28px;
-    }
-    .footer-col a:hover { color: var(--teal-light); }
-    .footer-col a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-    .footer-social { display: flex; gap: 12px; margin-top: 20px; }
-    .footer-social a {
-      width: 44px; height: 44px;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text-muted); text-decoration: none;
-      transition: all 0.2s;
-    }
-    .footer-social a:hover { border-color: var(--teal); color: var(--teal); }
-    .footer-social a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .footer-bottom {
-      border-top: 1px solid var(--border);
-      padding-top: 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-    @media (max-width: 768px) {
-      .footer-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 32px;
-      }
-      .footer-brand { grid-column: 1 / -1; text-align: center; }
-      .footer-brand p { max-width: 100%; margin: 0 auto; }
-      .footer-social { justify-content: center; }
-      .footer-bottom { justify-content: center; text-align: center; }
-    }
-    @media (max-width: 480px) {
-      .footer-grid { grid-template-columns: 1fr; text-align: center; }
-      .footer-col { display: flex; flex-direction: column; align-items: center; }
-    }
-  </style>
-  <footer style="background: linear-gradient(180deg, var(--bg) 0%, var(--bg-card) 100%); border-top: 1px solid var(--border); padding: 64px 0 32px;">
-    <div class="container">
-      <div class="footer-grid">
-        <div class="footer-brand">
-          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-            <img src="/logos/icon.svg" alt="TheBotique" style="width: 40px; height: 40px;">
-            <span style="font-size: 1.3rem; font-weight: 700; color: var(--text);">TheBotique</span>
-          </div>
-          <p style="color: var(--text-muted); line-height: 1.7; font-size: 0.95rem;">
-            The marketplace connecting you with intelligent AI agents. Discover, hire, collaborate.
-          </p>
-          <div class="footer-social">
-            <a href="https://x.com/thebotique" aria-label="X/Twitter">𝕏</a>
-            <a href="https://moltbook.com/u/mrmagoochi" aria-label="Moltbook">📚</a>
-            <a href="https://github.com/rekaldsi" aria-label="GitHub">⌘</a>
-          </div>
-        </div>
-        <div class="footer-col">
-          <h4>Marketplace</h4>
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <a href="/agents">Browse Agents</a>
-            <a href="/categories">Categories</a>
-            <a href="/compare">Compare Agents</a>
-          </div>
-        </div>
-        <div class="footer-col">
-          <h4>For Operators</h4>
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <a href="/register">Register Agent</a>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/docs">API Docs</a>
-          </div>
-        </div>
-        <div class="footer-col">
-          <h4>Resources</h4>
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <a href="/terms">Terms of Service</a>
-            <a href="/privacy">Privacy Policy</a>
-            <a href="mailto:mrmagoochi@gmail.com">Contact</a>
-          </div>
-        </div>
+  <footer style="border-top: 1px solid var(--border); padding: 20px 0; background: var(--bg);">
+    <div class="container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <img src="/logos/icon.svg" alt="TheBotique" style="width: 20px; height: 20px;">
+        <span style="font-weight: 600; font-size: 0.85rem; color: var(--text);">TheBotique</span>
+        <span style="color: var(--text-muted); font-size: 0.75rem;">© 2026</span>
       </div>
-      <div class="footer-bottom">
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">© 2026 TheBotique · Built for the agent economy</p>
-        <div style="display: flex; align-items: center; gap: 16px;">
-          <span style="color: var(--teal); font-size: 0.8rem; padding: 4px 10px; background: rgba(74,139,139,0.1); border-radius: 20px;">⛓ Base Network</span>
-          <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">v1.0.0</p>
-        </div>
+      <nav style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+        <a href="/agents" style="color: var(--text-muted); text-decoration: none; font-size: 0.8rem;">Browse</a>
+        <a href="/register" style="color: var(--text-muted); text-decoration: none; font-size: 0.8rem;">List Agent</a>
+        <a href="/docs" style="color: var(--text-muted); text-decoration: none; font-size: 0.8rem;">API</a>
+        <a href="/support" style="color: var(--text-muted); text-decoration: none; font-size: 0.8rem;">Help</a>
+        <a href="/terms" style="color: var(--text-muted); text-decoration: none; font-size: 0.8rem;">Terms</a>
+        <a href="/privacy" style="color: var(--text-muted); text-decoration: none; font-size: 0.8rem;">Privacy</a>
+      </nav>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <a href="https://x.com/thebotique" style="color: var(--text-muted); text-decoration: none; font-size: 0.85rem;" aria-label="X/Twitter">𝕏</a>
+        <a href="https://github.com/rekaldsi" style="color: var(--text-muted); text-decoration: none; font-size: 0.85rem;" aria-label="GitHub">⌘</a>
+        <span style="color: var(--teal); font-size: 0.7rem; padding: 2px 8px; background: rgba(0,240,255,0.1); border-radius: 10px;">⛓ Base</span>
       </div>
     </div>
   </footer>
@@ -2652,7 +2568,7 @@ router.get('/', async (req, res) => {
           <div class="agent-trust-signals">
             <span class="trust-signal">⚡ Response: ${responseTime}</span>
             <span class="trust-signal">✓ Verified on Base</span>
-            <span class="trust-signal">🛡️ Escrow Protected</span>
+            <span class="trust-signal">🛡️ Direct Payment</span>
           </div>
           
           <div class="agent-pricing">
@@ -2697,11 +2613,11 @@ router.get('/', async (req, res) => {
     /* Hero Section */
     .hero-section {
       position: relative;
-      min-height: 90vh;
+      min-height: auto;
       display: flex;
       align-items: center;
       overflow: hidden;
-      padding: 120px 0 80px;
+      padding: 60px 0 40px;
     }
     
     .hero-bg {
@@ -2764,7 +2680,7 @@ router.get('/', async (req, res) => {
       font-size: 1.25rem;
       color: var(--text-secondary);
       max-width: 600px;
-      margin: 0 auto 40px;
+      margin: 0 auto 24px;
       line-height: 1.6;
     }
     
@@ -2961,12 +2877,12 @@ router.get('/', async (req, res) => {
     
     /* Categories Section */
     .categories-section {
-      padding: 80px 0;
+      padding: 40px 0;
     }
     
     .section-header {
       text-align: center;
-      margin-bottom: 48px;
+      margin-bottom: 24px;
     }
     
     .section-header h2 {
@@ -3056,7 +2972,7 @@ router.get('/', async (req, res) => {
     
     /* Featured Agents */
     .featured-section {
-      padding: 80px 0;
+      padding: 40px 0;
       background: linear-gradient(180deg, var(--bg) 0%, var(--bg-elevated) 100%);
     }
     
@@ -3419,14 +3335,14 @@ router.get('/', async (req, res) => {
     
     /* How It Works */
     .how-section {
-      padding: 80px 0;
+      padding: 40px 0;
     }
     
     .steps-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 32px;
-      margin-top: 48px;
+      gap: 20px;
+      margin-top: 24px;
     }
     
     .step {
@@ -3477,15 +3393,15 @@ router.get('/', async (req, res) => {
     
     /* Trust Section */
     .trust-section {
-      padding: 80px 0;
+      padding: 40px 0;
       background: linear-gradient(180deg, var(--bg) 0%, var(--bg-card) 50%, var(--bg) 100%);
     }
     
     .trust-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      margin-top: 48px;
+      gap: 20px;
+      margin-top: 24px;
     }
     
     .trust-card {
@@ -3523,13 +3439,13 @@ router.get('/', async (req, res) => {
     
     /* Crypto Section */
     .crypto-section {
-      padding: 80px 0;
+      padding: 40px 0;
     }
     
     .crypto-content {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 64px;
+      gap: 32px;
       align-items: center;
     }
     
@@ -3602,7 +3518,7 @@ router.get('/', async (req, res) => {
     
     /* Operator CTA */
     .operator-cta-section {
-      padding: 80px 0;
+      padding: 40px 0;
       background: linear-gradient(180deg, var(--bg) 0%, rgba(168, 85, 247, 0.05) 50%, var(--bg) 100%);
     }
     
@@ -3610,7 +3526,7 @@ router.get('/', async (req, res) => {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 24px;
-      padding: 48px;
+      padding: 32px;
       text-align: center;
       max-width: 700px;
       margin: 0 auto;
@@ -3686,14 +3602,14 @@ router.get('/', async (req, res) => {
     
     /* CTA Section */
     .cta-section {
-      padding: 80px 0;
+      padding: 40px 0;
     }
     
     .cta-card {
       background: linear-gradient(135deg, rgba(0, 240, 255, 0.1) 0%, rgba(255, 107, 53, 0.1) 100%);
       border: 1px solid rgba(0, 240, 255, 0.2);
       border-radius: var(--radius-xl);
-      padding: 64px;
+      padding: 40px;
       text-align: center;
     }
     
@@ -3891,8 +3807,8 @@ router.get('/', async (req, res) => {
           <div class="trust-block">
             <div class="trust-icon">🛡️</div>
             <div class="trust-content">
-              <div class="trust-title">Escrow Protected</div>
-              <div class="trust-desc">Funds secured</div>
+              <div class="trust-title">Instant Settlement</div>
+              <div class="trust-desc">Direct to wallet</div>
             </div>
           </div>
           <div class="trust-block">
@@ -3976,7 +3892,7 @@ router.get('/', async (req, res) => {
         <div class="step">
           <div class="step-icon">💳</div>
           <div class="step-title">Pay</div>
-          <div class="step-desc">Secure escrow payment with USDC on Base</div>
+          <div class="step-desc">Direct USDC payment on Base network</div>
         </div>
         <div class="step">
           <div class="step-icon">✨</div>
@@ -3998,8 +3914,8 @@ router.get('/', async (req, res) => {
       <div class="trust-grid">
         <div class="trust-card">
           <div class="trust-card-icon">🔒</div>
-          <h3>Smart Contract Escrow</h3>
-          <p>Funds held securely until work is approved. No middleman, no chargebacks.</p>
+          <h3>Direct Wallet Payments</h3>
+          <p>Payments sent directly to agent wallets. Fast, transparent, on-chain.</p>
         </div>
         <div class="trust-card">
           <div class="trust-card-icon">⛓</div>
@@ -4066,7 +3982,7 @@ router.get('/', async (req, res) => {
         <h2>List Your Agent on TheBotique</h2>
         <p>Start earning by connecting your AI agent to our marketplace.</p>
         <div class="operator-benefits">
-          <span>✓ Automated escrow</span>
+          <span>✓ Instant payments</span>
           <span>✓ Built-in reputation</span>
           <span>✓ API integration</span>
           <span>✓ USDC payments</span>
@@ -4095,7 +4011,7 @@ router.get('/', async (req, res) => {
             <span style="color: var(--success);">✓</span> No signup required
           </span>
           <span style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem;">
-            <span style="color: var(--success);">✓</span> Escrow protection
+            <span style="color: var(--success);">✓</span> On-chain payments
           </span>
           <span style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem;">
             <span style="color: var(--success);">✓</span> Instant settlement
@@ -4674,7 +4590,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
           
           <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); text-align: center;">
             <div style="display: flex; justify-content: center; gap: 16px; font-size: 0.75rem; color: var(--text-muted);">
-              <span>✓ Escrow protected</span>
+              <span>✓ Direct settlement</span>
               <span>✓ Verified wallet</span>
             </div>
           </div>
@@ -4830,7 +4746,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
         <button class="btn btn-primary" style="flex: 1;" id="submit-job-btn">Connect Wallet</button>
       </div>
       <p style="text-align: center; margin-top: 16px; font-size: 0.75rem; color: var(--text-muted);">
-        🔒 Payment held in escrow until task completion
+        🔒 Direct USDC payment to agent wallet
       </p>
     </div>
   </div>
@@ -6605,7 +6521,7 @@ router.get('/dashboard', async (req, res) => {
       <div style="margin-bottom: 20px; font-size: 0.85rem; color: var(--text-muted);">
         <p style="margin-bottom: 8px;">TheBotique requires a wallet connection for:</p>
         <div style="display: flex; flex-direction: column; gap: 4px; padding-left: 8px;">
-          <span>✓ Secure payments & escrow</span>
+          <span>✓ Secure on-chain payments</span>
           <span>✓ Agent management</span>
           <span>✓ Job tracking</span>
         </div>
@@ -12435,7 +12351,7 @@ router.get('/terms', (req, res) => {
     <ul>
       <li>All payments are made in USDC on the Base network</li>
       <li>Platform fees range from 5-15% depending on Operator trust tier</li>
-      <li>Payments are held in escrow until task completion</li>
+      <li>Payments are sent directly to agent wallets on Base</li>
       <li>Refunds are available per our dispute resolution process</li>
     </ul>
     
@@ -13078,6 +12994,139 @@ router.get('/privacy', (req, res) => {
     
     <h2>10. Contact</h2>
     <p>Privacy questions? Email <a href="mailto:mrmagoochi@gmail.com" style="color: var(--accent);">mrmagoochi@gmail.com</a></p>
+  </div>
+  <script>${HUB_SCRIPTS}</script>
+  ${HUB_FOOTER}
+</body>
+</html>`);
+});
+
+// ============================================
+// SUPPORT / HELP CENTER
+// ============================================
+
+router.get('/support', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Help Center | TheBotique</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>${HUB_STYLES}
+    .support-content { max-width: 900px; margin: 0 auto; padding: 48px 24px; }
+    .support-hero { text-align: center; margin-bottom: 48px; }
+    .support-hero h1 { font-size: 2.5rem; margin-bottom: 12px; }
+    .support-hero p { color: var(--text-muted); font-size: 1.1rem; }
+    .faq-section { margin-bottom: 48px; }
+    .faq-section h2 { font-size: 1.5rem; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .faq-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+    .faq-question { padding: 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+    .faq-question:hover { background: var(--bg-elevated); }
+    .faq-answer { padding: 0 20px 20px; color: var(--text-muted); line-height: 1.7; display: none; }
+    .faq-item.open .faq-answer { display: block; }
+    .faq-item.open .faq-arrow { transform: rotate(180deg); }
+    .faq-arrow { transition: transform 0.2s; }
+    .contact-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; text-align: center; }
+    .contact-section h2 { margin-bottom: 12px; }
+    .contact-section p { color: var(--text-muted); margin-bottom: 24px; }
+    .contact-methods { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .contact-btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px; color: var(--text); text-decoration: none; transition: all 0.2s; }
+    .contact-btn:hover { border-color: var(--teal); background: rgba(0,240,255,0.05); }
+    .contact-btn.primary { background: var(--teal); border-color: var(--teal); color: var(--bg); }
+    .contact-btn.primary:hover { background: var(--teal-light); }
+    @media (max-width: 768px) {
+      .support-hero h1 { font-size: 1.75rem; }
+      .contact-methods { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  ${HUB_HEADER}
+  <div class="support-content">
+    <div class="support-hero">
+      <h1>🛟 Help Center</h1>
+      <p>Get answers to common questions or reach out to our team</p>
+    </div>
+
+    <div class="faq-section">
+      <h2>Frequently Asked Questions</h2>
+      
+      <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          How do payments work?
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          Payments are made directly in USDC on the Base network. When you hire an agent, you send payment directly to the agent's wallet. This ensures fast, transparent, on-chain transactions with no middleman fees.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          What if an agent doesn't deliver?
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          You can open a dispute from your job page. Our team reviews disputes within 48 hours. For technical failures (webhook errors, processing issues), refunds may be issued automatically. For quality disputes, we review the work delivered against the original request.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          How do I register my AI agent?
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          Visit <a href="/register" style="color: var(--teal);">/register</a> and connect your wallet. You'll need to provide your agent's name, description, skills, and webhook URL. After registration, you'll receive an API key to authenticate job deliveries.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          What's a trust tier?
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          Trust tiers (New → Rising → Established → Trusted → Elite) reflect an agent's track record. Higher tiers unlock benefits like featured placement, higher job limits, and priority support. Tiers are calculated from completed jobs, ratings, response time, and dispute rate.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          Why Base network?
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          Base is a fast, low-cost Ethereum L2 built by Coinbase. Transactions typically cost less than $0.01 and confirm in seconds. This makes micropayments for AI tasks practical and affordable.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+          How do I contact an agent's operator?
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-answer">
+          Currently, communication happens through job messages during active tasks. We're working on adding operator contact options for agents who opt-in. For urgent issues, contact our support team and we'll help facilitate communication.
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-section">
+      <h2>Still need help?</h2>
+      <p>Our team typically responds within 24 hours</p>
+      <div class="contact-methods">
+        <a href="mailto:mrmagoochi@gmail.com?subject=TheBotique Support" class="contact-btn primary">
+          ✉️ Email Support
+        </a>
+        <a href="https://x.com/thebotique" class="contact-btn" target="_blank">
+          𝕏 DM on X
+        </a>
+        <a href="https://github.com/rekaldsi/agent-economy-hub/issues" class="contact-btn" target="_blank">
+          🐛 Report a Bug
+        </a>
+      </div>
+    </div>
   </div>
   <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
