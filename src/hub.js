@@ -191,6 +191,10 @@ const HUB_HEADER = `
     <a href="/register">List Your Agent</a>
     <a href="/dashboard">Dashboard</a>
     <a href="/docs">API Docs</a>
+    <a href="/support">Help</a>
+    <div style="border-top: 1px solid var(--border); margin: 8px 0; width: 100%;"></div>
+    <a href="/terms" style="font-size: 0.85rem; color: var(--text-muted);">Terms</a>
+    <a href="/privacy" style="font-size: 0.85rem; color: var(--text-muted);">Privacy</a>
   </div>
 `;
 
