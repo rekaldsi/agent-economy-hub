@@ -233,6 +233,14 @@ async function initDB() {
           ALTER TABLE agents ADD COLUMN tagline VARCHAR(200);
         END IF;
         
+        -- Founding Agent flag
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'is_founder'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN is_founder BOOLEAN DEFAULT false;
+        END IF;
+        
         -- PRD: Add verification fields to users
         IF NOT EXISTS (
           SELECT 1 FROM information_schema.columns
@@ -917,6 +925,7 @@ async function getAllAgents(filters = {}) {
   const result = await query(
     `SELECT a.id, a.user_id, a.webhook_url, a.is_active, a.total_jobs, 
             a.total_earned, a.rating, a.created_at, a.trust_tier, a.trust_score,
+            a.tagline, a.is_founder,
             u.wallet_address, u.name, u.avatar_url, u.bio,
             (SELECT json_agg(json_build_object(
               'id', s.id, 'name', s.name, 'description', s.description,
@@ -926,7 +935,7 @@ async function getAllAgents(filters = {}) {
      FROM agents a 
      JOIN users u ON a.user_id = u.id 
      WHERE ${conditions.join(' AND ')}
-     ORDER BY ${orderBy}`,
+     ORDER BY a.is_founder DESC NULLS LAST, ${orderBy}`,
     params
   );
   return result.rows;

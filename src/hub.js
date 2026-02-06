@@ -2935,14 +2935,31 @@ router.get('/', async (req, res) => {
       const tierClass = agent.trust_tier === 'verified' ? 'trust-badge-verified' : 
                         agent.trust_tier === 'trusted' ? 'trust-badge-trusted' : '';
       const reviewCount = agent.review_count || 0;
-      const responseTime = agent.avg_response_time ? `${agent.avg_response_time}` : '<2 hours';
-      const isFounder = index === 0 && agents.length <= 5; // First agent when marketplace is young
+      const responseTime = agent.avg_response_time ? `${agent.avg_response_time}` : '<1 hour';
+      const isFounder = agent.is_founder === true;
+      
+      // Get unique skill categories for capability pills
+      const categories = [...new Set((skills || []).map(s => s.category).filter(Boolean))].slice(0, 3);
+      const categoryIcons = {
+        'creative': '✍️ Content Creation',
+        'research': '🔬 Research & Analysis', 
+        'technical': '💻 Technical',
+        'documents': '📄 Documents',
+        'visual': '🎨 Visual Design',
+        'image': '🖼️ Image Generation',
+        'productivity': '⚡ Productivity',
+        'video': '🎬 Video'
+      };
+      const capabilityPills = categories.map(c => categoryIcons[c] || c);
+      
+      // Calculate minimum price from skills
+      const minPrice = skills.length > 0 ? Math.min(...skills.map(s => Number(s.price_usdc || 0))) : 0.10;
       
       return `
         <a href="/agent/${agent.id}" class="featured-agent-card card-lift ${isFounder ? 'founder-card' : ''}">
           ${isFounder ? '<div class="founder-glow"></div>' : ''}
           <div class="card-badges">
-            ${isFounder ? '<span class="founder-badge">🟣 FOUNDING AGENT</span>' : ''}
+            ${isFounder ? '<span class="founder-badge">🟠 FOUNDING AGENT</span>' : ''}
             <span class="featured-badge">⭐ Featured</span>
           </div>
           <div class="agent-avatar-lg ${tierClass}">
@@ -2950,13 +2967,15 @@ router.get('/', async (req, res) => {
             <div class="avatar-ring"></div>
           </div>
           <h3>${escapeHtml(agent.name || 'Agent')}</h3>
-          <p class="agent-tagline">AI-Powered Services</p>
+          <p class="agent-tagline">${escapeHtml(agent.tagline || 'AI-Powered Services')}</p>
           <p class="agent-bio">${escapeHtml(agent.bio || 'Your personal AI agent for research, writing, and creative tasks. Fast, reliable, blockchain-verified.')}</p>
           
           <div class="agent-capabilities">
-            <span class="capability">🔬 Research & Analysis</span>
-            <span class="capability">✍️ Content Creation</span>
-            <span class="capability">📊 Data Insights</span>
+            ${capabilityPills.length > 0 ? capabilityPills.map(c => `<span class="capability">${c}</span>`).join('') : `
+              <span class="capability">🔬 Research & Analysis</span>
+              <span class="capability">✍️ Content Creation</span>
+              <span class="capability">📊 Data Insights</span>
+            `}
           </div>
           
           <div class="agent-trust-signals">
@@ -2967,7 +2986,7 @@ router.get('/', async (req, res) => {
           
           <div class="agent-pricing">
             <span class="price-label">Starting at</span>
-            <span class="price-value">${skills.length > 0 && skills[0].price_usdc ? `$${skills[0].price_usdc}` : '$5'} <span class="currency">USDC</span></span>
+            <span class="price-value">$${minPrice < 1 ? minPrice.toFixed(2) : Math.floor(minPrice)} <span class="currency">USDC</span></span>
           </div>
           
           <div class="card-actions">
@@ -3506,7 +3525,7 @@ router.get('/', async (req, res) => {
     }
     
     .founder-badge {
-      background: linear-gradient(135deg, var(--purple), #EC4899);
+      background: linear-gradient(135deg, #FF6B35, #F7931A);
       color: white;
       padding: 6px 14px;
       border-radius: 20px;
@@ -3517,8 +3536,8 @@ router.get('/', async (req, res) => {
     }
     
     @keyframes pulse-badge {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
-      50% { box-shadow: 0 0 20px 4px rgba(168, 85, 247, 0.2); }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.4); }
+      50% { box-shadow: 0 0 20px 4px rgba(255, 107, 53, 0.2); }
     }
     
     .featured-badge {
