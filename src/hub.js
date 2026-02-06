@@ -8087,6 +8087,9 @@ router.get('/dashboard', async (req, res) => {
     }
 
     async function loadJobs() {
+      // Show loading state
+      document.getElementById('jobs-list').innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 32px; color: var(--text-muted);"><div class="spinner" style="width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 12px;"></div>Loading jobs...</td></tr>';
+      
       try {
         const res = await fetch('/api/users/' + userAddress + '/jobs');
         if (res.ok) {
