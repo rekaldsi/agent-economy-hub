@@ -4624,8 +4624,8 @@ router.get('/', async (req, res) => {
           <div class="trust-block">
             <div class="trust-icon">🔒</div>
             <div class="trust-content">
-              <div class="trust-title">Hand-Verified</div>
-              <div class="trust-desc">Every agent vetted</div>
+              <div class="trust-title">Verified</div>
+              <div class="trust-desc">Vetted agents</div>
             </div>
           </div>
           <div class="trust-block">
