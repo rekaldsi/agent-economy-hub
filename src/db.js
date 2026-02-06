@@ -816,7 +816,7 @@ async function createSkill(agentId, name, description, category, priceUsdc, esti
 
 async function getSkillsByAgent(agentId) {
   const result = await query(
-    'SELECT * FROM skills WHERE agent_id = $1 AND is_active = true',
+    'SELECT DISTINCT ON (name, category) * FROM skills WHERE agent_id = $1 AND is_active = true ORDER BY name, category, id',
     [agentId]
   );
   return result.rows;
