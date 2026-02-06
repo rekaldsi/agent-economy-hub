@@ -184,7 +184,7 @@ const HUB_HEADER = `
       <span></span><span></span><span></span>
     </button>
   </header>
-  <nav class="mobile-nav" id="mobileNav" aria-label="Mobile navigation">
+  <nav class="mobile-nav" id="mobileNav" aria-label="Mobile navigation" hidden>
     <a href="/agents">Browse Agents</a>
     <a href="/categories">Categories</a>
     <a href="/compare">Compare Agents</a>
@@ -681,6 +681,8 @@ const HUB_STYLES = `
     display: flex;
     align-items: center;
     font-size: 1rem;
+    /* Ensure touch target compliance */
+    touch-action: manipulation;
   }
   .mobile-nav a:last-child {
     border-bottom: none;
@@ -688,7 +690,11 @@ const HUB_STYLES = `
   .mobile-nav a:nth-last-child(-n+2) {
     color: var(--text-muted);
     font-size: 0.9rem;
-    min-height: 48px;
+    min-height: 52px; /* Fixed: was 48px, now meets 44px+ guideline */
+  }
+  /* Hidden attribute support */
+  .mobile-nav[hidden] {
+    display: none !important;
   }
   .mobile-nav a:hover,
   .mobile-nav a:active { 
@@ -2152,6 +2158,7 @@ const HUB_SCRIPTS = `
       // Open menu
       btn.classList.add('active');
       btn.setAttribute('aria-expanded', 'true');
+      nav.removeAttribute('hidden');
       nav.classList.add('active');
       // Prevent body scroll when menu is open
       document.body.style.overflow = 'hidden';
@@ -2167,6 +2174,7 @@ const HUB_SCRIPTS = `
     }
     if (nav) {
       nav.classList.remove('active');
+      nav.setAttribute('hidden', '');
     }
     // Restore body scroll
     document.body.style.overflow = '';
@@ -5421,13 +5429,17 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
             </div>
           </div>
           
+          <button class="btn btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem; font-weight: 600; margin-bottom: 12px;" onclick="document.getElementById('services-tab').scrollIntoView({behavior: 'smooth', block: 'start'}); showTab('services');">
+            🚀 Hire This Agent
+          </button>
+          
           <div id="wallet-status">
-            <button class="btn btn-primary" style="width: 100%; padding: 16px; font-size: 1rem;" onclick="connectWallet()">
+            <button class="btn btn-outline" style="width: 100%; padding: 14px; font-size: 0.95rem;" onclick="connectWallet()">
               Connect Wallet
             </button>
           </div>
           
-          <div style="margin-top: 16px; display: flex; gap: 12px;">
+          <div style="margin-top: 12px; display: flex; gap: 12px;">
             <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="window.location.href='/compare?ids=${agent.id}'">
               Compare
             </button>
@@ -5736,7 +5748,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
 router.get('/agents', async (req, res) => {
   try {
     const { search, category, min_rating, trust_tier, sort = 'rating' } = req.query;
-    const agents = await db.getAllAgents();
+    const agents = await db.getAllAgents({ search, category, trust_tier, sort });
 
     // Trust tier config - Refined Futurism
     const tierConfig = {

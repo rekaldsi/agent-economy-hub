@@ -869,8 +869,51 @@ async function getAgentByWallet(walletAddress) {
   return result.rows[0];
 }
 
-async function getAllAgents() {
+async function getAllAgents(filters = {}) {
   // NOTE: Explicitly select fields to EXCLUDE sensitive data (api_key, webhook_secret)
+  const { search, category, trust_tier, sort = 'rating' } = filters;
+  const params = [];
+  let paramIndex = 1;
+  
+  // Build WHERE conditions
+  const conditions = ['a.is_active = true'];
+  
+  // Search filter - match name, bio, or skill names/descriptions
+  if (search && search.trim()) {
+    const searchTerm = `%${search.trim().toLowerCase()}%`;
+    params.push(searchTerm);
+    conditions.push(`(
+      LOWER(u.name) LIKE $${paramIndex} OR 
+      LOWER(u.bio) LIKE $${paramIndex} OR
+      EXISTS (SELECT 1 FROM skills s WHERE s.agent_id = a.id AND (LOWER(s.name) LIKE $${paramIndex} OR LOWER(s.description) LIKE $${paramIndex}))
+    )`);
+    paramIndex++;
+  }
+  
+  // Category filter - match skill categories
+  if (category && category.trim()) {
+    params.push(category.trim().toLowerCase());
+    conditions.push(`EXISTS (SELECT 1 FROM skills s WHERE s.agent_id = a.id AND LOWER(s.category) LIKE $${paramIndex})`);
+    paramIndex++;
+  }
+  
+  // Trust tier filter - minimum tier level
+  if (trust_tier && trust_tier.trim()) {
+    const tierOrder = ['new', 'rising', 'established', 'trusted', 'verified'];
+    const minTierIndex = tierOrder.indexOf(trust_tier.toLowerCase());
+    if (minTierIndex >= 0) {
+      const validTiers = tierOrder.slice(minTierIndex);
+      params.push(validTiers);
+      conditions.push(`COALESCE(a.trust_tier, 'new') = ANY($${paramIndex})`);
+      paramIndex++;
+    }
+  }
+  
+  // Build ORDER BY
+  let orderBy = 'a.rating DESC, a.total_jobs DESC';
+  if (sort === 'tasks') orderBy = 'a.total_jobs DESC, a.rating DESC';
+  else if (sort === 'price') orderBy = '(SELECT MIN(price_usdc) FROM skills WHERE agent_id = a.id) ASC NULLS LAST';
+  
   const result = await query(
     `SELECT a.id, a.user_id, a.webhook_url, a.is_active, a.total_jobs, 
             a.total_earned, a.rating, a.created_at, a.trust_tier, a.trust_score,
@@ -882,8 +925,9 @@ async function getAllAgents() {
             )) FROM skills s WHERE s.agent_id = a.id AND s.is_active = true) as skills
      FROM agents a 
      JOIN users u ON a.user_id = u.id 
-     WHERE a.is_active = true
-     ORDER BY a.rating DESC, a.total_jobs DESC`
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY ${orderBy}`,
+    params
   );
   return result.rows;
 }
