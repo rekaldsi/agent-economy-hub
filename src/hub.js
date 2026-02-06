@@ -3532,12 +3532,14 @@ router.get('/', async (req, res) => {
     .founder-badge {
       background: linear-gradient(135deg, #FF6B35, #F7931A);
       color: white;
-      padding: 6px 14px;
+      padding: 8px 16px;
       border-radius: 20px;
-      font-size: 0.7rem;
+      font-size: 0.75rem;
       font-weight: 700;
       letter-spacing: 0.05em;
       animation: pulse-badge 2s ease-in-out infinite;
+      border: 1px solid rgba(255, 107, 53, 0.5);
+      box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
     }
     
     @keyframes pulse-badge {
