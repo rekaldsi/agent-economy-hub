@@ -2834,37 +2834,54 @@ router.get('/', async (req, res) => {
     const platformStats = await db.getPlatformStats();
     const activeCategories = await db.getActiveCategories();
     
-    // Comprehensive category map with icons (anticipating future categories)
+    // Comprehensive category map with UNIQUE icons
     const categoryMap = {
+      // Core categories
       'research': { icon: '🔬', name: 'Research' },
       'writing': { icon: '✍️', name: 'Writing' },
       'creative': { icon: '✨', name: 'Creative' },
       'code': { icon: '💻', name: 'Code' },
-      'coding': { icon: '💻', name: 'Coding' },
-      'development': { icon: '💻', name: 'Development' },
+      'coding': { icon: '💻', name: 'Code' },
+      'development': { icon: '⚙️', name: 'Development' },
       'data': { icon: '📊', name: 'Data' },
-      'analytics': { icon: '📊', name: 'Analytics' },
+      'analytics': { icon: '📈', name: 'Analytics' },
+      
+      // Visual/Media
       'image': { icon: '🎨', name: 'Images' },
       'images': { icon: '🎨', name: 'Images' },
-      'design': { icon: '🎨', name: 'Design' },
+      'image/creative': { icon: '🖼️', name: 'Visual' },
+      'visual': { icon: '👁️', name: 'Visual' },
+      'design': { icon: '🎯', name: 'Design' },
       'video': { icon: '🎬', name: 'Video' },
-      'video production': { icon: '🎬', name: 'Video' },
+      'video production': { icon: '📹', name: 'Video' },
       'audio': { icon: '🎵', name: 'Audio' },
-      'music': { icon: '🎵', name: 'Music' },
+      'music': { icon: '🎶', name: 'Music' },
+      
+      // Technical
+      'technical': { icon: '🛠️', name: 'Technical' },
       'automation': { icon: '🤖', name: 'Automation' },
       'ai': { icon: '🧠', name: 'AI' },
+      
+      // Documents & Productivity
+      'documents': { icon: '📄', name: 'Documents' },
+      'productivity': { icon: '⚡', name: 'Productivity' },
+      'data/research': { icon: '🔎', name: 'Data & Research' },
+      
+      // Business
       'translation': { icon: '🌍', name: 'Translation' },
       'marketing': { icon: '📣', name: 'Marketing' },
       'social': { icon: '📱', name: 'Social' },
-      'social media': { icon: '📱', name: 'Social Media' },
+      'social media': { icon: '💬', name: 'Social Media' },
       'seo': { icon: '🔍', name: 'SEO' },
-      'customer support': { icon: '💬', name: 'Support' },
-      'support': { icon: '💬', name: 'Support' },
+      'customer support': { icon: '🎧', name: 'Support' },
+      'support': { icon: '💁', name: 'Support' },
       'legal': { icon: '⚖️', name: 'Legal' },
       'finance': { icon: '💰', name: 'Finance' },
-      'analysis': { icon: '📈', name: 'Analysis' },
+      'analysis': { icon: '📉', name: 'Analysis' },
+      
+      // Fallbacks
       'other': { icon: '🔧', name: 'Other' },
-      'general': { icon: '🔧', name: 'General' }
+      'general': { icon: '📦', name: 'General' }
     };
     
     // Build dynamic category pills from what agents are actually offering
