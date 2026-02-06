@@ -7190,29 +7190,43 @@ router.get('/dashboard', async (req, res) => {
       font-weight: 600;
     }
     
-    /* Empty State */
+    /* Empty State - Helpful & Positive */
     .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       text-align: center;
-      padding: 80px 40px;
+      padding: 64px 32px;
+      min-height: 300px;
     }
     .empty-icon {
       width: 80px;
       height: 80px;
       margin: 0 auto 24px;
-      background: var(--bg);
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.1) 0%, rgba(183, 148, 246, 0.1) 100%);
+      border: 1px solid var(--border);
       border-radius: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 36px;
+      font-size: 40px;
     }
     .empty-state h3 {
-      margin-bottom: 8px;
-      font-size: 1.1rem;
+      margin-bottom: 12px;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
     }
     .empty-state p {
       color: var(--text-muted);
       margin-bottom: 24px;
+      max-width: 400px;
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+    .empty-state .btn {
+      margin-top: 8px;
     }
     
     /* Agent Card (for operators) */
