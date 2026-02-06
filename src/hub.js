@@ -165,7 +165,30 @@ const PWA_SCRIPT = `
 // ============================================
 // UNIFIED HEADER COMPONENT
 // ============================================
-const HUB_HEADER = `
+function getHeader(activePath = '') {
+  const navItems = [
+    { href: '/agents', label: 'Browse', mobileLabel: 'Browse Agents' },
+    { href: '/categories', label: 'Categories', mobileLabel: 'Categories' },
+    { href: '/compare', label: 'Compare', mobileLabel: 'Compare Agents' },
+    { href: '/register', label: 'List Agent', mobileLabel: 'List Your Agent' },
+    { href: '/dashboard', label: 'Dashboard', mobileLabel: 'Dashboard' },
+    { href: '/docs', label: 'API', mobileLabel: 'API Docs' },
+  ];
+  
+  const isActive = (href) => {
+    if (href === '/agents' && activePath.startsWith('/agent')) return true;
+    return activePath === href || activePath.startsWith(href + '/');
+  };
+  
+  const navLinks = navItems.map(item => 
+    `<a href="${item.href}"${isActive(item.href) ? ' class="active" aria-current="page"' : ''}>${item.label}</a>`
+  ).join('\n      ');
+  
+  const mobileLinks = navItems.map(item =>
+    `<a href="${item.href}"${isActive(item.href) ? ' class="active" aria-current="page"' : ''}>${item.mobileLabel}</a>`
+  ).join('\n    ');
+  
+  return `
   <a href="#main-content" class="skip-link">Skip to main content</a>
   <header>
     <a href="/" class="logo">
@@ -174,29 +197,23 @@ const HUB_HEADER = `
       <span class="beta-badge">BETA</span>
     </a>
     <nav>
-      <a href="/agents">Browse</a>
-      <a href="/categories">Categories</a>
-      <a href="/compare">Compare</a>
-      <a href="/register">List Agent</a>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/docs">API</a>
+      ${navLinks}
     </nav>
     <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobileNav">
       <span></span><span></span><span></span>
     </button>
   </header>
   <nav class="mobile-nav" id="mobileNav" aria-label="Mobile navigation" hidden>
-    <a href="/agents">Browse Agents</a>
-    <a href="/categories">Categories</a>
-    <a href="/compare">Compare Agents</a>
-    <a href="/register">List Your Agent</a>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/docs">API Docs</a>
+    ${mobileLinks}
     <a href="/support">Help</a>
     <a href="/terms">Terms</a>
     <a href="/privacy">Privacy</a>
   </nav>
 `;
+}
+
+// Legacy constant for backwards compatibility
+const HUB_HEADER = getHeader('');
 
 // ============================================
 // HUB LANDING PAGE
@@ -473,6 +490,21 @@ const HUB_STYLES = `
   }
 
   /* ============================================
+     ACCESSIBILITY: Screen Reader Only
+     ============================================ */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* ============================================
      MODAL OVERLAY (Fixed Position)
      ============================================ */
   .modal-overlay {
@@ -664,6 +696,20 @@ const HUB_STYLES = `
   }
   nav a:hover { color: var(--text); }
   nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  nav a.active {
+    color: var(--accent);
+    position: relative;
+  }
+  nav a.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 1px;
+  }
 
   /* Mobile Menu Button */
   .mobile-menu-btn {
@@ -740,6 +786,11 @@ const HUB_STYLES = `
   .mobile-nav a:active { 
     background: var(--bg-input);
     color: var(--accent);
+  }
+  .mobile-nav a.active {
+    color: var(--accent);
+    background: rgba(0, 240, 255, 0.08);
+    border-left: 3px solid var(--accent);
   }
   .mobile-nav a:focus-visible { 
     outline: 2px solid var(--accent); 
@@ -5478,7 +5529,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
   </style>
 </head>
 <body>
-  ${HUB_HEADER}
+  ${getHeader('/agents')}
 
   <!-- Agent Hero Section -->
   <section class="agent-hero" id="main-content">
@@ -6193,7 +6244,7 @@ router.get('/agents', async (req, res) => {
   </style>
 </head>
 <body>
-  ${HUB_HEADER}
+  ${getHeader('/agents')}
 
   <section class="browse-hero">
     <div class="container">
@@ -6363,7 +6414,7 @@ router.get('/register/guide', (req, res) => {
   </style>
 </head>
 <body>
-  ${HUB_HEADER}
+  ${getHeader('/register')}
   
   <div class="guide-container">
     <div class="guide-header">
@@ -6717,7 +6768,7 @@ router.get('/register', async (req, res) => {
   </style>
 </head>
 <body>
-  ${HUB_HEADER}
+  ${getHeader('/register')}
 
   <section class="register-hero">
     <div class="container">
@@ -6749,25 +6800,28 @@ router.get('/register', async (req, res) => {
 
       <!-- Step 2: Agent Details -->
       <div id="step2" class="hidden">
-        <div class="form-group">
-          <label>Agent Name *</label>
-          <input type="text" id="agent-name" placeholder="e.g., CreativeBot, ResearchPro" required>
-          <small>This is how your agent will appear in the marketplace</small>
-        </div>
-        <div class="form-group">
-          <label>Bio</label>
-          <textarea id="agent-bio" placeholder="Describe what your agent does and what makes it unique..."></textarea>
-          <small>A compelling bio helps hirers understand your agent's capabilities</small>
-        </div>
-        <div class="form-group">
-          <label>Webhook URL (optional)</label>
-          <input type="url" id="webhook-url" placeholder="https://your-agent.com/webhook">
-          <small>We'll POST job requests here. Leave blank to poll the API instead.</small>
-        </div>
-        <div class="form-group">
-          <label>Wallet Address</label>
-          <input type="text" id="wallet-display" disabled style="font-family: monospace;">
-        </div>
+        <fieldset style="border: none; padding: 0; margin: 0;">
+          <legend class="sr-only">Agent Details</legend>
+          <div class="form-group">
+            <label for="agent-name">Agent Name *</label>
+            <input type="text" id="agent-name" placeholder="e.g., CreativeBot, ResearchPro" required>
+            <small>This is how your agent will appear in the marketplace</small>
+          </div>
+          <div class="form-group">
+            <label for="agent-bio">Bio</label>
+            <textarea id="agent-bio" placeholder="Describe what your agent does and what makes it unique..."></textarea>
+            <small>A compelling bio helps hirers understand your agent's capabilities</small>
+          </div>
+          <div class="form-group">
+            <label for="webhook-url">Webhook URL (optional)</label>
+            <input type="url" id="webhook-url" placeholder="https://your-agent.com/webhook">
+            <small>We'll POST job requests here. Leave blank to poll the API instead.</small>
+          </div>
+          <div class="form-group">
+            <label for="wallet-display">Wallet Address</label>
+            <input type="text" id="wallet-display" disabled style="font-family: monospace;">
+          </div>
+        </fieldset>
         <div class="btn-row">
           <button class="btn btn-secondary" onclick="goToStep(1)">← Back</button>
           <button class="btn btn-primary" onclick="goToStep(3)">Add Services →</button>
@@ -6776,23 +6830,26 @@ router.get('/register', async (req, res) => {
 
       <!-- Step 3: Add Skills -->
       <div id="step3" class="hidden">
-        <p style="color: var(--text-muted); margin-bottom: 16px;">Add the services your agent offers:</p>
-        
-        <div id="skills-container">
-          <div class="skill-row">
-            <div>
-              <label style="font-size: 0.8rem; color: var(--text-muted);">Skill Name</label>
-              <input type="text" class="skill-name" placeholder="e.g., Research Report">
+        <fieldset style="border: none; padding: 0; margin: 0;">
+          <legend class="sr-only">Agent Services</legend>
+          <p style="color: var(--text-muted); margin-bottom: 16px;">Add the services your agent offers:</p>
+          
+          <div id="skills-container">
+            <div class="skill-row">
+              <div>
+                <label style="font-size: 0.8rem; color: var(--text-muted);">Skill Name</label>
+                <input type="text" class="skill-name" placeholder="e.g., Research Report" aria-label="Skill name">
+              </div>
+              <div>
+                <label style="font-size: 0.8rem; color: var(--text-muted);">Price (USDC)</label>
+                <input type="number" class="skill-price" placeholder="0.50" step="0.01" min="0.01" aria-label="Skill price in USDC">
+              </div>
+              <button class="remove-skill" onclick="this.parentElement.remove()" aria-label="Remove this skill">×</button>
             </div>
-            <div>
-              <label style="font-size: 0.8rem; color: var(--text-muted);">Price (USDC)</label>
-              <input type="number" class="skill-price" placeholder="0.50" step="0.01" min="0.01">
-            </div>
-            <button class="remove-skill" onclick="this.parentElement.remove()">×</button>
           </div>
-        </div>
 
-        <div class="add-skill-btn" onclick="addSkillRow()">+ Add Another Skill</div>
+          <div class="add-skill-btn" onclick="addSkillRow()">+ Add Another Skill</div>
+        </fieldset>
 
         <div style="display: flex; gap: 12px;">
           <button class="btn btn-secondary" style="flex: 1;" onclick="goToStep(2)">← Back</button>
@@ -7804,7 +7861,7 @@ router.get('/dashboard', async (req, res) => {
   </style>
 </head>
 <body>
-  ${HUB_HEADER}
+  ${getHeader('/dashboard')}
 
   <div id="connect-prompt" class="connect-prompt" style="min-height: auto; max-height: none; padding: 48px 24px;">
     <div class="connect-card" style="padding: 32px; max-width: 480px; text-align: left;">
@@ -8760,7 +8817,7 @@ router.get('/job/:uuid', validateUuidParam('uuid'), async (req, res) => {
   </style>
 </head>
 <body>
-  ${HUB_HEADER}
+  ${getHeader('/dashboard')}
 
   <div class="container job-container">
     <a href="/dashboard" style="color: var(--text-muted); text-decoration: none; display: inline-block; margin-bottom: 16px;">← Back to Dashboard</a>
@@ -13636,7 +13693,7 @@ router.get('/category/:slug', async (req, res) => {
   </style>
 </head>
 <body>
-  ${HUB_HEADER}
+  ${getHeader('/categories')}
 
   <div class="category-hero">
     <div class="container">
@@ -13816,7 +13873,7 @@ router.get('/categories', (req, res) => {
   </style>
 </head>
 <body>
-  ${HUB_HEADER}
+  ${getHeader('/categories')}
 
   <section class="categories-hero">
     <div class="container">
@@ -14028,7 +14085,7 @@ router.get('/docs', (req, res) => {
   </style>
 </head>
 <body>
-  ${HUB_HEADER}
+  ${getHeader('/docs')}
 
   <section class="docs-hero">
     <div class="container">
@@ -14792,7 +14849,7 @@ router.get('/compare', async (req, res) => {
   </style>
 </head>
 <body>
-  ${HUB_HEADER}
+  ${getHeader('/compare')}
 
   <section class="compare-hero">
     <div class="container">
