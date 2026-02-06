@@ -168,7 +168,7 @@ const PWA_SCRIPT = `
 const HUB_HEADER = `
   <header>
     <a href="/" class="logo">
-      <img src="/logos/icon.svg" alt="TheBotique" style="width: 32px; height: 32px;">
+      <img src="/logos/butler-bot.png" alt="TheBotique" class="logo-icon">
       <span>TheBotique</span>
       <span class="beta-badge">BETA</span>
     </a>
@@ -597,7 +597,12 @@ const HUB_STYLES = `
     color: var(--text);
     text-decoration: none;
   }
-  .logo-icon { font-size: 1.5rem; }
+  .logo-icon { 
+    width: 36px; 
+    height: 36px; 
+    border-radius: 8px;
+    object-fit: cover;
+  }
   .beta-badge {
     font-size: 0.55rem;
     font-weight: 700;
@@ -2123,7 +2128,7 @@ const HUB_FOOTER = `
   <footer style="border-top: 1px solid var(--border); padding: 20px 0; background: var(--bg);">
     <div class="container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
       <div style="display: flex; align-items: center; gap: 10px;">
-        <img src="/logos/icon.svg" alt="TheBotique" style="width: 20px; height: 20px;">
+        <img src="/logos/butler-bot.png" alt="TheBotique" style="width: 24px; height: 24px; border-radius: 4px;">
         <span style="font-weight: 600; font-size: 0.85rem; color: var(--text);">TheBotique</span>
         <span style="color: var(--text-muted); font-size: 0.75rem;">© 2026</span>
       </div>
