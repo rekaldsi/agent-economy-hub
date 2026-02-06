@@ -1045,12 +1045,14 @@ const HUB_STYLES = `
   }
   .hero-search {
     display: flex;
+    align-items: center;
+    position: relative;
     max-width: 600px;
     width: 100%;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 8px;
+    border-radius: 50px;
+    padding: 6px 6px 6px 20px;
     margin-bottom: 24px;
     transition: all 0.3s;
     box-shadow: var(--shadow-lg);
@@ -1059,19 +1061,28 @@ const HUB_STYLES = `
     border-color: var(--teal);
     box-shadow: var(--shadow-glow);
   }
-  .hero-search .search-icon {
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-    font-size: 1.2rem;
-  }
   .hero-search input {
     flex: 1;
     background: transparent;
     border: none;
     color: var(--text);
     font-size: 1rem;
-    padding: 12px;
+    padding: 14px 12px;
+    min-width: 0;
+  }
+  .hero-search button {
+    flex-shrink: 0;
+    padding: 12px 28px;
+    border-radius: 50px;
+    font-weight: 600;
+    background: var(--teal);
+    color: var(--bg);
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .hero-search button:hover {
+    background: var(--teal-light);
   }
   .hero-search input:focus { outline: none; }
   .hero-search input::placeholder { color: var(--text-muted); }
@@ -1754,8 +1765,7 @@ const HUB_STYLES = `
     }
     
     .hero-search input {
-      padding: 16px 24px;
-      padding-right: 130px;
+      padding: 12px 12px;
     }
     
     /* Featured agent card specifics */
@@ -2989,29 +2999,33 @@ router.get('/', async (req, res) => {
       line-height: 1.6;
     }
     
-    /* Search Bar */
+    /* Search Bar - Clean pill with button inside */
     .hero-search {
+      display: flex;
+      align-items: center;
       max-width: 640px;
       margin: 0 auto 32px;
-      position: relative;
-    }
-    
-    .hero-search input {
-      width: 100%;
-      padding: 20px 32px;
-      padding-right: 140px;
-      font-size: 1.125rem;
-      border: 2px solid var(--border);
-      border-radius: var(--radius-full);
       background: var(--bg-card);
-      color: var(--text);
-      outline: none;
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 6px 6px 6px 24px;
       transition: all var(--duration-normal);
     }
     
-    .hero-search input:focus {
+    .hero-search:focus-within {
       border-color: var(--accent);
       box-shadow: var(--glow-cyan);
+    }
+    
+    .hero-search input {
+      flex: 1;
+      padding: 14px 12px;
+      font-size: 1.125rem;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      outline: none;
+      min-width: 0;
     }
     
     .hero-search input::placeholder {
@@ -3019,13 +3033,19 @@ router.get('/', async (req, res) => {
     }
     
     .hero-search button {
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
+      flex-shrink: 0;
       padding: 14px 28px;
-      border-radius: var(--radius-full);
+      border-radius: 50px;
       font-weight: 600;
+      background: var(--teal);
+      color: var(--bg);
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .hero-search button:hover {
+      background: var(--teal-light);
     }
     
     /* Popular Tags */
@@ -3980,9 +4000,9 @@ router.get('/', async (req, res) => {
       .hero-badge { margin-bottom: 16px; padding: 6px 14px; font-size: 0.8rem; }
       .hero-title { font-size: 2rem; margin-bottom: 16px; }
       .hero-subtitle { font-size: 0.95rem; margin-bottom: 24px; }
-      .hero-search { margin-bottom: 20px; border: none; background: transparent; box-shadow: none; padding: 0; }
-      .hero-search input { padding: 14px 18px; font-size: 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; }
-      .hero-search button { padding: 14px 24px; font-size: 1rem; width: 100%; border-radius: 12px; }
+      .hero-search { margin-bottom: 20px; padding: 4px 4px 4px 16px; }
+      .hero-search input { padding: 12px 8px; font-size: 1rem; }
+      .hero-search button { padding: 12px 20px; font-size: 1rem; }
       .popular-tags { margin-bottom: 24px; gap: 8px; }
       .tag-pill { padding: 8px 14px; font-size: 0.8rem; }
       .stats-bar { 
@@ -4024,8 +4044,8 @@ router.get('/', async (req, res) => {
       .hero-badge { margin-bottom: 12px; }
       .hero-title { font-size: 1.75rem; line-height: 1.2; }
       .hero-subtitle { font-size: 0.9rem; margin-bottom: 20px; }
-      .hero-search input { padding: 12px 14px; padding-right: 100px; font-size: 0.9rem; }
-      .hero-search button { padding: 12px 18px; font-size: 0.85rem; min-height: 44px; }
+      .hero-search input { padding: 10px 8px; font-size: 0.9rem; }
+      .hero-search button { padding: 10px 16px; font-size: 0.85rem; min-height: 44px; }
       .popular-tags { gap: 6px; margin-bottom: 20px; }
       .tag-pill { padding: 10px 14px; font-size: 0.75rem; min-height: 44px; display: inline-flex; align-items: center; }
       .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px; }
