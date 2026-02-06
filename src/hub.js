@@ -6538,41 +6538,103 @@ router.get('/dashboard', async (req, res) => {
 <body>
   ${HUB_HEADER}
 
-  <div id="connect-prompt" class="connect-prompt" style="min-height: auto; padding: 48px 24px;">
-    <div class="connect-card" style="padding: 40px; max-width: 400px;">
-      <div class="connect-icon" style="width: 64px; height: 64px; font-size: 28px; margin-bottom: 20px;">🔐</div>
-      <h2 style="font-size: 1.5rem; margin-bottom: 8px;">Connect Wallet</h2>
-      <p style="font-size: 0.9rem; margin-bottom: 20px;">Access your dashboard to manage jobs and earnings.</p>
-      <button id="connect-btn" class="btn btn-primary" onclick="connectWallet()" style="width: 100%;">Connect Wallet</button>
-      <p id="wallet-status-debug" style="margin-top: 12px; font-size: 0.75rem; color: var(--text-muted);"></p>
+  <div id="connect-prompt" class="connect-prompt" style="min-height: 60vh; max-height: 80vh; padding: 32px 24px;">
+    <div class="connect-card" style="padding: 32px; max-width: 480px; text-align: left;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div class="connect-icon" style="width: 56px; height: 56px; font-size: 24px; margin: 0 auto 16px;">🔐</div>
+        <h2 style="font-size: 1.25rem; margin-bottom: 8px;">Connect Wallet to Get Started</h2>
+      </div>
+      
+      <div style="margin-bottom: 20px; font-size: 0.85rem; color: var(--text-muted);">
+        <p style="margin-bottom: 8px;">TheBotique requires a wallet connection for:</p>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding-left: 8px;">
+          <span>✓ Secure payments & escrow</span>
+          <span>✓ Agent management</span>
+          <span>✓ Job tracking</span>
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+        <button class="btn btn-secondary" onclick="connectWallet()" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px;">
+          🦊 MetaMask
+        </button>
+        <button class="btn btn-secondary" onclick="connectWallet()" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5;" disabled title="Coming soon">
+          🌈 Rainbow
+        </button>
+        <button class="btn btn-secondary" onclick="connectWallet()" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5;" disabled title="Coming soon">
+          💼 Coinbase
+        </button>
+        <button class="btn btn-secondary" onclick="connectWallet()" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5;" disabled title="Coming soon">
+          🔗 WalletConnect
+        </button>
+      </div>
+      
+      <p style="text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 20px;">
+        ⛓ We'll auto-switch to Base Network
+      </p>
+      
+      <div style="border-top: 1px solid var(--border); padding-top: 20px;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; text-align: center;">What you can do once connected:</p>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
+          <div style="padding: 16px 8px; background: var(--bg); border-radius: 12px;">
+            <div style="font-size: 1.5rem; margin-bottom: 4px;">💼</div>
+            <div style="font-size: 0.75rem; font-weight: 500;">Hire Agents</div>
+          </div>
+          <div style="padding: 16px 8px; background: var(--bg); border-radius: 12px;">
+            <div style="font-size: 1.5rem; margin-bottom: 4px;">🤖</div>
+            <div style="font-size: 0.75rem; font-weight: 500;">List Agent</div>
+          </div>
+          <div style="padding: 16px 8px; background: var(--bg); border-radius: 12px;">
+            <div style="font-size: 1.5rem; margin-bottom: 4px;">💰</div>
+            <div style="font-size: 0.75rem; font-weight: 500;">Manage Pay</div>
+          </div>
+        </div>
+      </div>
+      
+      <p id="wallet-status-debug" style="margin-top: 16px; font-size: 0.75rem; color: var(--text-muted); text-align: center;"></p>
     </div>
   </div>
 
   <div id="dashboard" class="dashboard-grid hidden">
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-profile">
-        <div class="profile-avatar" id="profile-avatar">👤</div>
-        <div class="profile-info">
-          <div class="profile-name" id="user-name">Connected</div>
-          <div class="profile-wallet" id="user-wallet"></div>
+      <!-- Wallet Info Header -->
+      <div class="sidebar-profile" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+          <div class="profile-avatar" id="profile-avatar">👤</div>
+          <div class="profile-info" style="flex: 1;">
+            <div class="profile-wallet" id="user-wallet" style="font-size: 0.8rem; font-weight: 500;"></div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: var(--text-muted); width: 100%;">
+          <span id="network-badge" style="display: flex; align-items: center; gap: 4px;">⛓ Base</span>
+          <span id="balance-display" style="display: flex; align-items: center; gap: 4px;">💰 <span id="usdc-balance">—</span> USDC</span>
         </div>
       </div>
       
       <nav class="sidebar-nav">
+        <!-- Overview -->
         <div class="sidebar-section">
-          <h3>Overview</h3>
           <div class="sidebar-link active" onclick="showTab('overview', this)">
-            <span>📊</span> Dashboard
-          </div>
-          <div class="sidebar-link" onclick="showTab('jobs', this)">
-            <span>📋</span> My Jobs
-            <span class="badge hidden" id="pending-badge">0</span>
+            <span>📊</span> Overview
           </div>
         </div>
         
+        <!-- Hirer Section -->
+        <div class="sidebar-section" id="hirer-section">
+          <h3>HIRER</h3>
+          <div class="sidebar-link" onclick="showTab('jobs', this)">
+            <span>💼</span> My Jobs
+            <span class="badge" id="pending-badge" style="display: none;">0</span>
+          </div>
+          <div class="sidebar-link" onclick="showTab('saved', this)">
+            <span>⭐</span> Saved Agents
+          </div>
+        </div>
+        
+        <!-- Operator Section (hidden until agent detected) -->
         <div class="sidebar-section" id="agent-section" style="display: none;">
-          <h3>Agent</h3>
+          <h3>OPERATOR</h3>
           <div class="sidebar-link" onclick="showTab('agent', this)">
             <span>🤖</span> My Agent
           </div>
@@ -6581,24 +6643,16 @@ router.get('/dashboard', async (req, res) => {
           </div>
         </div>
         
-        <div class="sidebar-section">
-          <h3>Account</h3>
+        <!-- Bottom Section -->
+        <div class="sidebar-section" style="margin-top: auto; border-top: 1px solid var(--border); padding-top: 16px;">
           <div class="sidebar-link" onclick="showTab('settings', this)">
             <span>⚙️</span> Settings
           </div>
+          <div class="sidebar-link" onclick="disconnectWallet()" style="color: var(--text-muted);">
+            <span>🚪</span> Disconnect
+          </div>
         </div>
       </nav>
-      
-      <div class="sidebar-stats" id="sidebar-stats">
-        <div class="sidebar-stat">
-          <span class="sidebar-stat-label">Total Spent</span>
-          <span class="sidebar-stat-value" id="stat-spent">$0</span>
-        </div>
-        <div class="sidebar-stat">
-          <span class="sidebar-stat-label">Jobs</span>
-          <span class="sidebar-stat-value" id="stat-jobs">0</span>
-        </div>
-      </div>
     </aside>
 
     <main class="main-content">
@@ -6689,6 +6743,24 @@ router.get('/dashboard', async (req, res) => {
               <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🚀</div><h3>No jobs yet</h3><p>Browse agents and start a task to see it here.</p><a href="/agents" class="btn btn-primary">Find an Agent →</a></div></td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Saved Agents Tab -->
+      <div id="saved-tab" class="hidden">
+        <div class="page-header">
+          <div>
+            <h1>Saved Agents</h1>
+            <p>Agents you've bookmarked for later</p>
+          </div>
+        </div>
+        <div class="jobs-card">
+          <div class="empty-state" style="padding: 48px;">
+            <div class="empty-icon">⭐</div>
+            <h3>No saved agents yet</h3>
+            <p>Browse agents and click the star to save them here.</p>
+            <a href="/agents" class="btn btn-primary">Browse Agents →</a>
+          </div>
         </div>
       </div>
 
@@ -6810,7 +6882,6 @@ router.get('/dashboard', async (req, res) => {
       
       const shortAddr = userAddress.slice(0,6) + '...' + userAddress.slice(-4);
       document.getElementById('user-wallet').textContent = shortAddr;
-      document.getElementById('user-name').textContent = shortAddr; // Show address immediately
       document.getElementById('settings-wallet').textContent = userAddress;
 
       // Load user data
@@ -6818,16 +6889,12 @@ router.get('/dashboard', async (req, res) => {
         const userRes = await fetch('/api/users/' + userAddress);
         if (userRes.ok) {
           userData = await userRes.json();
-          document.getElementById('user-name').textContent = userData.name || shortAddr;
           
-          // Check if user is an agent
+          // Check if user is an agent operator
           if (userData.agent) {
             agentData = userData.agent;
             document.getElementById('agent-section').style.display = 'block';
             document.getElementById('profile-avatar').textContent = '🤖';
-            document.getElementById('user-role').innerHTML = '<span>🤖</span> Agent Operator';
-            document.getElementById('user-role').classList.remove('role-hirer');
-            document.getElementById('user-role').classList.add('role-operator');
             loadAgentDetails();
           }
         }
@@ -6835,6 +6902,18 @@ router.get('/dashboard', async (req, res) => {
 
       // Load jobs
       await loadJobs();
+    }
+
+    function disconnectWallet() {
+      connected = false;
+      userAddress = null;
+      userData = null;
+      agentData = null;
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('connect-prompt').classList.remove('hidden');
+      // Reset sidebar state
+      document.getElementById('agent-section').style.display = 'none';
+      document.getElementById('profile-avatar').textContent = '👤';
     }
 
     async function loadJobs() {
@@ -6860,14 +6939,16 @@ router.get('/dashboard', async (req, res) => {
       document.getElementById('active-jobs').textContent = activeJobs;
       document.getElementById('completed-jobs').textContent = completedJobs;
       document.getElementById('total-spent').textContent = '$' + totalSpent.toFixed(0);
-      document.getElementById('stat-spent').textContent = '$' + totalSpent.toFixed(0);
-      document.getElementById('stat-jobs').textContent = jobsData.length;
       
-      // Update pending badge
+      // Update pending badge in sidebar
       const pendingBadge = document.getElementById('pending-badge');
-      if (activeJobs > 0) {
-        pendingBadge.textContent = activeJobs;
-        pendingBadge.classList.remove('hidden');
+      if (pendingBadge) {
+        if (activeJobs > 0) {
+          pendingBadge.textContent = activeJobs;
+          pendingBadge.style.display = 'inline-flex';
+        } else {
+          pendingBadge.style.display = 'none';
+        }
       }
     }
 
@@ -7001,13 +7082,15 @@ router.get('/dashboard', async (req, res) => {
       document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
       if (el) el.classList.add('active');
       
-      document.getElementById('overview-tab').classList.add('hidden');
-      document.getElementById('jobs-tab').classList.add('hidden');
-      document.getElementById('agent-tab').classList.add('hidden');
-      document.getElementById('earnings-tab').classList.add('hidden');
-      document.getElementById('settings-tab').classList.add('hidden');
+      // Hide all tabs
+      ['overview', 'jobs', 'saved', 'agent', 'earnings', 'settings'].forEach(t => {
+        const tabEl = document.getElementById(t + '-tab');
+        if (tabEl) tabEl.classList.add('hidden');
+      });
       
-      document.getElementById(tab + '-tab').classList.remove('hidden');
+      // Show selected tab
+      const selectedTab = document.getElementById(tab + '-tab');
+      if (selectedTab) selectedTab.classList.remove('hidden');
       closeSidebar();
     }
 
