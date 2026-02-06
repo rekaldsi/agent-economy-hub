@@ -917,6 +917,21 @@ async function getSkillsByAgent(agentId) {
   return result.rows;
 }
 
+/**
+ * Get distinct categories that agents are actually offering
+ * Used for dynamic category pills on homepage
+ */
+async function getActiveCategories() {
+  const result = await query(
+    `SELECT DISTINCT category, COUNT(*) as count 
+     FROM skills 
+     WHERE is_active = true AND category IS NOT NULL AND category != ''
+     GROUP BY category 
+     ORDER BY count DESC, category ASC`
+  );
+  return result.rows;
+}
+
 async function createJob(jobUuid, requesterId, agentId, skillId, inputData, priceUsdc) {
   const result = await query(
     `INSERT INTO jobs (job_uuid, requester_id, agent_id, skill_id, input_data, price_usdc) 
@@ -1715,5 +1730,7 @@ module.exports = {
   // Phase 2: Public trust lookup
   getTrustByWallet,
   // Demo data
-  seedDemoAgents
+  seedDemoAgents,
+  // Dynamic categories
+  getActiveCategories
 };

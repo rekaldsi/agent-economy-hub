@@ -2832,6 +2832,60 @@ router.get('/', async (req, res) => {
   try {
     const agents = await db.getAllAgents();
     const platformStats = await db.getPlatformStats();
+    const activeCategories = await db.getActiveCategories();
+    
+    // Comprehensive category map with icons (anticipating future categories)
+    const categoryMap = {
+      'research': { icon: '🔬', name: 'Research' },
+      'writing': { icon: '✍️', name: 'Writing' },
+      'creative': { icon: '✨', name: 'Creative' },
+      'code': { icon: '💻', name: 'Code' },
+      'coding': { icon: '💻', name: 'Coding' },
+      'development': { icon: '💻', name: 'Development' },
+      'data': { icon: '📊', name: 'Data' },
+      'analytics': { icon: '📊', name: 'Analytics' },
+      'image': { icon: '🎨', name: 'Images' },
+      'images': { icon: '🎨', name: 'Images' },
+      'design': { icon: '🎨', name: 'Design' },
+      'video': { icon: '🎬', name: 'Video' },
+      'video production': { icon: '🎬', name: 'Video' },
+      'audio': { icon: '🎵', name: 'Audio' },
+      'music': { icon: '🎵', name: 'Music' },
+      'automation': { icon: '🤖', name: 'Automation' },
+      'ai': { icon: '🧠', name: 'AI' },
+      'translation': { icon: '🌍', name: 'Translation' },
+      'marketing': { icon: '📣', name: 'Marketing' },
+      'social': { icon: '📱', name: 'Social' },
+      'social media': { icon: '📱', name: 'Social Media' },
+      'seo': { icon: '🔍', name: 'SEO' },
+      'customer support': { icon: '💬', name: 'Support' },
+      'support': { icon: '💬', name: 'Support' },
+      'legal': { icon: '⚖️', name: 'Legal' },
+      'finance': { icon: '💰', name: 'Finance' },
+      'analysis': { icon: '📈', name: 'Analysis' },
+      'other': { icon: '🔧', name: 'Other' },
+      'general': { icon: '🔧', name: 'General' }
+    };
+    
+    // Build dynamic category pills from what agents are actually offering
+    // Default categories shown when no agents registered yet
+    const defaultCategories = ['research', 'writing', 'code', 'images', 'data', 'automation'];
+    
+    let categoryPills;
+    if (activeCategories.length > 0) {
+      // Use actual categories from agents, limit to top 8 for UI
+      categoryPills = activeCategories.slice(0, 8).map(c => {
+        const cat = categoryMap[c.category.toLowerCase()] || { icon: '🔧', name: c.category };
+        return { slug: c.category.toLowerCase(), icon: cat.icon, name: cat.name };
+      });
+    } else {
+      // Show defaults when no agents yet
+      categoryPills = defaultCategories.map(slug => ({
+        slug,
+        icon: categoryMap[slug]?.icon || '🔧',
+        name: categoryMap[slug]?.name || slug
+      }));
+    }
     
     // Trust tier config with Refined Futurism colors
     const tierConfig = {
@@ -2899,15 +2953,7 @@ router.get('/', async (req, res) => {
       `;
     }).join('');
     
-    // Categories with modern design
-    const categories = [
-      { icon: '✨', name: 'Creative', desc: 'Copy, concepts, strategy', slug: 'creative', gradient: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)' },
-      { icon: '🔬', name: 'Research', desc: 'Deep dives, analysis', slug: 'research', gradient: 'linear-gradient(135deg, #4D9FFF 0%, #00F0FF 100%)' },
-      { icon: '📊', name: 'Data', desc: 'Extract, transform, analyze', slug: 'data', gradient: 'linear-gradient(135deg, #00E6B8 0%, #00B894 100%)' },
-      { icon: '🎨', name: 'Image', desc: 'Generate, edit, enhance', slug: 'image', gradient: 'linear-gradient(135deg, #B794F6 0%, #667EEA 100%)' },
-      { icon: '💻', name: 'Code', desc: 'Build, review, debug', slug: 'code', gradient: 'linear-gradient(135deg, #FFB800 0%, #FF6B35 100%)' },
-      { icon: '🤖', name: 'Automation', desc: 'Workflows, integrations', slug: 'automation', gradient: 'linear-gradient(135deg, #00F0FF 0%, #4D9FFF 100%)' }
-    ];
+    // Categories are now dynamic (categoryPills built above from agent skills)
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -3048,30 +3094,56 @@ router.get('/', async (req, res) => {
       background: var(--teal-light);
     }
     
-    /* Popular Tags */
+    /* Popular Tags - Dynamic category pills */
     .popular-tags {
       display: flex;
       justify-content: center;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
       margin-bottom: 48px;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0 16px;
     }
     
     .tag-pill {
       background: var(--bg-card);
       border: 1px solid var(--border);
       color: var(--text-muted);
-      padding: 10px 20px;
+      padding: 10px 18px;
       border-radius: var(--radius-full);
       font-size: 0.875rem;
       text-decoration: none;
       transition: all var(--duration-fast);
+      white-space: nowrap;
     }
     
     .tag-pill:hover {
       border-color: var(--accent);
       color: var(--accent);
       background: rgba(0, 240, 255, 0.05);
+      transform: translateY(-1px);
+    }
+    
+    /* When many categories, show horizontal scroll on mobile */
+    @media (max-width: 600px) {
+      .popular-tags {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        justify-content: flex-start;
+        padding-bottom: 8px;
+        margin-bottom: 32px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .popular-tags::-webkit-scrollbar {
+        display: none;
+      }
+      .tag-pill {
+        flex-shrink: 0;
+      }
     }
     
     /* Stats Bar - Enhanced */
@@ -4496,11 +4568,7 @@ router.get('/', async (req, res) => {
         </div>
         
         <div class="popular-tags">
-          <a href="/agents?search=research" class="tag-pill">🔬 Research</a>
-          <a href="/agents?search=writing" class="tag-pill">✍️ Writing</a>
-          <a href="/agents?search=code" class="tag-pill">💻 Code</a>
-          <a href="/agents?search=image" class="tag-pill">🎨 Images</a>
-          <a href="/agents?search=data" class="tag-pill">📊 Data</a>
+          ${categoryPills.map(c => `<a href="/agents?category=${encodeURIComponent(c.slug)}" class="tag-pill">${c.icon} ${c.name}</a>`).join('')}
         </div>
         
         ${(platformStats.total_jobs_completed || 0) >= 10 ? `
@@ -4571,27 +4639,6 @@ router.get('/', async (req, res) => {
           <span class="chain-dot"></span>
           <span>Powered by Base Network • USDC Payments</span>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Categories Section -->
-  <section class="categories-section">
-    <div class="container">
-      <div class="section-header">
-        <h2>Browse by Category</h2>
-        <p>Find the perfect AI agent for your needs</p>
-      </div>
-      
-      <div class="categories-grid">
-        ${categories.map(c => `
-          <a href="/agents?category=${c.slug}" class="category-card" style="--card-gradient: ${c.gradient};">
-            <style>.category-card[style*="${c.gradient}"]::before { background: ${c.gradient}; }</style>
-            <span class="category-icon">${c.icon}</span>
-            <div class="category-name">${c.name}</div>
-            <div class="category-desc">${c.desc}</div>
-          </a>
-        `).join('')}
       </div>
     </div>
   </section>
