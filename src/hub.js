@@ -9248,11 +9248,134 @@ router.post('/api/jobs/:uuid/complete',
 // Get all agents
 router.get('/api/agents', async (req, res) => {
   try {
-    const agents = await db.getAllAgents();
-    res.json(sanitizeAgents(agents));
+    let agents = await db.getAllAgents();
+    
+    // Filter by category
+    const category = req.query.category;
+    if (category) {
+      agents = agents.filter(a => {
+        if (!a.skills || !Array.isArray(a.skills)) return false;
+        return a.skills.some(s => 
+          s.category && s.category.toLowerCase().includes(category.toLowerCase())
+        );
+      });
+    }
+    
+    // Filter by search query (q or search)
+    const query = req.query.q || req.query.search;
+    if (query) {
+      const q = query.toLowerCase();
+      agents = agents.filter(a => {
+        const nameMatch = a.name && a.name.toLowerCase().includes(q);
+        const bioMatch = a.bio && a.bio.toLowerCase().includes(q);
+        const skillMatch = a.skills && a.skills.some(s => 
+          (s.name && s.name.toLowerCase().includes(q)) ||
+          (s.category && s.category.toLowerCase().includes(q)) ||
+          (s.description && s.description.toLowerCase().includes(q))
+        );
+        return nameMatch || bioMatch || skillMatch;
+      });
+    }
+    
+    // Sort
+    const sort = req.query.sort;
+    if (sort === 'rating') {
+      agents.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sort === 'jobs') {
+      agents.sort((a, b) => (b.total_jobs || 0) - (a.total_jobs || 0));
+    } else if (sort === 'price_low') {
+      agents.sort((a, b) => {
+        const aPrice = a.skills?.[0]?.price_usdc || 999999;
+        const bPrice = b.skills?.[0]?.price_usdc || 999999;
+        return aPrice - bPrice;
+      });
+    } else if (sort === 'price_high') {
+      agents.sort((a, b) => {
+        const aPrice = a.skills?.[0]?.price_usdc || 0;
+        const bPrice = b.skills?.[0]?.price_usdc || 0;
+        return bPrice - aPrice;
+      });
+    } else if (sort === 'newest') {
+      agents.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+    
+    // Pagination
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+    const total = agents.length;
+    agents = agents.slice(offset, offset + limit);
+    
+    res.json({
+      agents: sanitizeAgents(agents),
+      total,
+      limit,
+      offset
+    });
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve agents');
     res.status(statusCode).json(body);
+  }
+});
+
+// Search agents endpoint (explicit route before :id)
+router.get('/api/agents/search', async (req, res) => {
+  try {
+    let agents = await db.getAllAgents();
+    const query = req.query.q || req.query.query || '';
+    
+    if (query) {
+      const q = query.toLowerCase();
+      agents = agents.filter(a => {
+        const nameMatch = a.name && a.name.toLowerCase().includes(q);
+        const bioMatch = a.bio && a.bio.toLowerCase().includes(q);
+        const skillMatch = a.skills && a.skills.some(s => 
+          (s.name && s.name.toLowerCase().includes(q)) ||
+          (s.category && s.category.toLowerCase().includes(q))
+        );
+        return nameMatch || bioMatch || skillMatch;
+      });
+    }
+    
+    res.json({
+      agents: sanitizeAgents(agents),
+      query,
+      count: agents.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+// Compare agents endpoint (explicit route before :id)
+router.get('/api/agents/compare', async (req, res) => {
+  try {
+    const idsParam = req.query.ids || '';
+    const ids = idsParam.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+    
+    if (ids.length === 0) {
+      return res.status(400).json({ error: 'No valid agent IDs provided', code: 'INVALID_INPUT' });
+    }
+    
+    if (ids.length > 5) {
+      return res.status(400).json({ error: 'Maximum 5 agents can be compared', code: 'TOO_MANY' });
+    }
+    
+    const agents = [];
+    for (const id of ids) {
+      const agent = await db.getAgentById(id);
+      if (agent) {
+        const skills = await db.getSkillsByAgent(id);
+        agents.push(sanitizeAgent({ ...agent, skills }));
+      }
+    }
+    
+    res.json({
+      agents,
+      count: agents.length,
+      requested_ids: ids
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Compare failed' });
   }
 });
 
