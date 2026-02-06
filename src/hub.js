@@ -6797,6 +6797,8 @@ router.get('/dashboard', async (req, res) => {
       transition: all var(--duration-fast);
       font-size: 0.9rem;
       position: relative;
+      white-space: nowrap;
+      overflow: visible;
     }
     .sidebar-link:hover {
       background: rgba(255, 255, 255, 0.03);
@@ -7518,7 +7520,7 @@ router.get('/dashboard', async (req, res) => {
 <body>
   ${HUB_HEADER}
 
-  <div id="connect-prompt" class="connect-prompt" style="min-height: 60vh; max-height: 80vh; padding: 32px 24px;">
+  <div id="connect-prompt" class="connect-prompt" style="min-height: auto; max-height: none; padding: 48px 24px;">
     <div class="connect-card" style="padding: 32px; max-width: 480px; text-align: left;">
       <div style="text-align: center; margin-bottom: 24px;">
         <div class="connect-icon" style="width: 56px; height: 56px; font-size: 24px; margin: 0 auto 16px;">🔐</div>
