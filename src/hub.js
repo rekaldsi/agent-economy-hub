@@ -3900,6 +3900,327 @@ router.get('/', async (req, res) => {
         min-height: 52px;
       }
     }
+    
+    /* ============================================
+       MOBILE HOMEPAGE OPTIMIZATION
+       Significantly reduce vertical length on mobile
+       ============================================ */
+    @media (max-width: 768px) {
+      /* Reduce section padding across the board */
+      .how-section,
+      .trust-section,
+      .crypto-section,
+      .operator-cta-section,
+      .cta-section {
+        padding: 24px 0;
+      }
+      
+      /* How It Works - more compact */
+      .how-section .section-header {
+        margin-bottom: 16px;
+      }
+      .how-section .section-header h2 {
+        font-size: 1.25rem;
+      }
+      .steps-grid {
+        gap: 12px;
+      }
+      .step {
+        padding: 16px 12px;
+      }
+      .step-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        margin-bottom: 8px;
+      }
+      .step-title {
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+      }
+      .step-desc {
+        font-size: 0.75rem;
+        line-height: 1.4;
+      }
+      
+      /* Trust Section - more compact */
+      .trust-section {
+        background: var(--bg);
+      }
+      .trust-section .section-header {
+        margin-bottom: 16px;
+      }
+      .trust-section .section-header h2 {
+        font-size: 1.25rem;
+      }
+      .trust-grid {
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .trust-card {
+        padding: 16px 14px;
+        border-radius: 12px;
+      }
+      .trust-card-icon {
+        font-size: 1.75rem;
+        margin-bottom: 8px;
+      }
+      .trust-card h3 {
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+      }
+      .trust-card p {
+        font-size: 0.8rem;
+        line-height: 1.4;
+        margin: 0;
+      }
+      
+      /* HIDE crypto section on mobile - too long */
+      .crypto-section {
+        display: none !important;
+      }
+      
+      /* Operator CTA - much smaller */
+      .operator-cta-section {
+        padding: 20px 0;
+        background: var(--bg);
+      }
+      .operator-card {
+        padding: 20px 16px;
+        border-radius: 16px;
+      }
+      .operator-badge {
+        padding: 5px 12px;
+        font-size: 0.75rem;
+        margin-bottom: 12px;
+      }
+      .operator-card h2 {
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+      }
+      .operator-card > p {
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+      }
+      .operator-benefits {
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .operator-benefits span {
+        font-size: 0.8rem;
+      }
+      .operator-buttons {
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .operator-buttons .btn {
+        padding: 10px 16px;
+        font-size: 0.85rem;
+      }
+      .founder-note {
+        font-size: 0.75rem;
+      }
+      
+      /* Final CTA - smaller */
+      .cta-section {
+        padding: 20px 0;
+      }
+      .cta-card {
+        padding: 24px 16px;
+        border-radius: 16px;
+      }
+      .cta-card h2 {
+        font-size: 1.25rem;
+        margin-bottom: 8px;
+      }
+      .cta-card p {
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+      }
+      .cta-buttons .btn {
+        padding: 10px 16px;
+        font-size: 0.85rem;
+      }
+      
+      /* Compact footer on mobile */
+      footer {
+        margin-top: 32px;
+        padding: 16px 0;
+      }
+      footer .container {
+        gap: 12px;
+      }
+      footer nav {
+        gap: 10px !important;
+      }
+      footer nav a {
+        font-size: 0.7rem !important;
+        padding: 8px 10px !important;
+        min-height: 36px !important;
+      }
+    }
+    
+    /* Extra aggressive for smaller phones */
+    @media (max-width: 480px) {
+      .how-section,
+      .trust-section,
+      .operator-cta-section,
+      .cta-section {
+        padding: 20px 0;
+      }
+      
+      /* How It Works - even more compact on small phones */
+      .steps-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+      .step {
+        padding: 12px 10px;
+      }
+      .step-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+        margin-bottom: 6px;
+      }
+      .step-title {
+        font-size: 0.8rem;
+      }
+      .step-desc {
+        font-size: 0.7rem;
+        display: none; /* Hide descriptions on very small screens */
+      }
+      
+      /* Trust section - horizontal scroll or 2-col */
+      .trust-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .trust-card {
+        padding: 14px 12px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        text-align: left;
+      }
+      .trust-card-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0;
+        flex-shrink: 0;
+      }
+      .trust-card h3 {
+        font-size: 0.85rem;
+      }
+      .trust-card p {
+        display: none; /* Hide descriptions */
+      }
+      
+      /* Operator CTA - minimal */
+      .operator-card {
+        padding: 16px 14px;
+      }
+      .operator-badge {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+        margin-bottom: 10px;
+      }
+      .operator-card h2 {
+        font-size: 1rem;
+      }
+      .operator-card > p {
+        font-size: 0.8rem;
+        margin-bottom: 12px;
+      }
+      .operator-benefits {
+        display: none; /* Hide benefits list */
+      }
+      .founder-note {
+        display: none; /* Hide founder note */
+      }
+      
+      /* CTA even smaller */
+      .cta-card {
+        padding: 20px 14px;
+      }
+      .cta-card h2 {
+        font-size: 1.1rem;
+      }
+      .cta-card p {
+        font-size: 0.8rem;
+        margin-bottom: 14px;
+      }
+      
+      /* Footer minimal */
+      footer {
+        margin-top: 24px;
+        padding: 12px 0;
+      }
+      footer .container > div:first-child span:last-child {
+        display: none; /* Hide copyright text */
+      }
+    }
+    
+    /* Smallest phones - 375px and below */
+    @media (max-width: 375px) {
+      .how-section,
+      .trust-section,
+      .operator-cta-section,
+      .cta-section {
+        padding: 16px 0;
+      }
+      
+      .section-header h2 {
+        font-size: 1.1rem !important;
+      }
+      
+      /* Steps as single column */
+      .steps-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .step {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+      }
+      .step-icon {
+        margin-bottom: 0;
+      }
+      
+      /* Trust - even more compact */
+      .trust-grid {
+        gap: 6px;
+      }
+      .trust-card {
+        padding: 12px 10px;
+        gap: 10px;
+      }
+      .trust-card-icon {
+        font-size: 1.25rem;
+      }
+      .trust-card h3 {
+        font-size: 0.8rem;
+      }
+      
+      /* Operator minimal */
+      .operator-card h2 {
+        font-size: 0.95rem;
+      }
+      .operator-card > p {
+        font-size: 0.75rem;
+      }
+      
+      /* CTA minimal */
+      .cta-card h2 {
+        font-size: 1rem;
+      }
+      .cta-card p {
+        font-size: 0.75rem;
+      }
+    }
   </style>
 </head>
 <body>
