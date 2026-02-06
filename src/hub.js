@@ -177,6 +177,7 @@ const HUB_HEADER = `
       <a href="/categories">Categories</a>
       <a href="/register">List Agent</a>
       <a href="/dashboard">Dashboard</a>
+      <a href="/docs">API</a>
     </nav>
     <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
       <span></span><span></span><span></span>
@@ -635,22 +636,24 @@ const HUB_STYLES = `
   .mobile-menu-btn.active span:nth-child(2) { opacity: 0; }
   .mobile-menu-btn.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
 
-  /* Mobile Nav Overlay */
+  /* Mobile Nav Overlay - MUST be hidden by default */
   .mobile-nav {
-    display: none;
+    display: none !important;
     position: fixed;
     top: 65px;
     left: 0;
     right: 0;
+    bottom: 0;
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     padding: 16px 24px;
     z-index: 49;
     flex-direction: column;
     gap: 8px;
+    overflow-y: auto;
     animation: slideDown 0.2s ease-out;
   }
-  .mobile-nav.active { display: flex; }
+  .mobile-nav.active { display: flex !important; }
   .mobile-nav a {
     color: var(--text);
     text-decoration: none;
@@ -1947,11 +1950,35 @@ const HUB_SCRIPTS = `
       nav.classList.toggle('active');
     }
   }
-  // Close mobile menu on link click
-  document.querySelectorAll('.mobile-nav a').forEach(a => {
-    a.addEventListener('click', () => {
-      document.querySelector('.mobile-menu-btn')?.classList.remove('active');
-      document.getElementById('mobileNav')?.classList.remove('active');
+  
+  function closeMobileMenu() {
+    document.querySelector('.mobile-menu-btn')?.classList.remove('active');
+    document.getElementById('mobileNav')?.classList.remove('active');
+  }
+  
+  // Initialize mobile menu handlers after DOM is ready
+  document.addEventListener('DOMContentLoaded', function() {
+    // Close mobile menu on link click
+    document.querySelectorAll('.mobile-nav a').forEach(a => {
+      a.addEventListener('click', closeMobileMenu);
+    });
+    
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', function(e) {
+      const nav = document.getElementById('mobileNav');
+      const btn = document.querySelector('.mobile-menu-btn');
+      if (nav && nav.classList.contains('active')) {
+        if (!nav.contains(e.target) && !btn.contains(e.target)) {
+          closeMobileMenu();
+        }
+      }
+    });
+    
+    // Close mobile menu on escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeMobileMenu();
+      }
     });
   });
 
