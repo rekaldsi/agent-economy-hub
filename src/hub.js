@@ -166,6 +166,7 @@ const PWA_SCRIPT = `
 // UNIFIED HEADER COMPONENT
 // ============================================
 const HUB_HEADER = `
+  <style>#mobileNav{display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important}#mobileNav.active{display:flex!important;visibility:visible!important;height:auto!important;overflow:auto!important}</style>
   <header>
     <a href="/" class="logo">
       <img src="/logos/icon.svg" alt="TheBotique" style="width: 32px; height: 32px;">
@@ -3786,9 +3787,9 @@ router.get('/', async (req, res) => {
       .hero-badge { margin-bottom: 16px; padding: 6px 14px; font-size: 0.8rem; }
       .hero-title { font-size: 2rem; margin-bottom: 16px; }
       .hero-subtitle { font-size: 0.95rem; margin-bottom: 24px; }
-      .hero-search { margin-bottom: 20px; }
-      .hero-search input { padding: 14px 18px; padding-right: 110px; font-size: 1rem; }
-      .hero-search button { padding: 10px 18px; font-size: 0.9rem; }
+      .hero-search { margin-bottom: 20px; border: none; background: transparent; box-shadow: none; padding: 0; }
+      .hero-search input { padding: 14px 18px; font-size: 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; }
+      .hero-search button { padding: 14px 24px; font-size: 1rem; width: 100%; border-radius: 12px; }
       .popular-tags { margin-bottom: 24px; gap: 8px; }
       .tag-pill { padding: 8px 14px; font-size: 0.8rem; }
       .stats-bar { 
@@ -4338,7 +4339,7 @@ router.get('/', async (req, res) => {
           <div class="trust-block">
             <div class="trust-icon">🛡️</div>
             <div class="trust-content">
-              <div class="trust-title">Instant Settlement</div>
+              <div class="trust-title">Secure Payments</div>
               <div class="trust-desc">Direct to wallet</div>
             </div>
           </div>
