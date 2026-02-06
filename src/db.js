@@ -708,6 +708,98 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_wallet);
     `);
 
+    // Migration: Human Escalation (RentAHuman integration)
+    await client.query(`
+      DO $$
+      BEGIN
+        -- Add human_escalation_status to jobs
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'human_escalation_status'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN human_escalation_status TEXT CHECK (human_escalation_status IN ('none', 'requested', 'searching', 'assigned', 'in_progress', 'completed', 'failed'));
+          ALTER TABLE jobs ALTER COLUMN human_escalation_status SET DEFAULT 'none';
+        END IF;
+        
+        -- Add rentahuman_bounty_id for tracking
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'rentahuman_bounty_id'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN rentahuman_bounty_id TEXT;
+        END IF;
+        
+        -- Add human_worker_id 
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'human_worker_id'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN human_worker_id TEXT;
+        END IF;
+        
+        -- Add human_cost_usdc
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'human_cost_usdc'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN human_cost_usdc DECIMAL(18,6) DEFAULT 0;
+        END IF;
+        
+        -- Add human_deadline
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'human_deadline'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN human_deadline TIMESTAMP;
+        END IF;
+        
+        -- Add human_result (JSONB for flexible data)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'human_result'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN human_result JSONB;
+        END IF;
+        
+        -- Add human_requested_at
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'human_requested_at'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN human_requested_at TIMESTAMP;
+        END IF;
+        
+        -- Add human_completed_at
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'jobs' AND column_name = 'human_completed_at'
+        ) THEN
+          ALTER TABLE jobs ADD COLUMN human_completed_at TIMESTAMP;
+        END IF;
+        
+        -- Add capability_manifest to agents (JSONB)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'capability_manifest'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN capability_manifest JSONB;
+        END IF;
+        
+        -- Add max_human_budget_usdc to agents
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'max_human_budget_usdc'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN max_human_budget_usdc DECIMAL(18,6) DEFAULT 100;
+        END IF;
+      END $$;
+    `);
+    
+    // Create index for human escalation queries
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_jobs_human_escalation ON jobs(human_escalation_status) WHERE human_escalation_status != 'none';
+    `);
+
     // One-time API key rotation (set ROTATE_API_KEY=agentId in Railway to trigger)
     if (process.env.ROTATE_API_KEY) {
       const agentId = parseInt(process.env.ROTATE_API_KEY) || 1;

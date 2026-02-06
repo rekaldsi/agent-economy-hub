@@ -1247,6 +1247,228 @@ app.get('/api/agents/me/jobs', async (req, res) => {
 });
 
 // ============================================
+// HUMAN ESCALATION API (RentAHuman Integration)
+// ============================================
+
+// POST /api/jobs/:uuid/escalate - Request human escalation for a job
+app.post('/api/jobs/:uuid/escalate', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const { uuid } = req.params;
+    const { reason, task_description, max_budget_usdc, deadline_hours } = req.body;
+    
+    // Verify agent owns this job
+    const jobResult = await db.query(
+      `SELECT j.*, s.agent_id 
+       FROM jobs j 
+       JOIN skills s ON j.skill_id = s.id
+       JOIN agents a ON s.agent_id = a.id
+       WHERE j.uuid = $1 AND a.api_key = $2`,
+      [uuid, apiKey]
+    );
+    
+    if (jobResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Job not found or not authorized' });
+    }
+    
+    const job = jobResult.rows[0];
+    
+    // Check if escalation already in progress
+    if (job.human_escalation_status && job.human_escalation_status !== 'none' && job.human_escalation_status !== 'failed') {
+      return res.status(400).json({ 
+        error: 'Human escalation already in progress',
+        current_status: job.human_escalation_status
+      });
+    }
+    
+    // Calculate deadline
+    const deadlineHours = deadline_hours || 24;
+    const humanDeadline = new Date(Date.now() + deadlineHours * 60 * 60 * 1000);
+    
+    // Update job with escalation request
+    await db.query(
+      `UPDATE jobs SET 
+        human_escalation_status = 'requested',
+        human_cost_usdc = $1,
+        human_deadline = $2,
+        human_requested_at = NOW()
+       WHERE id = $3`,
+      [max_budget_usdc || 50, humanDeadline, job.id]
+    );
+    
+    // Log the escalation request
+    logger.info('Human escalation requested', {
+      job_uuid: uuid,
+      reason,
+      max_budget: max_budget_usdc,
+      deadline: humanDeadline
+    });
+    
+    res.json({
+      success: true,
+      message: 'Human escalation requested',
+      escalation: {
+        status: 'requested',
+        reason,
+        task_description,
+        max_budget_usdc: max_budget_usdc || 50,
+        deadline: humanDeadline,
+        instructions: {
+          mcp: 'Use rentahuman-mcp to search and book humans',
+          bounty_example: {
+            tool: 'create_bounty',
+            arguments: {
+              agentType: 'thebotique-agent',
+              title: task_description || reason,
+              description: `Job UUID: ${uuid}. ${task_description || reason}`,
+              estimatedHours: Math.ceil(deadlineHours / 4),
+              price: max_budget_usdc || 50
+            }
+          }
+        }
+      }
+    });
+  } catch (error) {
+    logger.error('Human escalation error', { error: error.message });
+    res.status(500).json({ error: 'Failed to request human escalation' });
+  }
+});
+
+// PATCH /api/jobs/:uuid/escalation - Update escalation status (webhook from RentAHuman or agent)
+app.patch('/api/jobs/:uuid/escalation', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const { uuid } = req.params;
+    const { status, bounty_id, worker_id, result } = req.body;
+    
+    // Verify agent owns this job
+    const jobResult = await db.query(
+      `SELECT j.* 
+       FROM jobs j 
+       JOIN skills s ON j.skill_id = s.id
+       JOIN agents a ON s.agent_id = a.id
+       WHERE j.uuid = $1 AND a.api_key = $2`,
+      [uuid, apiKey]
+    );
+    
+    if (jobResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Job not found or not authorized' });
+    }
+    
+    const job = jobResult.rows[0];
+    
+    // Validate status transition
+    const validStatuses = ['searching', 'assigned', 'in_progress', 'completed', 'failed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    }
+    
+    // Build update query
+    const updates = ['human_escalation_status = $1'];
+    const values = [status];
+    let idx = 2;
+    
+    if (bounty_id) {
+      updates.push(`rentahuman_bounty_id = $${idx++}`);
+      values.push(bounty_id);
+    }
+    
+    if (worker_id) {
+      updates.push(`human_worker_id = $${idx++}`);
+      values.push(worker_id);
+    }
+    
+    if (result) {
+      updates.push(`human_result = $${idx++}`);
+      values.push(JSON.stringify(result));
+    }
+    
+    if (status === 'completed') {
+      updates.push(`human_completed_at = NOW()`);
+    }
+    
+    values.push(job.id);
+    
+    await db.query(
+      `UPDATE jobs SET ${updates.join(', ')} WHERE id = $${idx}`,
+      values
+    );
+    
+    logger.info('Human escalation updated', {
+      job_uuid: uuid,
+      new_status: status,
+      bounty_id,
+      worker_id
+    });
+    
+    res.json({
+      success: true,
+      message: 'Escalation status updated',
+      escalation: {
+        status,
+        bounty_id: bounty_id || job.rentahuman_bounty_id,
+        worker_id: worker_id || job.human_worker_id,
+        result: result || job.human_result
+      }
+    });
+  } catch (error) {
+    logger.error('Human escalation update error', { error: error.message });
+    res.status(500).json({ error: 'Failed to update escalation' });
+  }
+});
+
+// GET /api/jobs/:uuid/escalation - Get escalation status
+app.get('/api/jobs/:uuid/escalation', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const { uuid } = req.params;
+    
+    const jobResult = await db.query(
+      `SELECT j.human_escalation_status, j.rentahuman_bounty_id, j.human_worker_id,
+              j.human_cost_usdc, j.human_deadline, j.human_result,
+              j.human_requested_at, j.human_completed_at
+       FROM jobs j 
+       JOIN skills s ON j.skill_id = s.id
+       JOIN agents a ON s.agent_id = a.id
+       WHERE j.uuid = $1 AND a.api_key = $2`,
+      [uuid, apiKey]
+    );
+    
+    if (jobResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Job not found or not authorized' });
+    }
+    
+    const escalation = jobResult.rows[0];
+    
+    res.json({
+      status: escalation.human_escalation_status || 'none',
+      bounty_id: escalation.rentahuman_bounty_id,
+      worker_id: escalation.human_worker_id,
+      cost_usdc: parseFloat(escalation.human_cost_usdc) || 0,
+      deadline: escalation.human_deadline,
+      result: escalation.human_result,
+      requested_at: escalation.human_requested_at,
+      completed_at: escalation.human_completed_at
+    });
+  } catch (error) {
+    logger.error('Get escalation error', { error: error.message });
+    res.status(500).json({ error: 'Failed to get escalation status' });
+  }
+});
+
+// ============================================
 // PHASE 2: WEBHOOK API
 // ============================================
 
