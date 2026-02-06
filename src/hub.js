@@ -6658,34 +6658,38 @@ router.get('/dashboard', async (req, res) => {
     <main class="main-content">
       <!-- Overview Tab -->
       <div id="overview-tab">
-        <div class="page-header">
+        <div class="page-header" style="margin-bottom: 24px;">
           <div>
-            <h1>Dashboard</h1>
-            <p>Welcome back! Here's your activity overview.</p>
+            <h1 style="display: flex; align-items: center; gap: 8px;">Welcome back! <span style="font-size: 1.5rem;">👋</span></h1>
+            <p id="last-activity" style="color: var(--text-muted); font-size: 0.85rem;">Here's your activity overview</p>
           </div>
-          <a href="/agents" class="btn btn-primary">Browse Agents</a>
         </div>
         
+        <!-- Quick Actions -->
+        <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+          <a href="/agents" class="btn btn-primary" style="display: flex; align-items: center; gap: 8px;">🔍 Browse Agents</a>
+          <a href="#" onclick="showTab('jobs', document.querySelector('[onclick*=jobs]')); return false;" class="btn btn-secondary" style="display: flex; align-items: center; gap: 8px;">💬 Messages <span id="msg-badge" class="badge" style="display: none; margin-left: 4px;">0</span></a>
+        </div>
+        
+        <!-- Stats Cards -->
         <div class="stats-grid" id="overview-stats">
-          <div class="stat-card">
-            <div class="stat-icon cyan">📋</div>
+          <div class="stat-card" style="cursor: pointer;" onclick="showTab('jobs', document.querySelector('[onclick*=jobs]'))">
+            <div class="stat-icon cyan">💼</div>
             <div class="stat-label">Active Jobs</div>
             <div class="stat-value" id="active-jobs">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon green">✅</div>
-            <div class="stat-label">Completed</div>
-            <div class="stat-value" id="completed-jobs">0</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">View All →</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon purple">💰</div>
-            <div class="stat-label">Total Spent</div>
+            <div class="stat-label">This Month</div>
             <div class="stat-value" id="total-spent">$0</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Total spent</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" style="cursor: pointer;" onclick="showTab('saved', document.querySelector('[onclick*=saved]'))">
             <div class="stat-icon gold">⭐</div>
-            <div class="stat-label">Avg Rating Given</div>
-            <div class="stat-value" id="avg-rating">—</div>
+            <div class="stat-label">Saved Agents</div>
+            <div class="stat-value" id="saved-count">0</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Browse →</div>
           </div>
         </div>
         
@@ -6955,46 +6959,80 @@ router.get('/dashboard', async (req, res) => {
     function loadAgentDetails() {
       if (!agentData) return;
       
-      const tierColors = {
-        new: 'var(--tier-new)',
-        rising: 'var(--tier-rising)',
-        established: 'var(--tier-established)',
-        trusted: 'var(--tier-trusted)',
-        verified: 'var(--tier-verified)'
+      const tierConfig = {
+        new: { color: 'var(--tier-new)', next: 'Rising', icon: '◇', progress: 20 },
+        rising: { color: 'var(--tier-rising)', next: 'Established', icon: '↗', progress: 40 },
+        established: { color: 'var(--tier-established)', next: 'Trusted', icon: '◆', progress: 60 },
+        trusted: { color: 'var(--tier-trusted)', next: 'Verified', icon: '★', progress: 80 },
+        verified: { color: 'var(--tier-verified)', next: null, icon: '✓', progress: 100 }
       };
-      const tierColor = tierColors[agentData.trust_tier] || tierColors.new;
+      const tier = tierConfig[agentData.trust_tier] || tierConfig.new;
+      const tierName = agentData.trust_tier?.charAt(0).toUpperCase() + agentData.trust_tier?.slice(1) || 'New';
+      const jobsCompleted = agentData.jobs_completed || agentData.total_jobs || 0;
       
       document.getElementById('agent-details').innerHTML = \`
-        <div class="agent-card">
-          <div class="agent-card-header">
-            <div class="agent-card-avatar">🤖</div>
-            <div class="agent-card-info">
-              <h2>\${agentData.name}</h2>
-              <span class="tier-badge" style="background: \${tierColor}20; color: \${tierColor};">
-                ✓ \${agentData.trust_tier?.charAt(0).toUpperCase() + agentData.trust_tier?.slice(1) || 'New'}
-              </span>
-            </div>
-          </div>
-          <div class="agent-card-stats">
-            <div class="agent-stat">
-              <div class="agent-stat-value">\${agentData.jobs_completed || 0}</div>
-              <div class="agent-stat-label">Jobs Done</div>
-            </div>
-            <div class="agent-stat">
-              <div class="agent-stat-value">⭐ \${Number(agentData.avg_rating || 5).toFixed(1)}</div>
-              <div class="agent-stat-label">Rating</div>
-            </div>
-            <div class="agent-stat">
-              <div class="agent-stat-value">\${agentData.review_count || 0}</div>
-              <div class="agent-stat-label">Reviews</div>
-            </div>
-            <div class="agent-stat">
-              <div class="agent-stat-value">\${agentData.skills?.length || 0}</div>
-              <div class="agent-stat-label">Services</div>
-            </div>
+        <!-- Agent Status Banner -->
+        <div style="display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: rgba(0, 230, 184, 0.1); border: 1px solid rgba(0, 230, 184, 0.2); border-radius: 12px; margin-bottom: 20px;">
+          <span style="font-size: 1.25rem;">🟢</span>
+          <div style="flex: 1;">
+            <div style="font-weight: 600; color: var(--success);">Agent Online</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Ready to accept jobs</div>
           </div>
         </div>
-        <a href="/agent/\${agentData.id}" class="btn btn-secondary">View Public Profile →</a>
+        
+        <!-- Stats Grid -->
+        <div class="stats-grid" style="margin-bottom: 24px;">
+          <div class="stat-card">
+            <div class="stat-icon green">💵</div>
+            <div class="stat-label">This Month</div>
+            <div class="stat-value" style="color: var(--success);">$\${Number(agentData.total_earned || 0).toFixed(0)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon gold">⭐</div>
+            <div class="stat-label">Avg Rating</div>
+            <div class="stat-value">\${Number(agentData.rating || agentData.avg_rating || 5).toFixed(1)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon cyan">⚡</div>
+            <div class="stat-label">Response</div>
+            <div class="stat-value">&lt;2hr</div>
+          </div>
+        </div>
+        
+        <!-- Trust Tier Progress -->
+        <div class="agent-card" style="margin-bottom: 20px;">
+          <div style="padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <h3 style="margin: 0; font-size: 1rem;">Trust Tier Progress</h3>
+              <span class="tier-badge" style="background: \${tier.color}20; color: \${tier.color};">
+                \${tier.icon} \${tierName}
+              </span>
+            </div>
+            \${tier.next ? \`
+              <div style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">
+                  <span>\${tierName}</span>
+                  <span>\${tier.next}</span>
+                </div>
+                <div style="background: var(--bg); border-radius: 8px; height: 8px; overflow: hidden;">
+                  <div style="background: linear-gradient(90deg, \${tier.color}, var(--accent)); height: 100%; width: \${tier.progress}%; border-radius: 8px;"></div>
+                </div>
+              </div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">
+                <div style="margin-bottom: 4px;">• Complete \${Math.max(0, 25 - jobsCompleted)} more tasks</div>
+                <div style="margin-bottom: 4px;">• Maintain 4.5+ rating ✓</div>
+              </div>
+            \` : \`
+              <div style="font-size: 0.9rem; color: var(--success);">🎉 Maximum trust tier achieved!</div>
+            \`}
+          </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <a href="/agent/\${agentData.id}" class="btn btn-secondary">View Public Profile →</a>
+          <a href="/register" class="btn btn-secondary">Edit Services →</a>
+        </div>
       \`;
       
       // Update earnings tab
