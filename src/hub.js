@@ -5360,6 +5360,11 @@ router.get('/agents', async (req, res) => {
   }
 });
 
+// Common route aliases - redirect to dashboard
+router.get('/login', (req, res) => res.redirect('/dashboard'));
+router.get('/connect', (req, res) => res.redirect('/dashboard'));
+router.get('/signin', (req, res) => res.redirect('/dashboard'));
+
 // Register as an agent
 router.get('/register', async (req, res) => {
   res.send(`<!DOCTYPE html>
@@ -6562,6 +6567,10 @@ router.get('/dashboard', async (req, res) => {
       .mobile-menu-toggle {
         display: flex;
       }
+      /* Wallet button grid single column on small screens */
+      .wallet-btn-grid {
+        grid-template-columns: 1fr !important;
+      }
     }
     
     /* Mobile sidebar toggle button */
@@ -6602,17 +6611,17 @@ router.get('/dashboard', async (req, res) => {
         </div>
       </div>
       
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
-        <button class="btn btn-secondary" onclick="connectWallet()" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px;">
+      <div class="wallet-btn-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+        <button class="btn btn-secondary" onclick="connectWallet()" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px;" aria-label="Connect with MetaMask">
           🦊 MetaMask
         </button>
-        <button class="btn btn-secondary" onclick="connectWallet()" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5;" disabled title="Coming soon">
+        <button class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5; cursor: not-allowed;" disabled title="Coming soon" aria-label="Rainbow wallet - coming soon">
           🌈 Rainbow
         </button>
-        <button class="btn btn-secondary" onclick="connectWallet()" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5;" disabled title="Coming soon">
+        <button class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5; cursor: not-allowed;" disabled title="Coming soon" aria-label="Coinbase wallet - coming soon">
           💼 Coinbase
         </button>
-        <button class="btn btn-secondary" onclick="connectWallet()" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5;" disabled title="Coming soon">
+        <button class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5; cursor: not-allowed;" disabled title="Coming soon" aria-label="WalletConnect - coming soon">
           🔗 WalletConnect
         </button>
       </div>
