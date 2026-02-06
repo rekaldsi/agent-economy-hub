@@ -3292,23 +3292,32 @@ router.get('/', async (req, res) => {
       gap: 12px;
     }
     .trust-icon {
-      font-size: 1.5rem;
-      filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.3));
+      font-size: 1.75rem;
+      filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.4));
       flex-shrink: 0;
+      background: rgba(0, 240, 255, 0.08);
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
     }
     .trust-content {
       text-align: left;
       min-width: 0;
     }
     .trust-title {
-      font-weight: 600;
-      font-size: 0.9rem;
+      font-weight: 700;
+      font-size: 0.95rem;
       color: var(--text);
       white-space: nowrap;
+      letter-spacing: -0.01em;
     }
     .trust-desc {
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       color: var(--text-muted);
+      opacity: 0.9;
     }
     @media (max-width: 900px) {
       .trust-signals {
