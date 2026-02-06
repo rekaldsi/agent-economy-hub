@@ -722,6 +722,54 @@ const HUB_STYLES = `
     align-items: center;
   }
 
+  /* Toggle Switch */
+  .toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+  }
+  .toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .toggle .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    transition: 0.3s;
+    border-radius: 24px;
+  }
+  .toggle .slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--text-muted);
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+  .toggle input:checked + .slider {
+    background-color: var(--accent);
+    border-color: var(--accent);
+  }
+  .toggle input:checked + .slider:before {
+    transform: translateX(20px);
+    background-color: white;
+  }
+  .toggle input:disabled + .slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   /* Icon Buttons */
   .btn-icon {
     padding: 10px;
@@ -6656,6 +6704,12 @@ router.get('/dashboard', async (req, res) => {
     </aside>
 
     <main class="main-content">
+      <!-- Role Tab Bar (shown when user is both hirer AND operator) -->
+      <div id="role-tabs" class="tab-bar hidden" style="margin-bottom: 20px; background: var(--bg-card); border-radius: 12px; padding: 4px;">
+        <button class="tab-btn active" onclick="switchRole('hirer', this)" style="flex: 1;">👤 Hirer View</button>
+        <button class="tab-btn" onclick="switchRole('operator', this)" style="flex: 1;">🤖 Operator View</button>
+      </div>
+      
       <!-- Overview Tab -->
       <div id="overview-tab">
         <div class="page-header" style="margin-bottom: 24px;">
@@ -6824,35 +6878,108 @@ router.get('/dashboard', async (req, res) => {
           </div>
         </div>
         
+        <!-- Wallet & Network -->
         <div class="settings-card">
           <div class="settings-header">
             <span>🔐</span>
-            <h3>Wallet</h3>
+            <h3>Wallet & Network</h3>
           </div>
           <div class="settings-body">
-            <div class="settings-row">
-              <span class="settings-label">Connected Address</span>
-              <span class="settings-value" id="settings-wallet"></span>
+            <div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: var(--bg); border-radius: 12px; margin-bottom: 16px;">
+              <div style="width: 40px; height: 40px; background: linear-gradient(135deg, var(--accent), var(--purple)); border-radius: 10px; display: flex; align-items: center; justify-content: center;">🦊</div>
+              <div style="flex: 1;">
+                <div style="font-family: monospace; font-size: 0.85rem;" id="settings-wallet"></div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                  <a href="#" onclick="navigator.clipboard.writeText(userAddress); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy', 1500); return false;" style="color: var(--accent);">Copy</a>
+                  <span style="margin: 0 8px;">•</span>
+                  <a href="https://basescan.org/address/" id="basescan-link" target="_blank" style="color: var(--accent);">View on Basescan</a>
+                </div>
+              </div>
             </div>
             <div class="settings-row">
               <span class="settings-label">Network</span>
-              <span class="settings-value">Base Mainnet</span>
+              <span class="settings-value" style="color: var(--success);">⛓ Base Mainnet ✓</span>
             </div>
-            <div style="margin-top: 20px;">
-              <button class="btn btn-secondary" onclick="disconnectWallet()">Disconnect Wallet</button>
+            <div class="settings-row">
+              <span class="settings-label">Balance</span>
+              <span class="settings-value">💰 <span id="settings-balance">—</span> USDC</span>
+            </div>
+            <div style="margin-top: 16px;">
+              <button class="btn btn-secondary" onclick="disconnectWallet()" style="color: var(--error); border-color: var(--error);">Disconnect Wallet</button>
             </div>
           </div>
         </div>
         
+        <!-- Notifications -->
         <div class="settings-card">
           <div class="settings-header">
             <span>🔔</span>
             <h3>Notifications</h3>
           </div>
           <div class="settings-body">
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Email Notifications</p>
             <div class="settings-row">
-              <span class="settings-label">Email Notifications</span>
-              <span class="settings-value">Coming soon</span>
+              <span class="settings-label">New job requests</span>
+              <label class="toggle"><input type="checkbox" checked disabled><span class="slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Payment received</span>
+              <label class="toggle"><input type="checkbox" checked disabled><span class="slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Messages</span>
+              <label class="toggle"><input type="checkbox" checked disabled><span class="slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Reviews</span>
+              <label class="toggle"><input type="checkbox" disabled><span class="slider"></span></label>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 12px;">Push Notifications — Coming Soon</p>
+          </div>
+        </div>
+        
+        <!-- Profile -->
+        <div class="settings-card">
+          <div class="settings-header">
+            <span>👤</span>
+            <h3>Profile</h3>
+          </div>
+          <div class="settings-body">
+            <div style="margin-bottom: 16px;">
+              <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 6px;">Display Name</label>
+              <input type="text" id="settings-name" placeholder="Enter your name" style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+            </div>
+            <div style="margin-bottom: 16px;">
+              <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 6px;">Email</label>
+              <input type="email" id="settings-email" placeholder="your@email.com" style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+            </div>
+            <div style="margin-bottom: 16px;">
+              <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 6px;">Twitter / X</label>
+              <input type="text" id="settings-twitter" placeholder="@username" style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+            </div>
+            <button class="btn btn-primary" onclick="alert('Profile saving coming soon!')">Save Changes</button>
+          </div>
+        </div>
+        
+        <!-- Security (Coming Soon) -->
+        <div class="settings-card" style="opacity: 0.6;">
+          <div class="settings-header">
+            <span>🔒</span>
+            <h3>Security</h3>
+            <span style="margin-left: auto; font-size: 0.7rem; background: var(--bg); padding: 4px 8px; border-radius: 4px;">Coming Soon</span>
+          </div>
+          <div class="settings-body">
+            <div class="settings-row">
+              <span class="settings-label">Two-factor authentication</span>
+              <span class="settings-value">—</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Session management</span>
+              <span class="settings-value">—</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">API key management</span>
+              <span class="settings-value">—</span>
             </div>
           </div>
         </div>
@@ -6887,6 +7014,10 @@ router.get('/dashboard', async (req, res) => {
       const shortAddr = userAddress.slice(0,6) + '...' + userAddress.slice(-4);
       document.getElementById('user-wallet').textContent = shortAddr;
       document.getElementById('settings-wallet').textContent = userAddress;
+      
+      // Update Basescan link
+      const basescanLink = document.getElementById('basescan-link');
+      if (basescanLink) basescanLink.href = 'https://basescan.org/address/' + userAddress;
 
       // Load user data
       try {
@@ -6906,6 +7037,11 @@ router.get('/dashboard', async (req, res) => {
 
       // Load jobs
       await loadJobs();
+      
+      // Show role tabs if user is both hirer (has jobs) AND operator (has agent)
+      if (agentData && jobsData.length > 0) {
+        document.getElementById('role-tabs').classList.remove('hidden');
+      }
     }
 
     function disconnectWallet() {
@@ -6917,7 +7053,70 @@ router.get('/dashboard', async (req, res) => {
       document.getElementById('connect-prompt').classList.remove('hidden');
       // Reset sidebar state
       document.getElementById('agent-section').style.display = 'none';
+      document.getElementById('role-tabs').classList.add('hidden');
       document.getElementById('profile-avatar').textContent = '👤';
+    }
+    
+    function switchRole(role, btn) {
+      document.querySelectorAll('#role-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      const hirerSection = document.getElementById('hirer-section');
+      const agentSection = document.getElementById('agent-section');
+      const overviewStats = document.getElementById('overview-stats');
+      
+      if (role === 'operator' && agentData) {
+        // Show operator view
+        hirerSection.style.display = 'none';
+        agentSection.style.display = 'block';
+        // Update overview to show agent stats
+        overviewStats.innerHTML = \`
+          <div class="stat-card">
+            <div class="stat-icon green">💵</div>
+            <div class="stat-label">This Month</div>
+            <div class="stat-value" style="color: var(--success);">$\${Number(agentData.total_earned || 0).toFixed(0)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon gold">⭐</div>
+            <div class="stat-label">Rating</div>
+            <div class="stat-value">\${Number(agentData.rating || 5).toFixed(1)}</div>
+          </div>
+          <div class="stat-card" style="cursor: pointer;" onclick="showTab('agent', document.querySelector('[onclick*=agent]'))">
+            <div class="stat-icon cyan">📦</div>
+            <div class="stat-label">Jobs Done</div>
+            <div class="stat-value">\${agentData.total_jobs || 0}</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">View Agent →</div>
+          </div>
+        \`;
+        showTab('overview', document.querySelector('[onclick*=overview]'));
+      } else {
+        // Show hirer view
+        hirerSection.style.display = 'block';
+        if (agentData) agentSection.style.display = 'block';
+        // Reset overview to hirer stats
+        overviewStats.innerHTML = \`
+          <div class="stat-card" style="cursor: pointer;" onclick="showTab('jobs', document.querySelector('[onclick*=jobs]'))">
+            <div class="stat-icon cyan">💼</div>
+            <div class="stat-label">Active Jobs</div>
+            <div class="stat-value" id="active-jobs">0</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">View All →</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon purple">💰</div>
+            <div class="stat-label">This Month</div>
+            <div class="stat-value" id="total-spent">$0</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Total spent</div>
+          </div>
+          <div class="stat-card" style="cursor: pointer;" onclick="showTab('saved', document.querySelector('[onclick*=saved]'))">
+            <div class="stat-icon gold">⭐</div>
+            <div class="stat-label">Saved Agents</div>
+            <div class="stat-value" id="saved-count">0</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Browse →</div>
+          </div>
+        \`;
+        updateStats();
+        showTab('overview', document.querySelector('[onclick*=overview]'));
+      }
     }
 
     async function loadJobs() {
@@ -7148,6 +7347,23 @@ router.get('/dashboard', async (req, res) => {
         } else {
           debugEl.innerHTML = ''; // Clean - wallet ready, no message needed
         }
+      }
+      
+      // Set up wallet event listeners (event-based, not polling)
+      if (hasEthereum) {
+        window.ethereum.on('accountsChanged', (accounts) => {
+          if (accounts.length === 0) {
+            disconnectWallet();
+          } else {
+            userAddress = accounts[0];
+            loadDashboard();
+          }
+        });
+        
+        window.ethereum.on('chainChanged', () => {
+          // Reload on chain change to ensure correct network state
+          window.location.reload();
+        });
       }
       
       await checkConnection();
