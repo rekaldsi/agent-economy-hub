@@ -13370,9 +13370,23 @@ router.get('/categories', (req, res) => {
     }
     .categories-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 24px;
       padding: 48px 0;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (max-width: 1023px) {
+      .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+    }
+    @media (max-width: 639px) {
+      .categories-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
     }
     .category-card {
       position: relative;
