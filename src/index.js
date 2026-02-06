@@ -55,6 +55,44 @@ app.use(express.static(path.join(__dirname, '../public'), {
   etag: true
 }));
 
+// Serve skill.md for agent onboarding (explicit route for markdown)
+app.get('/skill.md', (req, res) => {
+  res.type('text/markdown');
+  res.sendFile(path.join(__dirname, '../public/skill.md'));
+});
+
+// Serve capability manifest schema
+app.get('/schemas/capability-manifest-v1.json', (req, res) => {
+  res.json({
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "TheBotique Capability Manifest",
+    "version": "1.0",
+    "type": "object",
+    "properties": {
+      "version": { "type": "string" },
+      "capabilities": {
+        "type": "object",
+        "properties": {
+          "can_do": { "type": "array", "items": { "type": "string" } },
+          "cannot_do": { "type": "array", "items": { "type": "string" } },
+          "response_model": { "enum": ["sync", "async", "human_assisted"] },
+          "avg_response_time": { "type": "string" },
+          "human_escalation": { "type": "boolean" }
+        }
+      },
+      "safety": {
+        "type": "object",
+        "properties": {
+          "reads_external_data": { "type": "boolean" },
+          "writes_external_data": { "type": "boolean" },
+          "executes_code": { "type": "boolean" },
+          "requires_human_review": { "type": "boolean" }
+        }
+      }
+    }
+  });
+});
+
 // Request logging and stats
 app.use((req, res, next) => {
   const start = Date.now();
@@ -1026,6 +1064,185 @@ app.get('/api/trust/:wallet', async (req, res) => {
   } catch (error) {
     logger.error('Trust lookup error', { error: error.message });
     res.status(500).json({ error: 'Failed to fetch trust data' });
+  }
+});
+
+// ============================================
+// AGENT JOB POLLING API
+// ============================================
+
+// GET /api/agents/me - Get authenticated agent's profile
+app.get('/api/agents/me', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required in X-API-Key header' });
+    }
+    
+    const result = await db.query(
+      `SELECT a.id, u.name, u.bio, u.wallet_address, a.trust_tier, a.trust_score,
+              a.jobs_completed, a.total_earned_usdc, a.rating_avg, a.rating_count,
+              a.webhook_url, a.capability_manifest, a.created_at
+       FROM agents a
+       JOIN users u ON a.user_id = u.id
+       WHERE a.api_key = $1`,
+      [apiKey]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    const agent = result.rows[0];
+    
+    // Get skills
+    const skills = await db.query(
+      `SELECT id, name, description, category, price_usdc, estimated_time
+       FROM skills WHERE agent_id = $1 AND is_active = true`,
+      [agent.id]
+    );
+    
+    res.json({
+      id: agent.id,
+      name: agent.name,
+      bio: agent.bio,
+      wallet: agent.wallet_address,
+      trust_tier: agent.trust_tier,
+      trust_score: agent.trust_score,
+      jobs_completed: agent.jobs_completed,
+      total_earned_usdc: parseFloat(agent.total_earned_usdc) || 0,
+      rating_avg: parseFloat(agent.rating_avg) || 0,
+      rating_count: agent.rating_count,
+      skills: skills.rows,
+      capability_manifest: agent.capability_manifest,
+      created_at: agent.created_at
+    });
+  } catch (error) {
+    logger.error('Agent profile error', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch agent profile' });
+  }
+});
+
+// PATCH /api/agents/me - Update agent profile
+app.patch('/api/agents/me', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const agentResult = await db.query(
+      `SELECT a.id, a.user_id FROM agents a WHERE a.api_key = $1`,
+      [apiKey]
+    );
+    
+    if (agentResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    const agent = agentResult.rows[0];
+    const { bio, webhook_url, capability_manifest } = req.body;
+    
+    // Update user bio if provided
+    if (bio !== undefined) {
+      await db.query(`UPDATE users SET bio = $1 WHERE id = $2`, [bio, agent.user_id]);
+    }
+    
+    // Update agent fields
+    const updates = [];
+    const values = [];
+    let idx = 1;
+    
+    if (webhook_url !== undefined) {
+      updates.push(`webhook_url = $${idx++}`);
+      values.push(webhook_url);
+    }
+    
+    if (capability_manifest !== undefined) {
+      updates.push(`capability_manifest = $${idx++}`);
+      values.push(JSON.stringify(capability_manifest));
+    }
+    
+    if (updates.length > 0) {
+      values.push(agent.id);
+      await db.query(
+        `UPDATE agents SET ${updates.join(', ')} WHERE id = $${idx}`,
+        values
+      );
+    }
+    
+    res.json({ success: true, message: 'Agent profile updated' });
+  } catch (error) {
+    logger.error('Agent update error', { error: error.message });
+    res.status(500).json({ error: 'Failed to update agent profile' });
+  }
+});
+
+// GET /api/agents/me/jobs - List jobs for authenticated agent
+app.get('/api/agents/me/jobs', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const agentResult = await db.query(
+      `SELECT a.id FROM agents a WHERE a.api_key = $1`,
+      [apiKey]
+    );
+    
+    if (agentResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    const agentId = agentResult.rows[0].id;
+    const { status, limit = 20, offset = 0 } = req.query;
+    
+    let query = `
+      SELECT j.uuid, j.status, j.input_data, j.output_data, j.price_usdc,
+             j.created_at, j.accepted_at, j.delivered_at, j.completed_at,
+             s.name as skill_name, s.category as skill_category,
+             u.name as hirer_name, u.wallet_address as hirer_wallet
+      FROM jobs j
+      JOIN skills s ON j.skill_id = s.id
+      JOIN users u ON j.hirer_id = u.id
+      WHERE s.agent_id = $1
+    `;
+    const values = [agentId];
+    let idx = 2;
+    
+    if (status) {
+      query += ` AND j.status = $${idx++}`;
+      values.push(status);
+    }
+    
+    query += ` ORDER BY j.created_at DESC LIMIT $${idx++} OFFSET $${idx}`;
+    values.push(parseInt(limit), parseInt(offset));
+    
+    const jobs = await db.query(query, values);
+    
+    res.json({
+      jobs: jobs.rows.map(j => ({
+        uuid: j.uuid,
+        status: j.status,
+        skill_name: j.skill_name,
+        skill_category: j.skill_category,
+        price_usdc: parseFloat(j.price_usdc),
+        input_data: j.input_data,
+        output_data: j.output_data,
+        hirer: { name: j.hirer_name, wallet: j.hirer_wallet },
+        created_at: j.created_at,
+        accepted_at: j.accepted_at,
+        delivered_at: j.delivered_at,
+        completed_at: j.completed_at
+      })),
+      count: jobs.rows.length,
+      offset: parseInt(offset),
+      limit: parseInt(limit)
+    });
+  } catch (error) {
+    logger.error('Agent jobs error', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch jobs' });
   }
 });
 
