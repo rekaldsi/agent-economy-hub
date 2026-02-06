@@ -419,6 +419,11 @@ const HUB_STYLES = `
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+  
+  html {
+    overflow-x: hidden;
   }
   
   /* Selection styling */
@@ -1897,20 +1902,47 @@ const HUB_STYLES = `
       padding: 32px 16px;
     }
     footer nav {
-      flex-direction: column;
-      gap: 8px;
-      align-items: center;
+      flex-direction: row !important;
+      flex-wrap: wrap !important;
+      justify-content: center !important;
+      gap: 8px !important;
     }
     footer nav a {
-      min-height: 44px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
+      min-height: 44px !important;
+      padding: 12px 16px !important;
+      display: flex !important;
+      align-items: center !important;
     }
     footer .container {
-      flex-direction: column;
-      gap: 20px;
-      text-align: center;
+      flex-direction: column !important;
+      gap: 20px !important;
+      text-align: center !important;
+      align-items: center !important;
+    }
+    /* Footer social links touch targets */
+    footer .container > div:last-child {
+      justify-content: center !important;
+    }
+    footer .container > div:last-child a {
+      min-width: 44px !important;
+      min-height: 44px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+  }
+  
+  /* Extra small screens - 375px and below */
+  @media (max-width: 375px) {
+    footer .container {
+      padding: 0 8px;
+    }
+    footer nav {
+      gap: 4px !important;
+    }
+    footer nav a {
+      padding: 10px 12px !important;
+      font-size: 0.75rem !important;
     }
   }
 `;
@@ -3801,6 +3833,25 @@ router.get('/', async (req, res) => {
       .cta-buttons .btn { width: 100%; min-height: 48px; }
     }
     
+    /* Extra small phones - 375px */
+    @media (max-width: 375px) {
+      .hero-section { padding: 32px 0 24px; }
+      .hero-title { font-size: 1.5rem; }
+      .hero-subtitle { font-size: 0.85rem; }
+      .hero-search { padding: 6px; flex-direction: column; gap: 8px; }
+      .hero-search input { padding: 12px; font-size: 0.9rem; width: 100%; }
+      .hero-search button { width: 100%; min-height: 48px; }
+      .popular-tags { gap: 6px; }
+      .tag-pill { padding: 10px 12px; font-size: 0.7rem; min-height: 44px; }
+      .stats-bar { flex-direction: column; gap: 16px; padding: 16px; }
+      .stat-block { width: 100%; justify-content: center; }
+      .categories-grid { grid-template-columns: 1fr; gap: 8px; }
+      .category-card { padding: 16px 14px; }
+      .section-header h2 { font-size: 1.25rem; }
+      .section-header p { font-size: 0.8rem; }
+      .container { padding: 12px; }
+    }
+    
     /* Global Touch Target Fixes */
     @media (max-width: 768px) {
       /* Ensure all interactive elements meet 44px touch target */
@@ -4646,6 +4697,23 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
       .pricing-card .btn { min-height: 48px; }
       .stat-item { min-width: 70px; text-align: center; }
     }
+    
+    @media (max-width: 375px) {
+      .agent-hero { padding: 24px 0; }
+      .agent-avatar-lg { width: 64px; height: 64px; font-size: 28px; }
+      .agent-meta h1 { font-size: 1.25rem; }
+      .agent-tagline { font-size: 0.85rem; }
+      .agent-stats-row { gap: 12px; }
+      .stat-item { min-width: 60px; }
+      .stat-item .stat-value { font-size: 0.9rem; }
+      .stat-item .stat-label { font-size: 0.65rem; }
+      .pricing-card { padding: 16px; }
+      .profile-tabs { flex-direction: column; gap: 4px; }
+      .profile-tab { width: 100%; text-align: center; font-size: 0.85rem; }
+      .service-card { padding: 14px; }
+      .service-info h3 { font-size: 0.95rem; }
+      .review-item { padding: 14px; }
+    }
   </style>
 </head>
 <body>
@@ -5344,6 +5412,19 @@ router.get('/agents', async (req, res) => {
       .view-btn { min-height: 44px; min-width: 44px; }
       .agent-card { padding: 20px; }
     }
+    
+    /* Extra small phones - 375px */
+    @media (max-width: 375px) {
+      .browse-hero { padding: 32px 0 24px; }
+      .browse-hero h1 { font-size: 1.5rem; }
+      .browse-hero .subtitle { font-size: 0.85rem; }
+      .filter-row { flex-direction: column; gap: 8px; width: 100%; }
+      .filter-select { width: 100%; }
+      .category-pill { font-size: 0.75rem; padding: 10px 14px; }
+      .agent-card { padding: 16px; }
+      .agent-card h3 { font-size: 1.1rem; }
+      .card-meta { flex-wrap: wrap; gap: 12px; }
+    }
   </style>
 </head>
 <body>
@@ -5668,6 +5749,18 @@ router.get('/register', async (req, res) => {
       .btn-row .btn { min-height: 48px; }
       .add-skill-btn { min-height: 48px; }
       .remove-skill { min-height: 44px; min-width: 44px; }
+    }
+    
+    @media (max-width: 375px) {
+      .register-hero h1 { font-size: 1.5rem; }
+      .register-hero p { font-size: 0.85rem; }
+      .register-form { padding: 16px; margin: 0 8px 32px; }
+      .form-group label { font-size: 0.85rem; }
+      .form-group input, .form-group textarea, .form-group select { font-size: 16px; padding: 12px; }
+      .step-indicator { gap: 4px; }
+      .step { padding: 8px 10px; font-size: 0.75rem; }
+      .btn-row { flex-direction: column; gap: 8px; }
+      .btn-row .btn { width: 100%; }
     }
   </style>
 </head>
@@ -12519,6 +12612,24 @@ router.get('/categories', (req, res) => {
       font-size: 0.9rem;
       margin: 0;
       line-height: 1.5;
+    }
+    
+    @media (max-width: 768px) {
+      .categories-hero { padding: 48px 0; }
+      .categories-hero h1 { font-size: 2rem; }
+      .categories-grid { gap: 16px; padding: 32px 0; }
+      .category-card { padding: 24px 20px; }
+    }
+    
+    @media (max-width: 375px) {
+      .categories-hero { padding: 32px 0; }
+      .categories-hero h1 { font-size: 1.5rem; }
+      .categories-hero p { font-size: 0.9rem; }
+      .categories-grid { grid-template-columns: 1fr; gap: 12px; padding: 24px 0; }
+      .category-card { padding: 20px 16px; }
+      .category-card .card-icon { font-size: 2.5rem; margin-bottom: 12px; }
+      .category-card h3 { font-size: 1.1rem; }
+      .category-card p { font-size: 0.85rem; }
     }
   </style>
 </head>
