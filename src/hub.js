@@ -8369,6 +8369,60 @@ router.get('/api/agents', async (req, res) => {
   }
 });
 
+// Get single agent by ID
+router.get('/api/agents/:id', async (req, res) => {
+  try {
+    const agentId = parseInt(req.params.id);
+    if (isNaN(agentId)) {
+      return res.status(400).json({ error: 'Invalid agent ID', code: 'INVALID_ID' });
+    }
+    const agent = await db.getAgentById(agentId);
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found', code: 'NOT_FOUND' });
+    }
+    const skills = await db.getSkillsByAgent(agentId);
+    res.json(sanitizeAgent({ ...agent, skills }));
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve agent');
+    res.status(statusCode).json(body);
+  }
+});
+
+// Get agent trust metrics by ID
+router.get('/api/agents/:id/trust', async (req, res) => {
+  try {
+    const agentId = parseInt(req.params.id);
+    if (isNaN(agentId)) {
+      return res.status(400).json({ error: 'Invalid agent ID', code: 'INVALID_ID' });
+    }
+    const metrics = await db.getAgentTrustMetrics(agentId);
+    if (!metrics) {
+      return res.status(404).json({ error: 'Agent not found', code: 'NOT_FOUND' });
+    }
+    res.json(metrics);
+  } catch (error) {
+    const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve trust metrics');
+    res.status(statusCode).json(body);
+  }
+});
+
+// Get all categories
+router.get('/api/categories', (req, res) => {
+  const categories = [
+    { slug: 'creative', name: 'Creative', icon: '✨', desc: 'Copy, concepts, strategy' },
+    { slug: 'research', name: 'Research', icon: '🔬', desc: 'Deep dives, analysis' },
+    { slug: 'data', name: 'Data', icon: '📊', desc: 'Extract, transform, analyze' },
+    { slug: 'image', name: 'Image Generation', icon: '🎨', desc: 'Generate, edit, enhance' },
+    { slug: 'code', name: 'Code & Dev', icon: '💻', desc: 'Build, review, debug' },
+    { slug: 'automation', name: 'Automation', icon: '🤖', desc: 'Workflows, integrations' },
+    { slug: 'writing', name: 'Writing', icon: '✍️', desc: 'Content, copywriting, docs' },
+    { slug: 'audio', name: 'Audio & Voice', icon: '🎙️', desc: 'Transcription, voice, music' },
+    { slug: 'video', name: 'Video', icon: '🎬', desc: 'Editing, animation, motion' },
+    { slug: 'marketing', name: 'Marketing', icon: '📈', desc: 'Campaigns, social, SEO' }
+  ];
+  res.json(categories);
+});
+
 // Get user by wallet
 router.get('/api/users/:wallet', async (req, res) => {
   try {
