@@ -10348,7 +10348,19 @@ router.get('/api/agents', async (req, res) => {
     
     // Sort
     const sort = req.query.sort;
-    if (sort === 'rating') {
+    const budget = req.query.budget ? parseFloat(req.query.budget) : null;
+    
+    if (sort === 'smart' || sort === 'recommended') {
+      // Q-Learning Router: Smart scoring based on query context
+      const requirements = query ? agentRouter.parseQuery(query) : {};
+      if (category) requirements.category = category;
+      if (budget) requirements.budget = budget;
+      
+      agents = agents.map(agent => {
+        const { score, reasons } = agentRouter.scoreAgentForJob(agent, requirements);
+        return { ...agent, _matchScore: score, _matchReasons: reasons };
+      }).sort((a, b) => b._matchScore - a._matchScore);
+    } else if (sort === 'rating') {
       agents.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     } else if (sort === 'jobs') {
       agents.sort((a, b) => (b.total_jobs || 0) - (a.total_jobs || 0));
@@ -10374,11 +10386,22 @@ router.get('/api/agents', async (req, res) => {
     const total = agents.length;
     agents = agents.slice(offset, offset + limit);
     
+    // Include match scores when using smart sort
+    const responseAgents = agents.map(a => {
+      const sanitized = sanitizeAgent(a);
+      if (a._matchScore !== undefined) {
+        sanitized.match_score = a._matchScore;
+        sanitized.match_reasons = a._matchReasons;
+      }
+      return sanitized;
+    });
+    
     res.json({
-      agents: sanitizeAgents(agents),
+      agents: responseAgents,
       total,
       limit,
-      offset
+      offset,
+      sort: sort || 'default'
     });
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve agents');
@@ -10412,6 +10435,85 @@ router.get('/api/agents/search', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+// ============================================
+// Q-LEARNING ROUTER: Smart Agent Recommendations
+// ============================================
+const agentRouter = require('./agent-router');
+
+/**
+ * GET /api/agents/recommend - Smart agent recommendations
+ * 
+ * Query params:
+ *   query - Natural language description of what you need
+ *   category - Filter by category (research, writing, code, etc.)
+ *   budget - Maximum budget in USDC
+ *   skills - Comma-separated list of required skills
+ *   limit - Number of results (default 10, max 50)
+ * 
+ * Returns scored recommendations with explanations
+ */
+router.get('/api/agents/recommend', async (req, res) => {
+  try {
+    const { query, category, budget, skills, limit = 10 } = req.query;
+    
+    // Validate limit
+    const parsedLimit = Math.min(50, Math.max(1, parseInt(limit) || 10));
+    
+    // Get all active agents
+    const agents = await db.getAllAgents();
+    
+    // Get recommendations using the router
+    const recommendations = agentRouter.getRecommendations(agents, {
+      query,
+      category,
+      budget: budget ? parseFloat(budget) : null,
+      skills,
+      limit: parsedLimit
+    });
+    
+    // Format response
+    const response = {
+      recommendations: recommendations.map(r => ({
+        agent: sanitizeAgent(r.agent),
+        score: r.score,
+        reasons: r.reasons,
+        breakdown: r.breakdown
+      })),
+      query: query || null,
+      filters: {
+        category: category || null,
+        budget: budget ? parseFloat(budget) : null,
+        skills: skills ? skills.split(',').map(s => s.trim()) : null
+      },
+      total: recommendations.length
+    };
+    
+    res.json(response);
+  } catch (error) {
+    logger.error('Recommendation failed', { error: error.message });
+    res.status(500).json({ 
+      error: 'Failed to get recommendations',
+      code: 'RECOMMENDATION_ERROR'
+    });
+  }
+});
+
+/**
+ * GET /api/agents/recommend/stats - Learning statistics
+ * Admin endpoint to view match outcome patterns
+ */
+router.get('/api/agents/recommend/stats', async (req, res) => {
+  try {
+    const stats = await agentRouter.getLearningStats(db);
+    res.json({
+      learning_stats: stats,
+      weights: agentRouter.DEFAULT_WEIGHTS
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get stats' });
   }
 });
 
@@ -10700,6 +10802,20 @@ router.post('/api/register-agent', validateBody(registerAgentSchema), async (req
         'UPDATE users SET verified_at = CURRENT_TIMESTAMP WHERE id = $1',
         [user.id]
       );
+    }
+
+    // Compute embedding for semantic search (async, don't block registration)
+    const embeddingsModule = getEmbeddingsModule();
+    if (embeddingsModule && embeddingsModule.isEmbeddingsAvailable()) {
+      // Fire and forget - don't wait for embedding computation
+      embeddingsModule.computeAgentEmbedding(agent.id)
+        .then(success => {
+          if (success) {
+            db.query('UPDATE agents SET embedding_updated_at = NOW() WHERE id = $1', [agent.id]);
+            console.log(`Embedding computed for new agent ${agent.id}`);
+          }
+        })
+        .catch(err => console.error('Failed to compute embedding for new agent:', err.message));
     }
 
     res.json({
@@ -11625,6 +11741,10 @@ router.post('/api/jobs/:uuid/decline', validateUuidParam('uuid'), async (req, re
     // Mark as refunded (in production, trigger actual refund)
     await db.updateJobStatus(job.id, 'refunded');
     
+    // Q-Learning: Record cancelled outcome for learning
+    agentRouter.recordMatchOutcome(db, job.job_uuid, job.agent_id, null, 'cancelled')
+      .catch(e => logger.error('Failed to record match outcome', { error: e.message }));
+    
     res.json({ 
       success: true, 
       jobUuid: job.job_uuid, 
@@ -11717,6 +11837,14 @@ router.post('/api/jobs/:uuid/approve', validateUuidParam('uuid'), requireWalletS
     // Update completion rate and trust tier
     await db.updateAgentCompletionRate(agent.id);
     await db.calculateTrustTier(agent.id);
+    
+    // Q-Learning: Record successful outcome for learning
+    agentRouter.recordMatchOutcome(db, job.job_uuid, agent.id, null, 'completed')
+      .catch(e => logger.error('Failed to record match outcome', { error: e.message }));
+    
+    // Q-Learning: Update agent performance stats
+    agentRouter.updateAgentPerformanceStats(db, agent.id)
+      .catch(e => logger.error('Failed to update agent stats', { error: e.message }));
     
     // Phase 2: Dispatch webhook event
     onJobApproved(job).catch(e => console.error('onJobApproved webhook error:', e.message));
@@ -11859,6 +11987,10 @@ router.post('/api/jobs/:uuid/dispute', validateUuidParam('uuid'), requireWalletS
       // Email failure should not fail the dispute
       console.log('[Dispute] Email notification failed (non-critical): ' + emailError.message);
     }
+    
+    // Q-Learning: Record disputed outcome for learning
+    agentRouter.recordMatchOutcome(db, job.job_uuid, job.agent_id, null, 'disputed')
+      .catch(e => logger.error('Failed to record match outcome', { error: e.message }));
     
     res.json({ 
       success: true, 

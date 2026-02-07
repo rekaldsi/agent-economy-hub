@@ -7,6 +7,7 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "seed": "node scripts/seed.js",
+    "backfill:embeddings": "node scripts/backfill-embeddings.js",
     "lint:css": "echo 'CSS is inline in hub.js - run stylelint manually on extracted CSS'"
   },
   "dependencies": {
