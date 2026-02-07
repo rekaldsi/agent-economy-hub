@@ -3524,7 +3524,8 @@ router.get('/', async (req, res) => {
       max-width: 700px;
       margin-left: auto;
       margin-right: auto;
-      padding: 0 16px;
+      padding: 8px 16px 0;
+      overflow: visible;
     }
     
     .tag-pill {
@@ -3543,7 +3544,8 @@ router.get('/', async (req, res) => {
       border-color: var(--accent);
       color: var(--accent);
       background: rgba(0, 240, 255, 0.05);
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0, 240, 255, 0.3), 0 0 10px rgba(0, 240, 255, 0.2);
     }
     
     /* When many categories, show horizontal scroll on mobile */
@@ -4993,7 +4995,7 @@ router.get('/', async (req, res) => {
         </p>
         
         <div class="hero-search">
-          <input type="text" id="search-input" placeholder="What do you need help with?" onkeypress="if(event.key==='Enter')doSearch()">
+          <input type="text" id="search-input" placeholder="What do you need done today?" onkeypress="if(event.key==='Enter')doSearch()" autocomplete="off">
           <button onclick="doSearch()" aria-label="Search">→</button>
         </div>
         
@@ -5246,6 +5248,12 @@ router.get('/', async (req, res) => {
 
   ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}
+    // Clear search input on page load to reset any persisted state
+    document.addEventListener('DOMContentLoaded', function() {
+      const searchInput = document.getElementById('search-input');
+      if (searchInput) searchInput.value = '';
+    });
+    
     function doSearch() {
       const query = document.getElementById('search-input').value.trim();
       if (query) {
@@ -6490,9 +6498,9 @@ router.get('/agents', async (req, res) => {
       <h1>Browse AI Agents</h1>
       <p class="subtitle">${agents.length} ${agents.length === 1 ? 'agent' : 'agents'} ready to work for you</p>
       
-      <form class="search-bar" method="get" action="/agents">
+      <form class="search-bar" method="get" action="/agents" autocomplete="off">
         <div class="search-row">
-          <input type="text" name="search" placeholder="Search agents by skill, name, or description..." value="${escapeHtml(search || '')}">
+          <input type="text" name="search" placeholder="Search agents by skill, name, or description..." value="${escapeHtml(search || '')}" autocomplete="off">
           <button type="submit" class="btn btn-primary">Search</button>
         </div>
 
@@ -15209,6 +15217,21 @@ router.get('/compare', async (req, res) => {
 
     function renderAgentList() {
       const container = document.getElementById('agent-list');
+      const selectorDiv = document.getElementById('agent-selector');
+      
+      // If fewer than 2 agents, show helpful message and hide selector
+      if (allAgents.length < 2) {
+        selectorDiv.innerHTML = \`
+          <div style="text-align: center; padding: 48px 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);">
+            <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
+            <h3 style="margin-bottom: 8px;">Compare requires 2+ agents</h3>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">There \${allAgents.length === 1 ? 'is currently only 1 agent' : 'are no agents'} in the marketplace. Check back later when more agents are available!</p>
+            <a href="/agents" class="btn btn-primary">Browse Agents</a>
+          </div>
+        \`;
+        return;
+      }
+      
       container.innerHTML = allAgents.map(agent => \`
         <label class="agent-checkbox \${selectedAgents.has(agent.id) ? 'selected' : ''}" onclick="toggleAgent(\${agent.id}, event)">
           <input type="checkbox" \${selectedAgents.has(agent.id) ? 'checked' : ''} style="display: none;">
