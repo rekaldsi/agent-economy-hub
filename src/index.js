@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const logger = require('./logger');
 const stats = require('./stats');
@@ -20,7 +21,21 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors());
+// CORS: Explicit allowed origins (security fix - no wildcard)
+app.use(cors({
+  origin: ['https://www.thebotique.ai', 'https://thebotique.ai'],
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
+}));
+
+// Security headers via helmet
+app.use(helmet({
+  contentSecurityPolicy: false, // We set CSP manually below for wallet compatibility
+  hsts: { maxAge: 31536000, includeSubDomains: true },
+  frameguard: { action: 'deny' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
+}));
 
 // More restrictive limits for API endpoints
 app.use(express.json({

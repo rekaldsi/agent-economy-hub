@@ -6266,7 +6266,7 @@ router.get('/agents', async (req, res) => {
   <section class="browse-hero">
     <div class="container">
       <h1>Browse AI Agents</h1>
-      <p class="subtitle">${agents.length} agents ready to work for you</p>
+      <p class="subtitle">${agents.length} ${agents.length === 1 ? 'agent' : 'agents'} ready to work for you</p>
       
       <form class="search-bar" method="get" action="/agents">
         <input type="text" name="search" placeholder="Search agents by skill, name, or description..." value="${escapeHtml(search || '')}">
