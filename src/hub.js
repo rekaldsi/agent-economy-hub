@@ -7793,6 +7793,8 @@ router.get('/dashboard', async (req, res) => {
       border: 1px solid var(--border);
       margin-bottom: 24px;
       width: fit-content;
+      max-width: 100%;
+      box-sizing: border-box;
     }
     .tab-btn {
       background: none;
@@ -7804,6 +7806,7 @@ router.get('/dashboard', async (req, res) => {
       font-size: 0.85rem;
       font-weight: 500;
       transition: all var(--duration-fast);
+      min-width: 0; /* Allow shrinking */
     }
     .tab-btn:hover {
       color: var(--text);
@@ -8167,6 +8170,8 @@ router.get('/dashboard', async (req, res) => {
     @media (max-width: 768px) {
       .dashboard-grid {
         grid-template-columns: 1fr;
+        max-width: 100vw;
+        overflow-x: hidden;
       }
       .sidebar {
         position: fixed;
@@ -8229,9 +8234,16 @@ router.get('/dashboard', async (req, res) => {
       .jobs-card {
         border-radius: 12px;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
       }
       .jobs-table {
-        min-width: 500px;
+        min-width: 420px;
+      }
+      .jobs-table th,
+      .jobs-table td {
+        padding: 12px 10px;
+        font-size: 0.8rem;
       }
       .jobs-table th:nth-child(3),
       .jobs-table td:nth-child(3),
@@ -8242,12 +8254,24 @@ router.get('/dashboard', async (req, res) => {
       .tab-bar {
         width: 100%;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
       .tab-btn {
         flex: 1;
         padding: 10px 12px;
         font-size: 0.8rem;
         white-space: nowrap;
+      }
+      /* Main content overflow protection */
+      .main-content {
+        overflow-x: hidden;
+        max-width: 100%;
+      }
+      /* Empty state text wrapping */
+      .empty-state p {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
       }
       .mobile-menu-toggle {
         display: flex;
@@ -8361,6 +8385,49 @@ router.get('/dashboard', async (req, res) => {
       /* Wallet button grid single column */
       .wallet-btn-grid {
         grid-template-columns: 1fr !important;
+      }
+      /* Role tabs - smaller text for small screens */
+      #role-tabs {
+        padding: 3px;
+      }
+      #role-tabs .tab-btn {
+        font-size: 0.75rem;
+        padding: 8px 10px;
+      }
+      /* Jobs table even smaller */
+      .jobs-table {
+        min-width: 350px;
+      }
+      .jobs-table th,
+      .jobs-table td {
+        padding: 10px 8px;
+        font-size: 0.75rem;
+      }
+      /* Hide more columns on very small screens */
+      .jobs-table th:nth-child(4),
+      .jobs-table td:nth-child(4) {
+        display: none;
+      }
+      /* Main content tighter padding */
+      .main-content {
+        padding: 12px;
+      }
+      /* Page header smaller */
+      .page-header h1 {
+        font-size: 1.25rem;
+      }
+      /* Stat cards smaller */
+      .stat-card {
+        padding: 12px;
+      }
+      .stat-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        margin-bottom: 6px;
+      }
+      .stat-value {
+        font-size: 1rem;
       }
     }
     
