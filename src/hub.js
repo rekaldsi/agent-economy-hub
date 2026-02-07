@@ -970,8 +970,15 @@ const HUB_STYLES = `
 
   /* Large Buttons */
   .btn-lg {
-    padding: 14px 28px;
+    padding: 16px 32px;
     font-size: 1.05rem;
+  }
+  @media (max-width: 480px) {
+    .btn-lg {
+      padding: 14px 24px;
+      font-size: 1rem;
+      width: 100%;
+    }
   }
 
   /* Focus Styles (Accessibility) */
@@ -1316,7 +1323,7 @@ const HUB_STYLES = `
   }
   .agents-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 24px;
     margin-bottom: 48px;
   }
@@ -1839,7 +1846,7 @@ const HUB_STYLES = `
     }
 
     .agents-grid {
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 20px;
     }
 
@@ -4542,7 +4549,7 @@ router.get('/', async (req, res) => {
       .stat-icon { font-size: 1rem; }
       .stat-block .number { font-size: 1.25rem; }
       .stat-block { gap: 4px; }
-      .chain-indicator { font-size: 0.65rem; flex-wrap: wrap; text-align: center; }
+      .chain-indicator { font-size: 0.65rem; flex-wrap: wrap; text-align: center; justify-content: center; }
       .categories-section { padding: 30px 0; }
       .section-header h2 { font-size: 1.5rem; margin-bottom: 8px; }
       .section-header p { font-size: 0.85rem; }
@@ -4585,8 +4592,8 @@ router.get('/', async (req, res) => {
       .stats-bar { grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px; }
       .stat-block { width: 100%; justify-content: center; gap: 4px; }
       .stat-block .number { font-size: 1.1rem; }
-      .categories-grid { grid-template-columns: 1fr; gap: 8px; }
-      .category-card { padding: 16px 14px; }
+      .categories-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+      .category-card { padding: 12px 10px; min-height: 90px; }
       .section-header h2 { font-size: 1.25rem; }
       .section-header p { font-size: 0.8rem; }
       .container { padding: 12px; }
@@ -5079,7 +5086,7 @@ router.get('/', async (req, res) => {
       </div>
       
       <div style="text-align: center; margin-top: 48px;">
-        <a href="/agents" class="btn btn-secondary" style="padding: 16px 32px;">
+        <a href="/agents" class="btn btn-secondary btn-lg">
           ${agents.length > 10 ? `Browse All ${agents.length} Agents →` : 'Explore Available Agents →'}
         </a>
       </div>
@@ -5219,8 +5226,8 @@ router.get('/', async (req, res) => {
         <h2>Ready to hire an AI agent?</h2>
         <p>Get work done faster with verified AI agents. Pay with crypto, receive results in seconds.</p>
         <div class="cta-buttons">
-          <a href="/agents" class="btn btn-primary" style="padding: 16px 32px;">Browse Agents</a>
-          <a href="/register" class="btn btn-secondary" style="padding: 16px 32px;">List Your Agent</a>
+          <a href="/agents" class="btn btn-primary btn-lg">Browse Agents</a>
+          <a href="/register" class="btn btn-secondary btn-lg">List Your Agent</a>
         </div>
         <div style="margin-top: 24px; display: flex; gap: 24px; justify-content: center; flex-wrap: wrap;">
           <span style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem;">
@@ -6728,7 +6735,7 @@ curl -X POST https://www.thebotique.ai/api/jobs/JOB_UUID/deliver \\
     <div class="cta-box">
       <h2>Ready to List Your Agent?</h2>
       <p>Founding operators get lifetime benefits and priority placement.</p>
-      <a href="/register" class="btn btn-primary" style="padding: 16px 32px;">Register Now →</a>
+      <a href="/register" class="btn btn-primary btn-lg">Register Now →</a>
       <div style="margin-top: 16px;">
         <a href="/skill.md" style="color: var(--text-muted);">View full technical spec →</a>
       </div>
@@ -7028,7 +7035,7 @@ router.get('/register', async (req, res) => {
           <div class="icon">🔗</div>
           <h2>Connect Your Wallet</h2>
           <p>Your wallet address will receive payments for completed tasks</p>
-          <button class="btn btn-primary" style="padding: 16px 32px; font-size: 1rem;" onclick="connectAndNext()">
+          <button class="btn btn-primary btn-lg" onclick="connectAndNext()">
             Connect Wallet
           </button>
         </div>
@@ -7321,6 +7328,8 @@ router.get('/dashboard', async (req, res) => {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      max-width: 100%;
+      display: block;
     }
     .profile-role {
       display: none;
@@ -8095,6 +8104,37 @@ router.get('/dashboard', async (req, res) => {
         grid-template-columns: 1fr !important;
       }
     }
+    
+    /* Feature Grid - What you can do */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      text-align: center;
+    }
+    .feature-item {
+      padding: 16px 8px;
+      background: var(--bg);
+      border-radius: 12px;
+    }
+    .feature-icon {
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+    }
+    .feature-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    @media (max-width: 480px) {
+      .feature-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 360px) {
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -8137,18 +8177,18 @@ router.get('/dashboard', async (req, res) => {
       
       <div style="border-top: 1px solid var(--border); padding-top: 20px;">
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; text-align: center;">What you can do once connected:</p>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
-          <div style="padding: 16px 8px; background: var(--bg); border-radius: 12px;">
-            <div style="font-size: 1.5rem; margin-bottom: 4px;">💼</div>
-            <div style="font-size: 0.75rem; font-weight: 500;">Hire Agents</div>
+        <div class="feature-grid">
+          <div class="feature-item">
+            <div class="feature-icon">💼</div>
+            <div class="feature-label">Hire Agents</div>
           </div>
-          <div style="padding: 16px 8px; background: var(--bg); border-radius: 12px;">
-            <div style="font-size: 1.5rem; margin-bottom: 4px;">🤖</div>
-            <div style="font-size: 0.75rem; font-weight: 500;">List Agent</div>
+          <div class="feature-item">
+            <div class="feature-icon">🤖</div>
+            <div class="feature-label">List Agent</div>
           </div>
-          <div style="padding: 16px 8px; background: var(--bg); border-radius: 12px;">
-            <div style="font-size: 1.5rem; margin-bottom: 4px;">💰</div>
-            <div style="font-size: 0.75rem; font-weight: 500;">Manage Pay</div>
+          <div class="feature-item">
+            <div class="feature-icon">💰</div>
+            <div class="feature-label">Manage Pay</div>
           </div>
         </div>
       </div>
@@ -14298,6 +14338,7 @@ router.get('/docs', (req, res) => {
       border-radius: 4px;
       font-size: 0.85em;
       color: var(--accent);
+      word-break: break-word;
     }
     pre {
       background: var(--bg);
@@ -14305,9 +14346,17 @@ router.get('/docs', (req, res) => {
       border-radius: var(--radius-md);
       padding: 20px;
       overflow-x: auto;
+      max-width: 100%;
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.85rem;
       line-height: 1.6;
+      -webkit-overflow-scrolling: touch;
+    }
+    /* Scrollable table wrapper for mobile */
+    .table-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 12px 0;
     }
     .param-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     .param-table th, .param-table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
@@ -14323,11 +14372,16 @@ router.get('/docs', (req, res) => {
       .endpoint-header { padding: 14px 16px; }
       .endpoint-path { font-size: 0.8rem; word-break: break-all; }
       .endpoint-body { padding: 16px; }
-      pre { padding: 14px; font-size: 0.75rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      .param-table { font-size: 0.8rem; display: block; overflow-x: auto; }
+      pre { padding: 14px; font-size: 0.75rem; }
+      .param-table { font-size: 0.8rem; }
+      .table-wrapper { margin: 8px -16px; padding: 0 16px; }
       .param-table th, .param-table td { padding: 8px 6px; white-space: nowrap; }
       code { font-size: 0.8em; padding: 2px 6px; }
       .docs-content .btn { min-height: 48px; }
+    }
+    @media (max-width: 600px) {
+      pre { font-size: 12px; padding: 12px; }
+      code { font-size: 0.75em; }
     }
     @media (max-width: 480px) {
       .docs-content { padding: 24px 12px; }
@@ -14472,14 +14526,16 @@ router.get('/docs', (req, res) => {
       </div>
       <div class="endpoint-body">
         <p>Search agents with filters.</p>
-        <table class="param-table">
-          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
-          <tr><td><code>q</code></td><td>string</td><td>Search query</td></tr>
-          <tr><td><code>category</code></td><td>string</td><td>Filter by category</td></tr>
-          <tr><td><code>min_rating</code></td><td>number</td><td>Minimum rating (0-5)</td></tr>
-          <tr><td><code>trust_tier</code></td><td>string</td><td>Minimum trust tier</td></tr>
-          <tr><td><code>sort</code></td><td>string</td><td>rating, tasks, price</td></tr>
-        </table>
+        <div class="table-wrapper">
+          <table class="param-table">
+            <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+            <tr><td><code>q</code></td><td>string</td><td>Search query</td></tr>
+            <tr><td><code>category</code></td><td>string</td><td>Filter by category</td></tr>
+            <tr><td><code>min_rating</code></td><td>number</td><td>Minimum rating (0-5)</td></tr>
+            <tr><td><code>trust_tier</code></td><td>string</td><td>Minimum trust tier</td></tr>
+            <tr><td><code>sort</code></td><td>string</td><td>rating, tasks, price</td></tr>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -14490,10 +14546,12 @@ router.get('/docs', (req, res) => {
       </div>
       <div class="endpoint-body">
         <p>Compare 2-5 agents side by side.</p>
-        <table class="param-table">
-          <tr><th>Param</th><th>Type</th><th>Description</th></tr>
-          <tr><td><code>ids</code></td><td>string</td><td>Comma-separated agent IDs (e.g., 1,2,3)</td></tr>
-        </table>
+        <div class="table-wrapper">
+          <table class="param-table">
+            <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+            <tr><td><code>ids</code></td><td>string</td><td>Comma-separated agent IDs (e.g., 1,2,3)</td></tr>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -14580,14 +14638,16 @@ router.get('/docs', (req, res) => {
 
     <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin: 24px 0;">
       <h3 style="margin-top: 0;">📬 Webhook Events</h3>
-      <table class="param-table">
-        <tr><th>Event</th><th>When</th><th>Action Required</th></tr>
-        <tr><td><code>job.created</code></td><td>Job submitted (pending payment)</td><td>None - wait for payment</td></tr>
-        <tr><td><code>job.paid</code></td><td>Payment confirmed on-chain</td><td><strong>Start working!</strong></td></tr>
-        <tr><td><code>job.accepted</code></td><td>Agent accepted the job</td><td>Confirmation only</td></tr>
-        <tr><td><code>job.approved</code></td><td>Client approved delivery</td><td>Payment released 🎉</td></tr>
-        <tr><td><code>job.disputed</code></td><td>Client disputed delivery</td><td>Respond to dispute</td></tr>
-      </table>
+      <div class="table-wrapper">
+        <table class="param-table">
+          <tr><th>Event</th><th>When</th><th>Action Required</th></tr>
+          <tr><td><code>job.created</code></td><td>Job submitted (pending payment)</td><td>None - wait for payment</td></tr>
+          <tr><td><code>job.paid</code></td><td>Payment confirmed on-chain</td><td><strong>Start working!</strong></td></tr>
+          <tr><td><code>job.accepted</code></td><td>Agent accepted the job</td><td>Confirmation only</td></tr>
+          <tr><td><code>job.approved</code></td><td>Client approved delivery</td><td>Payment released 🎉</td></tr>
+          <tr><td><code>job.disputed</code></td><td>Client disputed delivery</td><td>Respond to dispute</td></tr>
+        </table>
+      </div>
     </div>
 
     <div style="background: rgba(255, 184, 0, 0.1); border: 1px solid var(--warning); border-radius: 8px; padding: 20px; margin: 24px 0;">
@@ -14729,12 +14789,14 @@ if (signature !== expected) {
 
     <h2>⚡ Rate Limits</h2>
     <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin: 24px 0;">
-      <table class="param-table">
-        <tr><th>Endpoint Type</th><th>Limit</th><th>Window</th></tr>
-        <tr><td>Public (GET)</td><td>100 requests</td><td>per minute</td></tr>
-        <tr><td>Authenticated</td><td>300 requests</td><td>per minute</td></tr>
-        <tr><td>Webhooks</td><td>Unlimited</td><td>—</td></tr>
-      </table>
+      <div class="table-wrapper">
+        <table class="param-table">
+          <tr><th>Endpoint Type</th><th>Limit</th><th>Window</th></tr>
+          <tr><td>Public (GET)</td><td>100 requests</td><td>per minute</td></tr>
+          <tr><td>Authenticated</td><td>300 requests</td><td>per minute</td></tr>
+          <tr><td>Webhooks</td><td>Unlimited</td><td>—</td></tr>
+        </table>
+      </div>
       <p style="color: var(--text-muted); margin-top: 12px; margin-bottom: 0;">Rate limit headers included in responses: <code>X-RateLimit-Remaining</code>, <code>X-RateLimit-Reset</code></p>
     </div>
 
