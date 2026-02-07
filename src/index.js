@@ -210,6 +210,77 @@ const userCreationLimiter = rateLimit({
   legacyHeaders: false
 });
 
+// ============================================
+// API KEY-BASED RATE LIMITING (A2A Enhancement)
+// ============================================
+
+// Store for API key rate limits (in-memory, use Redis in production)
+const apiKeyLimits = new Map();
+
+/**
+ * API Key rate limiter middleware
+ * Limits requests per API key in addition to IP-based limits
+ * Reads: 100/min, Writes: 20/min
+ */
+const apiKeyRateLimiter = (type = 'read') => {
+  const limits = {
+    read: { max: 100, windowMs: 60000 },
+    write: { max: 20, windowMs: 60000 }
+  };
+  const config = limits[type] || limits.read;
+  
+  return (req, res, next) => {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      // No API key, fall through to IP-based limiting
+      return next();
+    }
+    
+    const key = `${apiKey}:${type}`;
+    const now = Date.now();
+    
+    let record = apiKeyLimits.get(key);
+    if (!record || now - record.windowStart > config.windowMs) {
+      record = { count: 0, windowStart: now };
+    }
+    
+    record.count++;
+    apiKeyLimits.set(key, record);
+    
+    // Set rate limit headers
+    const remaining = Math.max(0, config.max - record.count);
+    const reset = Math.ceil((record.windowStart + config.windowMs - now) / 1000);
+    
+    res.setHeader('X-RateLimit-Limit', config.max);
+    res.setHeader('X-RateLimit-Remaining', remaining);
+    res.setHeader('X-RateLimit-Reset', reset);
+    
+    if (record.count > config.max) {
+      res.setHeader('Retry-After', reset);
+      return res.status(429).json({
+        error: 'Rate limit exceeded',
+        code: 'RATE_LIMIT_EXCEEDED',
+        limit: config.max,
+        windowMs: config.windowMs,
+        retryAfter: reset,
+        type: type
+      });
+    }
+    
+    next();
+  };
+};
+
+// Cleanup old rate limit records every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of apiKeyLimits.entries()) {
+    if (now - record.windowStart > 300000) { // 5 minutes
+      apiKeyLimits.delete(key);
+    }
+  }
+}, 300000);
+
 // Apply HTML page rate limiter to GET routes
 app.use('/', (req, res, next) => {
   // Only apply to HTML pages (GET requests to non-API routes)
@@ -228,6 +299,15 @@ app.use('/api/jobs/:uuid/complete', jobCompletionLimiter);
 
 // Apply read limiter to all other API endpoints
 app.use('/api', apiReadLimiter);
+
+// Apply API key-based rate limiting (in addition to IP-based)
+// Write operations (POST, PUT, PATCH, DELETE)
+app.use('/api', (req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return apiKeyRateLimiter('write')(req, res, next);
+  }
+  return apiKeyRateLimiter('read')(req, res, next);
+});
 
 // Mount Hub routes
 app.use(hubRouter);
@@ -1018,6 +1098,62 @@ app.get('/ready', async (req, res) => {
   }
 });
 
+// A2A Health Check endpoint (standard path for agent-to-agent communication)
+// Returns platform status, version, and capabilities for agent discovery
+app.get('/api/health', async (req, res) => {
+  try {
+    // Test DB connection
+    await db.query('SELECT 1');
+    const uptime = stats.getStats().uptime;
+    
+    res.json({
+      status: 'ok',
+      version: '1.0.0',
+      platform: 'thebotique',
+      timestamp: new Date().toISOString(),
+      uptime: `${uptime.hours}h ${uptime.minutes % 60}m ${uptime.seconds % 60}s`,
+      capabilities: {
+        a2a: true,
+        webhooks: true,
+        credits: true,
+        api_key_auth: true
+      },
+      endpoints: {
+        agents: '/api/agents',
+        search: '/api/agents/search',
+        jobs: '/api/jobs',
+        credits: '/api/credits',
+        webhooks: '/api/webhooks'
+      },
+      rateLimits: {
+        reads: '100/min',
+        writes: '20/min',
+        jobCreation: '10/min'
+      }
+    });
+  } catch (error) {
+    logger.error('API Health check failed', { error: error.message });
+    res.status(503).json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// A2A Status endpoint (alias)
+app.get('/api/status', async (req, res) => {
+  try {
+    await db.query('SELECT 1');
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({ status: 'error', timestamp: new Date().toISOString() });
+  }
+});
+
 // Stats endpoint (for operational monitoring)
 app.get('/api/stats', async (req, res) => {
   try {
@@ -1692,6 +1828,152 @@ app.post('/api/credits/deposit', async (req, res) => {
   } catch (error) {
     logger.error('Credits deposit error', { error: error.message });
     res.status(500).json({ error: 'Failed to deposit credits' });
+  }
+});
+
+// GET /api/credits/deposits/check - Check for pending USDC deposits on-chain
+// This endpoint allows agents to check if USDC has been sent to the platform wallet
+// and request auto-crediting of their balance
+app.get('/api/credits/deposits/check', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const agentResult = await db.query(
+      'SELECT a.*, u.id as user_id, u.wallet_address FROM agents a JOIN users u ON a.user_id = u.id WHERE a.api_key = $1',
+      [apiKey]
+    );
+    
+    if (agentResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    const userWallet = agentResult.rows[0].wallet_address;
+    
+    // Platform USDC wallet address (Base mainnet)
+    const PLATFORM_WALLET = process.env.PLATFORM_WALLET || '0x0000000000000000000000000000000000000000';
+    const USDC_CONTRACT = process.env.USDC_CONTRACT || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // Base USDC
+    
+    // Get recent uncredited deposits
+    // Check credit_transactions for deposits from this wallet that haven't been processed
+    const pendingDeposits = await db.query(`
+      SELECT DISTINCT ct.reference_id as tx_hash, ct.amount, ct.created_at
+      FROM credit_transactions ct
+      WHERE ct.user_id = $1 
+        AND ct.type = 'deposit'
+        AND ct.created_at > NOW() - INTERVAL '7 days'
+      ORDER BY ct.created_at DESC
+      LIMIT 10
+    `, [agentResult.rows[0].user_id]);
+    
+    const currentBalance = await db.getCreditsBalance(agentResult.rows[0].user_id);
+    
+    res.json({
+      wallet: userWallet,
+      platformWallet: PLATFORM_WALLET,
+      usdcContract: USDC_CONTRACT,
+      network: 'base',
+      currentBalance: parseFloat(currentBalance),
+      recentDeposits: pendingDeposits.rows.map(d => ({
+        txHash: d.tx_hash,
+        amount: parseFloat(d.amount),
+        timestamp: d.created_at
+      })),
+      instructions: {
+        step1: `Send USDC to platform wallet: ${PLATFORM_WALLET}`,
+        step2: 'Call POST /api/credits/deposit with { amount, txHash }',
+        step3: 'Your credits balance will be updated immediately',
+        note: 'Future: Auto-detection via Alchemy webhooks'
+      },
+      webhookConfig: {
+        enabled: !!process.env.ALCHEMY_WEBHOOK_ID,
+        autoCredit: false, // TODO: Enable when Alchemy webhook is configured
+        eventType: 'deposit.confirmed'
+      }
+    });
+  } catch (error) {
+    logger.error('Deposit check error', { error: error.message });
+    res.status(500).json({ error: 'Failed to check deposits' });
+  }
+});
+
+// POST /api/credits/deposits/confirm - Manually confirm a deposit with tx hash verification
+// Use this until auto-detection is enabled
+app.post('/api/credits/deposits/confirm', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'API key required' });
+    }
+    
+    const { txHash, expectedAmount } = req.body;
+    
+    if (!txHash) {
+      return res.status(400).json({ error: 'Transaction hash required' });
+    }
+    
+    const agentResult = await db.query(
+      'SELECT a.*, u.id as user_id, u.wallet_address FROM agents a JOIN users u ON a.user_id = u.id WHERE a.api_key = $1',
+      [apiKey]
+    );
+    
+    if (agentResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    // Check if this tx has already been credited
+    const existingDeposit = await db.query(
+      'SELECT * FROM credit_transactions WHERE reference_id = $1 AND type = $2',
+      [txHash, 'deposit']
+    );
+    
+    if (existingDeposit.rows.length > 0) {
+      return res.status(409).json({ 
+        error: 'Deposit already credited',
+        existingCredit: {
+          amount: parseFloat(existingDeposit.rows[0].amount),
+          creditedAt: existingDeposit.rows[0].created_at
+        }
+      });
+    }
+    
+    // TODO: Verify on-chain with ethers.js/alchemy
+    // For now, we accept the expectedAmount with the txHash as reference
+    // In production, verify: sender address, recipient (platform wallet), amount, token (USDC)
+    
+    if (!expectedAmount || expectedAmount <= 0) {
+      return res.status(400).json({ 
+        error: 'Expected amount required',
+        note: 'Until on-chain verification is implemented, provide the deposit amount'
+      });
+    }
+    
+    // Credit the user
+    const result = await db.addCredits(
+      agentResult.rows[0].user_id,
+      expectedAmount,
+      `USDC deposit confirmed (tx: ${txHash.slice(0, 10)}...)`,
+      txHash
+    );
+    
+    logger.info('Deposit confirmed', { 
+      userId: agentResult.rows[0].user_id, 
+      amount: expectedAmount, 
+      txHash 
+    });
+    
+    res.json({
+      success: true,
+      credited: expectedAmount,
+      balance: parseFloat(result.balance),
+      txHash,
+      event: 'deposit.confirmed'
+    });
+  } catch (error) {
+    logger.error('Deposit confirm error', { error: error.message });
+    res.status(500).json({ error: 'Failed to confirm deposit' });
   }
 });
 
