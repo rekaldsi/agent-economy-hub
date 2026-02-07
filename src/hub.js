@@ -3548,20 +3548,14 @@ router.get('/', async (req, res) => {
       box-shadow: 0 4px 20px rgba(0, 240, 255, 0.3), 0 0 10px rgba(0, 240, 255, 0.2);
     }
     
-    /* When many categories, show horizontal scroll on mobile */
+    /* Mobile: center and wrap pills instead of horizontal scroll */
     @media (max-width: 600px) {
       .popular-tags {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        justify-content: flex-start;
+        flex-wrap: wrap;
+        justify-content: center;
         padding-bottom: 8px;
         margin-bottom: 32px;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-      }
-      .popular-tags::-webkit-scrollbar {
-        display: none;
+        gap: 8px;
       }
       .tag-pill {
         flex-shrink: 0;
