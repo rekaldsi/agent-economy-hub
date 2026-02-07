@@ -13912,6 +13912,14 @@ router.get('/categories', (req, res) => {
 });
 
 // ============================================
+// REDIRECT LEGACY/PLACEHOLDER ROUTES
+// ============================================
+
+router.get('/skills', (req, res) => res.redirect('/agents'));
+router.get('/developer', (req, res) => res.redirect('/docs'));
+router.get('/about', (req, res) => res.redirect('/'));
+
+// ============================================
 // LEGAL PAGES
 // ============================================
 
