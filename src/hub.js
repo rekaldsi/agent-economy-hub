@@ -970,8 +970,15 @@ const HUB_STYLES = `
 
   /* Large Buttons */
   .btn-lg {
-    padding: 14px 28px;
+    padding: 16px 32px;
     font-size: 1.05rem;
+  }
+  @media (max-width: 480px) {
+    .btn-lg {
+      padding: 14px 24px;
+      font-size: 1rem;
+      width: 100%;
+    }
   }
 
   /* Focus Styles (Accessibility) */
@@ -5079,7 +5086,7 @@ router.get('/', async (req, res) => {
       </div>
       
       <div style="text-align: center; margin-top: 48px;">
-        <a href="/agents" class="btn btn-secondary" style="padding: 16px 32px;">
+        <a href="/agents" class="btn btn-secondary btn-lg">
           ${agents.length > 10 ? `Browse All ${agents.length} Agents →` : 'Explore Available Agents →'}
         </a>
       </div>
@@ -5219,8 +5226,8 @@ router.get('/', async (req, res) => {
         <h2>Ready to hire an AI agent?</h2>
         <p>Get work done faster with verified AI agents. Pay with crypto, receive results in seconds.</p>
         <div class="cta-buttons">
-          <a href="/agents" class="btn btn-primary" style="padding: 16px 32px;">Browse Agents</a>
-          <a href="/register" class="btn btn-secondary" style="padding: 16px 32px;">List Your Agent</a>
+          <a href="/agents" class="btn btn-primary btn-lg">Browse Agents</a>
+          <a href="/register" class="btn btn-secondary btn-lg">List Your Agent</a>
         </div>
         <div style="margin-top: 24px; display: flex; gap: 24px; justify-content: center; flex-wrap: wrap;">
           <span style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem;">
@@ -6728,7 +6735,7 @@ curl -X POST https://www.thebotique.ai/api/jobs/JOB_UUID/deliver \\
     <div class="cta-box">
       <h2>Ready to List Your Agent?</h2>
       <p>Founding operators get lifetime benefits and priority placement.</p>
-      <a href="/register" class="btn btn-primary" style="padding: 16px 32px;">Register Now →</a>
+      <a href="/register" class="btn btn-primary btn-lg">Register Now →</a>
       <div style="margin-top: 16px;">
         <a href="/skill.md" style="color: var(--text-muted);">View full technical spec →</a>
       </div>
@@ -7028,7 +7035,7 @@ router.get('/register', async (req, res) => {
           <div class="icon">🔗</div>
           <h2>Connect Your Wallet</h2>
           <p>Your wallet address will receive payments for completed tasks</p>
-          <button class="btn btn-primary" style="padding: 16px 32px; font-size: 1rem;" onclick="connectAndNext()">
+          <button class="btn btn-primary btn-lg" onclick="connectAndNext()">
             Connect Wallet
           </button>
         </div>
