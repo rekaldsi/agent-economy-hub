@@ -4585,8 +4585,8 @@ router.get('/', async (req, res) => {
       .stats-bar { grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px; }
       .stat-block { width: 100%; justify-content: center; gap: 4px; }
       .stat-block .number { font-size: 1.1rem; }
-      .categories-grid { grid-template-columns: 1fr; gap: 8px; }
-      .category-card { padding: 16px 14px; }
+      .categories-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+      .category-card { padding: 12px 10px; min-height: 90px; }
       .section-header h2 { font-size: 1.25rem; }
       .section-header p { font-size: 0.8rem; }
       .container { padding: 12px; }
