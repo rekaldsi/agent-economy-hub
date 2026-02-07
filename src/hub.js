@@ -3200,41 +3200,14 @@ const HUB_SCRIPTS = `
     }
   }
 
-  // Open dispute
+  // Open dispute - redirect to disputes page for better UX
   async function openDispute(jobUuid) {
     if (!connected) {
       showToast('Please connect your wallet first', 'error');
       return;
     }
-
-    const reason = prompt('Please describe the issue:');
-    if (!reason || !reason.trim()) {
-      showToast('Please provide a reason for the dispute', 'error');
-      return;
-    }
-
-    if (!confirm('Open a dispute? Platform will review within 48 hours.')) {
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/jobs/' + jobUuid + '/dispute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet: userAddress, reason })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        showToast("⚠️ Dispute opened. We'll review within 48 hours.", 'success');
-        setTimeout(() => window.location.reload(), 1500);
-      } else {
-        showToast(data.error || 'Failed to open dispute', 'error');
-      }
-    } catch (err) {
-      showToast('Error opening dispute', 'error');
-      console.error(err);
-    }
+    // Redirect to the disputes page with the job pre-selected
+    window.location.href = '/disputes?job=' + jobUuid;
   }
 `;
 
@@ -5474,7 +5447,8 @@ router.get('/', async (req, res) => {
       <div class="trust-explainer">
         <details>
           <summary>💰 What's the Money-Back Guarantee?</summary>
-          <p>Not satisfied with the results? Request a full refund within 24 hours through our dispute resolution system. We review all claims within 48 hours.</p>
+          <p>Not satisfied with the results? Request a full refund within 7 days through our dispute resolution system. We review all claims within 48 hours.</p>
+          <p style="margin-top: 12px;"><a href="/terms/money-back" style="color: var(--teal);">Read Full Terms →</a> | <a href="/disputes" style="color: var(--teal);">Report an Issue</a></p>
         </details>
       </div>
     </div>
@@ -8441,19 +8415,11 @@ router.get('/dashboard', async (req, res) => {
         </div>
       </div>
       
-      <div class="wallet-btn-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
-        <button class="btn btn-secondary" onclick="connectWallet()" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px;" aria-label="Connect with MetaMask">
-          🦊 MetaMask
+      <div style="margin-bottom: 16px;">
+        <button class="btn btn-primary" onclick="connectWallet()" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; width: 100%; font-size: 1rem;" aria-label="Connect with MetaMask">
+          🦊 Connect with MetaMask
         </button>
-        <button class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5; cursor: not-allowed;" disabled title="Coming soon" aria-label="Rainbow wallet - coming soon">
-          🌈 Rainbow
-        </button>
-        <button class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5; cursor: not-allowed;" disabled title="Coming soon" aria-label="Coinbase wallet - coming soon">
-          💼 Coinbase
-        </button>
-        <button class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; opacity: 0.5; cursor: not-allowed;" disabled title="Coming soon" aria-label="WalletConnect - coming soon">
-          🔗 WalletConnect
-        </button>
+        <p style="text-align: center; font-size: 0.7rem; color: var(--text-muted); margin: 8px 0 0 0;">More wallets coming soon</p>
       </div>
       
       <p style="text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 20px;">
@@ -10366,18 +10332,13 @@ router.get('/api/agents/:id/trust', async (req, res) => {
 
 // Get all categories
 router.get('/api/categories', (req, res) => {
-  const categories = [
-    { slug: 'creative', name: 'Creative', icon: '✨', desc: 'Copy, concepts, strategy' },
-    { slug: 'research', name: 'Research', icon: '🔬', desc: 'Deep dives, analysis' },
-    { slug: 'data', name: 'Data', icon: '📊', desc: 'Extract, transform, analyze' },
-    { slug: 'image', name: 'Image Generation', icon: '🎨', desc: 'Generate, edit, enhance' },
-    { slug: 'code', name: 'Code & Dev', icon: '💻', desc: 'Build, review, debug' },
-    { slug: 'automation', name: 'Automation', icon: '🤖', desc: 'Workflows, integrations' },
-    { slug: 'writing', name: 'Writing', icon: '✍️', desc: 'Content, copywriting, docs' },
-    { slug: 'audio', name: 'Audio & Voice', icon: '🎙️', desc: 'Transcription, voice, music' },
-    { slug: 'video', name: 'Video', icon: '🎬', desc: 'Editing, animation, motion' },
-    { slug: 'marketing', name: 'Marketing', icon: '📈', desc: 'Campaigns, social, SEO' }
-  ];
+  // Use CATEGORIES object to ensure API and routes stay in sync
+  const categories = Object.entries(CATEGORIES).map(([slug, cat]) => ({
+    slug,
+    name: cat.name,
+    icon: cat.icon,
+    desc: cat.desc
+  }));
   res.json(categories);
 });
 
@@ -11586,7 +11547,7 @@ router.post('/api/jobs/:uuid/revision', validateUuidParam('uuid'), async (req, r
  */
 router.post('/api/jobs/:uuid/dispute', validateUuidParam('uuid'), async (req, res) => {
   try {
-    const { wallet, reason, evidence } = req.body;
+    const { wallet, reason, issue_type, evidence_urls } = req.body;
     
     if (!reason) {
       return res.status(400).json({ error: 'Missing dispute reason' });
@@ -11601,23 +11562,69 @@ router.post('/api/jobs/:uuid/dispute', validateUuidParam('uuid'), async (req, re
       return res.status(403).json({ error: 'Not authorized' });
     }
     
-    if (!['in_progress', 'delivered'].includes(job.status)) {
+    // Allow disputes for paid, in_progress, delivered, and revision_requested statuses
+    if (!['paid', 'in_progress', 'delivered', 'revision_requested'].includes(job.status)) {
       return res.status(400).json({ error: `Job status is ${job.status}, cannot dispute` });
     }
+    
+    // Valid issue types for categorization
+    const validIssueTypes = ['no_delivery', 'quality_mismatch', 'wrong_output', 'technical_error', 'partial_delivery', 'other'];
+    const issueType = issue_type && validIssueTypes.includes(issue_type) ? issue_type : 'other';
+    
+    // Store dispute reason with issue type as JSON for richer tracking
+    const disputeData = JSON.stringify({
+      issue_type: issueType,
+      description: reason,
+      evidence_urls: evidence_urls || [],
+      submitted_at: new Date().toISOString()
+    });
     
     // Mark as disputed
     await db.query(
       `UPDATE jobs SET status = 'disputed', dispute_reason = $1, disputed_at = NOW() WHERE id = $2`,
-      [reason, job.id]
+      [disputeData, job.id]
     );
     
     // Phase 2: Dispatch webhook event
     onJobDisputed(job, reason).catch(e => console.error('onJobDisputed webhook error:', e.message));
     
+    // Send email notification to support (if email is configured)
+    try {
+      const emailSender = getEmailSender();
+      const issueTypeLabels = {
+        'no_delivery': 'No Delivery',
+        'quality_mismatch': 'Quality Mismatch',
+        'wrong_output': 'Wrong Output',
+        'technical_error': 'Technical Error',
+        'partial_delivery': 'Partial Delivery',
+        'other': 'Other Issue'
+      };
+      
+      const supportEmail = process.env.SUPPORT_EMAIL || 'support@thebotique.ai';
+      await emailSender({
+        to: supportEmail,
+        subject: '[Dispute] ' + issueTypeLabels[issueType] + ' - Job #' + job.job_uuid.slice(0, 8),
+        html: '<h2>New Dispute Opened</h2>' +
+          '<p><strong>Job UUID:</strong> ' + job.job_uuid + '</p>' +
+          '<p><strong>Issue Type:</strong> ' + issueTypeLabels[issueType] + '</p>' +
+          '<p><strong>Skill:</strong> ' + (job.skill_name || 'N/A') + '</p>' +
+          '<p><strong>Amount:</strong> $' + parseFloat(job.price_usdc || 0).toFixed(2) + ' USDC</p>' +
+          '<p><strong>User Wallet:</strong> ' + wallet + '</p>' +
+          '<hr><h3>Description:</h3>' +
+          '<p>' + reason.replace(/\n/g, '<br>') + '</p>' +
+          '<hr><p><a href="https://www.thebotique.ai/admin">View in Admin Panel</a></p>'
+      });
+      console.log('[Dispute] Email notification sent for job ' + job.job_uuid);
+    } catch (emailError) {
+      // Email failure should not fail the dispute
+      console.log('[Dispute] Email notification failed (non-critical): ' + emailError.message);
+    }
+    
     res.json({ 
       success: true, 
       jobUuid: job.job_uuid, 
       status: 'disputed',
+      issue_type: issueType,
       message: 'Dispute opened. Platform will review within 48 hours.'
     });
   } catch (error) {
@@ -14157,16 +14164,16 @@ router.get('/api/health', async (req, res) => {
 // ============================================
 
 const CATEGORIES = {
-  research: { name: 'Research', icon: '🔍', desc: 'Deep-dive analysis, market research, competitive intelligence' },
-  writing: { name: 'Writing', icon: '✍️', desc: 'Content creation, copywriting, documentation, blog posts' },
-  image: { name: 'Image Generation', icon: '🎨', desc: 'AI art, illustrations, logos, marketing visuals' },
-  code: { name: 'Code & Dev', icon: '💻', desc: 'Development, debugging, code review, automation scripts' },
-  data: { name: 'Data Analysis', icon: '📊', desc: 'Data processing, visualization, insights, reports' },
-  automation: { name: 'Automation', icon: '🤖', desc: 'Workflow automation, integrations, bots, scrapers' },
-  audio: { name: 'Audio & Voice', icon: '🎙️', desc: 'Transcription, voice synthesis, music, podcasts' },
-  video: { name: 'Video', icon: '🎬', desc: 'Video editing, animation, thumbnails, motion graphics' },
-  marketing: { name: 'Marketing', icon: '📈', desc: 'Campaigns, social media, SEO, ad copy' },
-  translation: { name: 'Translation', icon: '🌍', desc: 'Multi-language translation, localization' }
+  creative: { name: 'Creative', icon: '✨', desc: 'Copy, concepts, strategy, and creative work' },
+  research: { name: 'Research', icon: '🔬', desc: 'Deep dives, analysis, market research' },
+  data: { name: 'Data', icon: '📊', desc: 'Extract, transform, analyze data' },
+  image: { name: 'Image Generation', icon: '🎨', desc: 'Generate, edit, enhance images' },
+  code: { name: 'Code & Dev', icon: '💻', desc: 'Build, review, debug code' },
+  automation: { name: 'Automation', icon: '🤖', desc: 'Workflows, integrations, bots' },
+  writing: { name: 'Writing', icon: '✍️', desc: 'Content, copywriting, docs' },
+  audio: { name: 'Audio & Voice', icon: '🎙️', desc: 'Transcription, voice, music' },
+  video: { name: 'Video', icon: '🎬', desc: 'Editing, animation, motion' },
+  marketing: { name: 'Marketing', icon: '📈', desc: 'Campaigns, social, SEO' }
 };
 
 router.get('/category/:slug', async (req, res) => {
@@ -14749,12 +14756,12 @@ router.get('/docs', (req, res) => {
 
     <div class="endpoint">
       <div class="endpoint-header">
-        <span class="method method-put">Step 3</span>
+        <span class="method method-post">Step 3</span>
         <span class="endpoint-path">Deliver Work</span>
       </div>
       <div class="endpoint-body">
         <p>When job is done, deliver via API:</p>
-        <pre>curl -X PUT https://www.thebotique.ai/api/jobs/{uuid}/deliver \\
+        <pre>curl -X POST https://www.thebotique.ai/api/jobs/{uuid}/deliver \\
   -H "Content-Type: application/json" \\
   -H "X-API-Key: your_api_key" \\
   -d '{
@@ -14980,7 +14987,7 @@ if (signature !== expected) {
 
     <div class="endpoint">
       <div class="endpoint-header">
-        <span class="method method-put">PUT</span>
+        <span class="method method-post">POST</span>
         <span class="endpoint-path">/api/jobs/:uuid/deliver</span>
       </div>
       <div class="endpoint-body">
@@ -14991,7 +14998,7 @@ if (signature !== expected) {
 
     <div class="endpoint">
       <div class="endpoint-header">
-        <span class="method method-put">PUT</span>
+        <span class="method method-post">POST</span>
         <span class="endpoint-path">/api/jobs/:uuid/approve</span>
       </div>
       <div class="endpoint-body">
