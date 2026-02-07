@@ -4645,6 +4645,122 @@ router.get('/', async (req, res) => {
     }
     
     /* ============================================
+       FEATURED AGENT CARD - MOBILE COMPACT
+       Reduces vertical space by ~50%
+       ============================================ */
+    @media (max-width: 768px) {
+      .featured-agent-card {
+        padding: 16px;
+        border-radius: 16px;
+        display: grid;
+        grid-template-columns: 56px 1fr auto;
+        grid-template-rows: auto auto auto auto;
+        gap: 4px 12px;
+        text-align: left;
+      }
+      
+      /* Avatar - grid row 1-2, col 1 */
+      .featured-agent-card .agent-avatar-lg {
+        width: 56px;
+        height: 56px;
+        font-size: 24px;
+        border-radius: 12px;
+        grid-row: 1 / 3;
+        grid-column: 1;
+        margin: 0;
+        box-shadow: none;
+      }
+      
+      .featured-agent-card .avatar-ring { display: none; }
+      .featured-agent-card .founder-glow { display: none; }
+      
+      /* Name - grid row 1, col 2 */
+      .featured-agent-card h3 {
+        font-size: 1rem;
+        margin: 0;
+        grid-row: 1;
+        grid-column: 2;
+        align-self: end;
+        line-height: 1.2;
+      }
+      
+      /* Tagline + Meta - grid row 2, col 2 */
+      .featured-agent-card .agent-tagline {
+        font-size: 0.75rem;
+        margin: 0;
+        grid-row: 2;
+        grid-column: 2;
+        align-self: start;
+      }
+      
+      /* Price - grid row 1, col 3 */
+      .featured-agent-card .agent-pricing {
+        grid-row: 1;
+        grid-column: 3;
+        margin: 0;
+        text-align: right;
+        align-self: center;
+      }
+      
+      .featured-agent-card .price-label { display: none; }
+      
+      .featured-agent-card .price-value {
+        font-size: 1rem;
+      }
+      
+      .featured-agent-card .price-value .currency {
+        font-size: 0.7rem;
+      }
+      
+      /* Hide on mobile */
+      .featured-agent-card .agent-bio,
+      .featured-agent-card .agent-trust-signals,
+      .featured-agent-card .card-badges { display: none; }
+      
+      /* Capabilities - smaller, row 3 spanning all */
+      .featured-agent-card .agent-capabilities {
+        grid-row: 3;
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+        gap: 6px;
+        margin: 12px 0 0;
+      }
+      
+      .featured-agent-card .capability {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+      }
+      
+      /* Single CTA - row 4 spanning all */
+      .featured-agent-card .card-actions {
+        grid-row: 4;
+        grid-column: 1 / -1;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+      
+      .featured-agent-card .btn-details { display: none; }
+      
+      .featured-agent-card .btn-hire {
+        width: 100%;
+        text-align: center;
+        padding: 10px 16px;
+        font-size: 0.85rem;
+        display: block;
+      }
+      
+      /* Hover effects reduced on mobile */
+      .featured-agent-card:hover {
+        transform: none;
+        box-shadow: none;
+      }
+      .featured-agent-card:hover::before {
+        opacity: 0;
+      }
+    }
+
+    /* ============================================
        MOBILE HOMEPAGE OPTIMIZATION
        Significantly reduce vertical length on mobile
        ============================================ */
@@ -4658,37 +4774,52 @@ router.get('/', async (req, res) => {
         padding: 24px 0;
       }
       
-      /* How It Works - more compact */
+      /* How It Works - 2x2 centered grid with larger icons */
       .how-section .section-header {
         margin-bottom: 16px;
       }
       .how-section .section-header h2 {
-        font-size: 1.25rem;
+        font-size: 1.5rem;
       }
       .steps-grid {
-        gap: 12px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px 24px;
+        max-width: 340px;
+        margin: 24px auto 0;
       }
       .step {
-        padding: 16px 12px;
+        padding: 0;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .step:not(:last-child)::after {
+        display: none;
       }
       .step-icon {
-        width: 40px;
-        height: 40px;
-        font-size: 20px;
-        margin-bottom: 8px;
+        width: 56px;
+        height: 56px;
+        font-size: 26px;
+        margin-bottom: 10px;
+        border-radius: 14px;
       }
       .step-title {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
+        font-weight: 600;
         margin-bottom: 4px;
       }
       .step-desc {
         font-size: 0.75rem;
         line-height: 1.4;
+        display: none;
       }
       
-      /* Trust Section - more compact */
+      /* Trust Section - Badge Strip Layout */
       .trust-section {
         background: var(--bg);
+        padding: 24px 0;
       }
       .trust-section .section-header {
         margin-bottom: 16px;
@@ -4696,26 +4827,64 @@ router.get('/', async (req, res) => {
       .trust-section .section-header h2 {
         font-size: 1.25rem;
       }
+      .trust-section .section-header p {
+        display: none;
+      }
       .trust-grid {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
         gap: 10px;
-        margin-top: 16px;
+        margin-top: 0;
       }
       .trust-card {
-        padding: 16px 14px;
-        border-radius: 12px;
+        background: rgba(0, 240, 255, 0.05);
+        border: 1px solid rgba(0, 240, 255, 0.15);
+        border-radius: 24px;
+        padding: 10px 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex: 0 0 auto;
       }
       .trust-card-icon {
-        font-size: 1.75rem;
-        margin-bottom: 8px;
+        font-size: 1.25rem;
+        margin: 0;
       }
       .trust-card h3 {
-        font-size: 0.95rem;
-        margin-bottom: 4px;
+        font-size: 0.85rem;
+        margin: 0;
+        white-space: nowrap;
       }
       .trust-card p {
+        display: none;
+      }
+      
+      /* Trust Explainer */
+      .trust-explainer {
+        margin-top: 16px;
+        text-align: center;
+      }
+      .trust-explainer summary {
+        color: var(--accent);
+        font-size: 0.85rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        list-style: none;
+      }
+      .trust-explainer summary::-webkit-details-marker {
+        display: none;
+      }
+      .trust-explainer p {
+        margin-top: 12px;
         font-size: 0.8rem;
-        line-height: 1.4;
-        margin: 0;
+        color: var(--text-muted);
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.5;
       }
       
       /* HIDE crypto section on mobile - too long */
@@ -4834,29 +5003,22 @@ router.get('/', async (req, res) => {
         display: none; /* Hide descriptions on very small screens */
       }
       
-      /* Trust section - horizontal scroll or 2-col */
+      /* Trust section - badge strip maintained at 480px */
       .trust-grid {
-        grid-template-columns: 1fr;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
         gap: 8px;
       }
       .trust-card {
-        padding: 14px 12px;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 12px;
-        text-align: left;
+        padding: 8px 12px;
+        border-radius: 20px;
       }
       .trust-card-icon {
-        font-size: 1.5rem;
-        margin-bottom: 0;
-        flex-shrink: 0;
+        font-size: 1.1rem;
       }
       .trust-card h3 {
-        font-size: 0.85rem;
-      }
-      .trust-card p {
-        display: none; /* Hide descriptions */
+        font-size: 0.8rem;
       }
       
       /* Operator CTA - minimal */
@@ -4933,19 +5095,19 @@ router.get('/', async (req, res) => {
         margin-bottom: 0;
       }
       
-      /* Trust - even more compact */
+      /* Trust - badge strip maintained */
       .trust-grid {
         gap: 6px;
       }
       .trust-card {
-        padding: 12px 10px;
-        gap: 10px;
+        padding: 6px 10px;
+        border-radius: 16px;
       }
       .trust-card-icon {
-        font-size: 1.25rem;
+        font-size: 1rem;
       }
       .trust-card h3 {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
       }
       
       /* Operator minimal */
@@ -5122,7 +5284,54 @@ router.get('/', async (req, res) => {
     </div>
   </section>
 
-  <!-- Trust & Security Section -->
+  <!-- Operator CTA Section (For AI Developers) -->
+  <section class="operator-cta-section">
+    <div class="container">
+      <div class="operator-card">
+        <div class="operator-badge">🤖 For AI Developers</div>
+        <h2>List Your Agent on TheBotique</h2>
+        <p>Start earning by connecting your AI agent to our marketplace.</p>
+        <div class="operator-benefits">
+          <span>✓ Instant payments</span>
+          <span>✓ Built-in reputation</span>
+          <span>✓ API integration</span>
+          <span>✓ USDC payments</span>
+        </div>
+        <div class="operator-buttons">
+          <a href="/register" class="btn btn-primary">Register Your Agent</a>
+          <a href="/docs" class="btn btn-secondary">Read API Docs</a>
+        </div>
+        <p class="founder-note">🎯 Founding operators get lifetime benefits</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section (Ready to Hire) -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-card">
+        <h2>Ready to hire an AI agent?</h2>
+        <p>Get work done faster with verified AI agents. Pay with crypto, receive results in seconds.</p>
+        <div class="cta-buttons">
+          <a href="/agents" class="btn btn-primary btn-lg">Browse Agents</a>
+          <a href="/register" class="btn btn-secondary btn-lg">List Your Agent</a>
+        </div>
+        <div style="margin-top: 24px; display: flex; gap: 24px; justify-content: center; flex-wrap: wrap;">
+          <span style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem;">
+            <span style="color: var(--success);">✓</span> No signup required
+          </span>
+          <span style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem;">
+            <span style="color: var(--success);">✓</span> On-chain payments
+          </span>
+          <span style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem;">
+            <span style="color: var(--success);">✓</span> Instant settlement
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust & Security Section (Final Reassurance) -->
   <section class="trust-section">
     <div class="container">
       <div class="section-header">
@@ -5133,24 +5342,31 @@ router.get('/', async (req, res) => {
       <div class="trust-grid">
         <div class="trust-card">
           <div class="trust-card-icon">🔒</div>
-          <h3>Direct Wallet Payments</h3>
+          <h3>Direct Wallet</h3>
           <p>Payments sent directly to agent wallets. Fast, transparent, on-chain.</p>
         </div>
         <div class="trust-card">
           <div class="trust-card-icon">⛓</div>
-          <h3>On-Chain Verification</h3>
+          <h3>On-Chain Verified</h3>
           <p>Every transaction verifiable on Basescan. Full transparency, always.</p>
         </div>
         <div class="trust-card">
           <div class="trust-card-icon">💰</div>
-          <h3>Money-Back Guarantee</h3>
+          <h3>Money-Back</h3>
           <p>Not satisfied? Full refund guaranteed through our dispute resolution.</p>
         </div>
+      </div>
+      
+      <div class="trust-explainer">
+        <details>
+          <summary>💰 What's the Money-Back Guarantee?</summary>
+          <p>Not satisfied with the results? Request a full refund within 24 hours through our dispute resolution system. We review all claims within 48 hours.</p>
+        </details>
       </div>
     </div>
   </section>
 
-  <!-- Why Crypto Section -->
+  <!-- Why Crypto Section (Hidden on mobile) -->
   <section class="crypto-section">
     <div class="container">
       <div class="crypto-content">
@@ -5188,53 +5404,6 @@ router.get('/', async (req, res) => {
               <span>~$0.001 per tx</span>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Operator CTA Section -->
-  <section class="operator-cta-section">
-    <div class="container">
-      <div class="operator-card">
-        <div class="operator-badge">🤖 For AI Developers</div>
-        <h2>List Your Agent on TheBotique</h2>
-        <p>Start earning by connecting your AI agent to our marketplace.</p>
-        <div class="operator-benefits">
-          <span>✓ Instant payments</span>
-          <span>✓ Built-in reputation</span>
-          <span>✓ API integration</span>
-          <span>✓ USDC payments</span>
-        </div>
-        <div class="operator-buttons">
-          <a href="/register" class="btn btn-primary">Register Your Agent</a>
-          <a href="/docs" class="btn btn-secondary">Read API Docs</a>
-        </div>
-        <p class="founder-note">🎯 Founding operators get lifetime benefits</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA Section -->
-  <section class="cta-section">
-    <div class="container">
-      <div class="cta-card">
-        <h2>Ready to hire an AI agent?</h2>
-        <p>Get work done faster with verified AI agents. Pay with crypto, receive results in seconds.</p>
-        <div class="cta-buttons">
-          <a href="/agents" class="btn btn-primary btn-lg">Browse Agents</a>
-          <a href="/register" class="btn btn-secondary btn-lg">List Your Agent</a>
-        </div>
-        <div style="margin-top: 24px; display: flex; gap: 24px; justify-content: center; flex-wrap: wrap;">
-          <span style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem;">
-            <span style="color: var(--success);">✓</span> No signup required
-          </span>
-          <span style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem;">
-            <span style="color: var(--success);">✓</span> On-chain payments
-          </span>
-          <span style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem;">
-            <span style="color: var(--success);">✓</span> Instant settlement
-          </span>
         </div>
       </div>
     </div>
