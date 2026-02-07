@@ -853,6 +853,74 @@ async function initDB() {
     
     logger.info('Credits system tables initialized');
 
+    // Migration: Vector Embeddings for Semantic Search
+    await client.query(`
+      DO $$
+      BEGIN
+        -- Add description_embedding column to agents for semantic search
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'description_embedding'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN description_embedding JSONB;
+          COMMENT ON COLUMN agents.description_embedding IS 'OpenAI text-embedding-3-small vector (1536 dims) for semantic search';
+        END IF;
+        
+        -- Add embedding_updated_at to track staleness
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'embedding_updated_at'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN embedding_updated_at TIMESTAMP;
+        END IF;
+      END $$;
+    `);
+    
+    logger.info('Vector embeddings schema initialized');
+
+    // ============================================
+    // Q-LEARNING ROUTER: Match Outcomes Table
+    // ============================================
+    await client.query(`
+      -- Track match outcomes for learning/optimization
+      CREATE TABLE IF NOT EXISTS match_outcomes (
+        id SERIAL PRIMARY KEY,
+        job_uuid UUID UNIQUE NOT NULL,
+        agent_id INTEGER REFERENCES agents(id) ON DELETE SET NULL,
+        match_score FLOAT,
+        outcome VARCHAR(20) CHECK (outcome IN ('completed', 'disputed', 'cancelled', 'failed')),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_match_outcomes_agent ON match_outcomes(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_match_outcomes_outcome ON match_outcomes(outcome);
+      CREATE INDEX IF NOT EXISTS idx_match_outcomes_created ON match_outcomes(created_at);
+    `);
+    
+    // Q-Learning Router: Agent performance columns
+    await client.query(`
+      DO $$
+      BEGIN
+        -- Add success_rate column if not exists
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'success_rate'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN success_rate FLOAT DEFAULT 0.5;
+        END IF;
+        
+        -- Add total_jobs_completed column if not exists
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'agents' AND column_name = 'total_jobs_completed'
+        ) THEN
+          ALTER TABLE agents ADD COLUMN total_jobs_completed INTEGER DEFAULT 0;
+        END IF;
+      END $$;
+    `);
+    
+    logger.info('Q-Learning router tables initialized');
+
     // One-time API key rotation (set ROTATE_API_KEY=agentId in Railway to trigger)
     if (process.env.ROTATE_API_KEY) {
       const agentId = parseInt(process.env.ROTATE_API_KEY) || 1;

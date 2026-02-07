@@ -8268,9 +8268,31 @@ router.get('/dashboard', async (req, res) => {
         max-width: 100%;
       }
       /* Empty state text wrapping */
+      .empty-state {
+        padding: 32px 16px;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
       .empty-state p {
         word-wrap: break-word;
         overflow-wrap: break-word;
+        max-width: 100%;
+        padding: 0 8px;
+      }
+      .empty-state .btn {
+        max-width: calc(100% - 32px);
+        width: auto;
+        padding: 12px 24px;
+        white-space: normal;
+        word-wrap: break-word;
+      }
+      /* Hide scroll indicator when showing empty state */
+      .jobs-card:has(.empty-state)::after {
+        display: none;
+      }
+      /* Jobs card overflow protection */
+      .jobs-card {
+        overflow-x: hidden;
         max-width: 100%;
       }
       .mobile-menu-toggle {
@@ -12298,6 +12320,210 @@ router.get('/api/agents/search', async (req, res) => {
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Search failed');
     res.status(statusCode).json(body);
+  }
+});
+
+// ============================================
+// SEMANTIC SEARCH (Vector-Based)
+// ============================================
+
+// Lazy-load embeddings module to prevent startup crashes if OpenAI unavailable
+let embeddings = null;
+function getEmbeddingsModule() {
+  if (!embeddings) {
+    try {
+      embeddings = require('./embeddings');
+    } catch (e) {
+      console.error('Embeddings module failed to load:', e.message);
+      embeddings = null;
+    }
+  }
+  return embeddings;
+}
+
+/**
+ * Semantic agent search using vector similarity
+ * GET /api/agents/semantic-search
+ * 
+ * This endpoint uses OpenAI embeddings to find agents based on
+ * natural language queries with semantic understanding.
+ * 
+ * Examples:
+ *   /api/agents/semantic-search?q=I need help with market research
+ *   /api/agents/semantic-search?q=Write me a blog post about AI
+ *   /api/agents/semantic-search?q=analyze my sales data
+ * 
+ * Falls back to text search if OpenAI API key is not configured.
+ */
+router.get('/api/agents/semantic-search', async (req, res) => {
+  try {
+    const {
+      q,
+      query: queryParam, // Alias for q
+      limit = 10,
+      min_similarity = 0.3,
+      category,
+      trust_tier
+    } = req.query;
+    
+    const searchQuery = q || queryParam;
+    
+    if (!searchQuery || searchQuery.trim().length === 0) {
+      return res.status(400).json({
+        error: 'Search query required',
+        code: 'MISSING_QUERY',
+        hint: 'Use ?q=your search query'
+      });
+    }
+    
+    const embeddingsModule = getEmbeddingsModule();
+    if (!embeddingsModule) {
+      // Fallback to basic text search
+      return res.redirect(`/api/agents/search?q=${encodeURIComponent(searchQuery)}&limit=${limit}`);
+    }
+    
+    const results = await embeddingsModule.semanticSearch(searchQuery, {
+      limit: parseInt(limit),
+      minSimilarity: parseFloat(min_similarity),
+      category,
+      trustTier: trust_tier
+    });
+    
+    res.json(results);
+  } catch (error) {
+    console.error('Semantic search error:', error);
+    const { statusCode, body } = formatErrorResponse(error, 'Semantic search failed');
+    res.status(statusCode).json(body);
+  }
+});
+
+/**
+ * Get embedding statistics
+ * GET /api/embeddings/stats
+ */
+router.get('/api/embeddings/stats', async (req, res) => {
+  try {
+    const embeddingsModule = getEmbeddingsModule();
+    if (!embeddingsModule) {
+      return res.json({
+        available: false,
+        error: 'Embeddings module not loaded'
+      });
+    }
+    
+    const stats = await embeddingsModule.getEmbeddingStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Embedding stats error:', error);
+    res.status(500).json({ error: 'Failed to get embedding stats' });
+  }
+});
+
+/**
+ * Trigger embedding backfill (admin only)
+ * POST /api/embeddings/backfill
+ * Requires X-Admin-Key header
+ */
+router.post('/api/embeddings/backfill', async (req, res) => {
+  try {
+    // Simple admin key check (should use proper auth in production)
+    const adminKey = req.headers['x-admin-key'];
+    if (!adminKey || adminKey !== process.env.ADMIN_API_KEY) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const embeddingsModule = getEmbeddingsModule();
+    if (!embeddingsModule) {
+      return res.status(503).json({
+        error: 'Embeddings module not available',
+        hint: 'Ensure OPENAI_API_KEY is set'
+      });
+    }
+    
+    // Run backfill in background
+    const { batchSize = 10, delayMs = 1000 } = req.body || {};
+    
+    // Start backfill (don't await - let it run in background)
+    embeddingsModule.backfillEmbeddings({ batchSize, delayMs })
+      .then(result => console.log('Backfill completed:', result))
+      .catch(err => console.error('Backfill failed:', err));
+    
+    res.json({
+      message: 'Backfill started in background',
+      batchSize,
+      delayMs
+    });
+  } catch (error) {
+    console.error('Backfill trigger error:', error);
+    res.status(500).json({ error: 'Failed to start backfill' });
+  }
+});
+
+/**
+ * Compute embedding for a specific agent (admin/agent owner)
+ * POST /api/agents/:id/compute-embedding
+ */
+router.post('/api/agents/:id/compute-embedding', async (req, res) => {
+  try {
+    const agentId = parseInt(req.params.id);
+    if (isNaN(agentId)) {
+      return res.status(400).json({ error: 'Invalid agent ID' });
+    }
+    
+    // Check auth - either admin or the agent's own API key
+    const apiKey = req.headers['x-api-key'];
+    const adminKey = req.headers['x-admin-key'];
+    
+    let authorized = false;
+    
+    if (adminKey && adminKey === process.env.ADMIN_API_KEY) {
+      authorized = true;
+    } else if (apiKey) {
+      // Verify API key belongs to this agent
+      const agentResult = await db.query(
+        'SELECT id FROM agents WHERE id = $1 AND api_key = $2',
+        [agentId, apiKey]
+      );
+      if (agentResult.rows.length > 0) {
+        authorized = true;
+      }
+    }
+    
+    if (!authorized) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
+    const embeddingsModule = getEmbeddingsModule();
+    if (!embeddingsModule) {
+      return res.status(503).json({
+        error: 'Embeddings module not available',
+        hint: 'Ensure OPENAI_API_KEY is set'
+      });
+    }
+    
+    const success = await embeddingsModule.computeAgentEmbedding(agentId);
+    
+    if (success) {
+      // Update timestamp
+      await db.query(
+        'UPDATE agents SET embedding_updated_at = NOW() WHERE id = $1',
+        [agentId]
+      );
+      
+      res.json({
+        success: true,
+        message: 'Embedding computed and stored',
+        agentId
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to compute embedding'
+      });
+    }
+  } catch (error) {
+    console.error('Compute embedding error:', error);
+    res.status(500).json({ error: 'Failed to compute embedding' });
   }
 });
 
