@@ -9779,6 +9779,18 @@ router.post('/api/jobs',
 
       // Sanitize input before storing
       const sanitizedInput = sanitizeJobInput(input);
+      
+      // SECURITY P1-7: Server-side description validation (minimum 50 characters)
+      const MIN_DESCRIPTION_LENGTH = 50;
+      const inputText = typeof sanitizedInput === 'string' ? sanitizedInput : (sanitizedInput?.prompt || JSON.stringify(sanitizedInput));
+      if (!inputText || inputText.length < MIN_DESCRIPTION_LENGTH) {
+        return res.status(400).json({
+          error: `Job description must be at least ${MIN_DESCRIPTION_LENGTH} characters. Please provide more details about what you need.`,
+          code: 'DESCRIPTION_TOO_SHORT',
+          minLength: MIN_DESCRIPTION_LENGTH,
+          currentLength: inputText ? inputText.length : 0
+        });
+      }
 
       // Validate user exists (or create if not)
       let user = await db.getUser(wallet);
@@ -9797,6 +9809,23 @@ router.post('/api/jobs',
 
       // Validate price matches skill price
       await validateSkillPrice(skillId, price);
+      
+      // SECURITY P1-5: Check concurrent hiring limit (max 5 pending/in_progress jobs per user per agent)
+      const MAX_CONCURRENT_JOBS_PER_AGENT = 5;
+      const pendingJobsResult = await db.query(
+        `SELECT COUNT(*) as count FROM jobs 
+         WHERE requester_id = $1 AND agent_id = $2 AND status IN ('pending', 'paid', 'in_progress')`,
+        [user.id, agentId]
+      );
+      const pendingCount = parseInt(pendingJobsResult.rows[0].count, 10);
+      if (pendingCount >= MAX_CONCURRENT_JOBS_PER_AGENT) {
+        return res.status(429).json({
+          error: `You already have ${pendingCount} active jobs with this agent. Please wait for some to complete before creating more.`,
+          code: 'CONCURRENT_JOB_LIMIT',
+          limit: MAX_CONCURRENT_JOBS_PER_AGENT,
+          current: pendingCount
+        });
+      }
 
       // Create job
       const jobUuid = uuidv4();
@@ -10048,11 +10077,48 @@ router.post('/api/jobs/:uuid/pay',
   }
 });
 
-// Get job status
+// Get job status (requires authentication)
 router.get('/api/jobs/:uuid', validateUuidParam('uuid'), async (req, res) => {
   try {
     const job = await db.getJob(req.params.uuid);
     if (!job) return res.status(404).json({ error: 'Job not found', code: 'NOT_FOUND' });
+    
+    // SECURITY: Require authentication - wallet query param or API key header
+    const wallet = req.query.wallet;
+    const apiKey = req.headers['x-api-key'];
+    
+    if (!wallet && !apiKey) {
+      return res.status(401).json({ 
+        error: 'Authentication required. Provide wallet query parameter or X-API-Key header.',
+        code: 'UNAUTHORIZED'
+      });
+    }
+    
+    let isAuthorized = false;
+    
+    // Check wallet-based access: must be job creator or agent owner
+    if (wallet) {
+      const normalizedWallet = wallet.toLowerCase();
+      const isJobCreator = job.requester_wallet?.toLowerCase() === normalizedWallet;
+      const isAgentOwner = job.agent_wallet?.toLowerCase() === normalizedWallet;
+      isAuthorized = isJobCreator || isAgentOwner;
+    }
+    
+    // Check API key access: must belong to the job's agent
+    if (!isAuthorized && apiKey) {
+      const agent = await db.getAgentById(job.agent_id);
+      if (agent && db.verifyApiKey(apiKey, agent.api_key)) {
+        isAuthorized = true;
+      }
+    }
+    
+    if (!isAuthorized) {
+      return res.status(403).json({ 
+        error: 'Not authorized to view this job',
+        code: 'FORBIDDEN'
+      });
+    }
+    
     res.json(job);
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Failed to retrieve job');
@@ -10083,7 +10149,7 @@ router.post('/api/jobs/:uuid/complete',
         return res.status(500).json({ error: 'Agent not found' });
       }
 
-      if (agent.api_key !== apiKey) {
+      if (!db.verifyApiKey(apiKey, agent.api_key)) {
         return res.status(403).json({ error: 'Invalid API key' });
       }
 
@@ -10109,7 +10175,7 @@ router.post('/api/jobs/:uuid/complete',
       return res.status(500).json({ error: 'Agent not found' });
     }
 
-    if (agent.api_key !== apiKey) {
+    if (!db.verifyApiKey(apiKey, agent.api_key)) {
       console.error(JSON.stringify({
         event: 'unauthorized_completion',
         jobUuid: job.job_uuid,
@@ -10414,6 +10480,66 @@ function verifyWalletSignature(wallet, message, signature) {
   } catch (error) {
     return false;
   }
+}
+
+/**
+ * SECURITY: Middleware to require wallet signature verification for state-changing operations
+ * Expects request body to contain: wallet, signature, signedMessage (or uses standard format)
+ * The signed message should be: "TheBotique action: {action} on job {jobUuid} at {timestamp}"
+ * Timestamp must be within 5 minutes to prevent replay attacks
+ */
+function requireWalletSignature(action) {
+  return async (req, res, next) => {
+    const { wallet, signature, signedMessage } = req.body;
+    
+    if (!wallet) {
+      return res.status(400).json({ error: 'Wallet address required', code: 'MISSING_WALLET' });
+    }
+    
+    if (!signature) {
+      return res.status(401).json({ 
+        error: 'Wallet signature required for this action. Sign the message to prove wallet ownership.',
+        code: 'SIGNATURE_REQUIRED',
+        expectedFormat: `TheBotique action: ${action} on job {jobUuid} at {timestamp}`
+      });
+    }
+    
+    // Build expected message format or use provided signedMessage
+    const jobUuid = req.params.uuid || 'unknown';
+    const timestamp = signedMessage ? null : Date.now();
+    const expectedMessagePattern = `TheBotique action: ${action} on job ${jobUuid}`;
+    
+    // Use provided signedMessage or construct from action
+    const messageToVerify = signedMessage || `${expectedMessagePattern} at ${timestamp}`;
+    
+    // Verify the signature
+    if (!verifyWalletSignature(wallet, messageToVerify, signature)) {
+      return res.status(401).json({ 
+        error: 'Invalid signature. The signature does not match the wallet address.',
+        code: 'INVALID_SIGNATURE'
+      });
+    }
+    
+    // If using signedMessage, verify timestamp is within 5 minutes (anti-replay)
+    if (signedMessage) {
+      const timestampMatch = signedMessage.match(/at (\d+)$/);
+      if (timestampMatch) {
+        const msgTimestamp = parseInt(timestampMatch[1], 10);
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+        if (Math.abs(now - msgTimestamp) > fiveMinutes) {
+          return res.status(401).json({ 
+            error: 'Signature expired. Please sign a new message with current timestamp.',
+            code: 'SIGNATURE_EXPIRED'
+          });
+        }
+      }
+    }
+    
+    // Store verified wallet in request for downstream use
+    req.verifiedWallet = wallet.toLowerCase();
+    next();
+  };
 }
 
 router.post('/api/register-agent', validateBody(registerAgentSchema), async (req, res) => {
@@ -11343,6 +11469,9 @@ router.post('/api/admin/verify-twitter', async (req, res) => {
 /**
  * Agent accepts a task
  * POST /api/jobs/:uuid/accept
+ * 
+ * Uses database-level locking to prevent race conditions where
+ * two agents could theoretically accept the same job simultaneously.
  */
 router.post('/api/jobs/:uuid/accept', validateUuidParam('uuid'), async (req, res) => {
   try {
@@ -11353,21 +11482,30 @@ router.post('/api/jobs/:uuid/accept', validateUuidParam('uuid'), async (req, res
     
     // Verify API key belongs to this job's agent
     const agent = await db.getAgentById(job.agent_id);
-    if (!agent || agent.api_key !== apiKey) {
+    if (!agent || !db.verifyApiKey(apiKey, agent.api_key)) {
       return res.status(403).json({ error: 'Invalid API key' });
     }
     
-    if (job.status !== 'paid') {
-      return res.status(400).json({ error: `Job status is ${job.status}, cannot accept` });
+    // Use atomic locking to prevent race conditions
+    const result = await db.acceptJobWithLock(job.id, agent.id, 'paid');
+    
+    if (!result.success) {
+      return res.status(409).json({ 
+        error: result.error, 
+        code: 'ACCEPTANCE_CONFLICT',
+        currentStatus: job.status
+      });
     }
     
-    // Mark as in_progress
-    await db.updateJobStatus(job.id, 'in_progress');
-    
     // Phase 2: Dispatch webhook event
-    onJobAccepted(job).catch(e => console.error('onJobAccepted webhook error:', e.message));
+    onJobAccepted(result.job).catch(e => console.error('onJobAccepted webhook error:', e.message));
     
-    res.json({ success: true, jobUuid: job.job_uuid, status: 'in_progress' });
+    res.json({ 
+      success: true, 
+      jobUuid: result.job.job_uuid, 
+      status: 'in_progress',
+      acceptedAt: result.job.accepted_at
+    });
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Failed to accept job');
     res.status(statusCode).json(body);
@@ -11387,7 +11525,7 @@ router.post('/api/jobs/:uuid/decline', validateUuidParam('uuid'), async (req, re
     
     // Verify API key
     const agent = await db.getAgentById(job.agent_id);
-    if (!agent || agent.api_key !== apiKey) {
+    if (!agent || !db.verifyApiKey(apiKey, agent.api_key)) {
       return res.status(403).json({ error: 'Invalid API key' });
     }
     
@@ -11427,7 +11565,7 @@ router.post('/api/jobs/:uuid/deliver', validateUuidParam('uuid'), async (req, re
     
     // Verify API key
     const agent = await db.getAgentById(job.agent_id);
-    if (!agent || agent.api_key !== apiKey) {
+    if (!agent || !db.verifyApiKey(apiKey, agent.api_key)) {
       return res.status(403).json({ error: 'Invalid API key' });
     }
     
@@ -11456,10 +11594,11 @@ router.post('/api/jobs/:uuid/deliver', validateUuidParam('uuid'), async (req, re
 /**
  * Hirer approves delivered work (releases payment)
  * POST /api/jobs/:uuid/approve
+ * SECURITY: Requires wallet signature verification
  */
-router.post('/api/jobs/:uuid/approve', validateUuidParam('uuid'), async (req, res) => {
+router.post('/api/jobs/:uuid/approve', validateUuidParam('uuid'), requireWalletSignature('approve'), async (req, res) => {
   try {
-    const { wallet } = req.body;
+    const wallet = req.verifiedWallet || req.body.wallet;
     
     const job = await db.getJob(req.params.uuid);
     if (!job) return res.status(404).json({ error: 'Job not found' });
@@ -11508,10 +11647,12 @@ router.post('/api/jobs/:uuid/approve', validateUuidParam('uuid'), async (req, re
 /**
  * Hirer requests revision
  * POST /api/jobs/:uuid/revision
+ * SECURITY: Requires wallet signature verification
  */
-router.post('/api/jobs/:uuid/revision', validateUuidParam('uuid'), async (req, res) => {
+router.post('/api/jobs/:uuid/revision', validateUuidParam('uuid'), requireWalletSignature('revision'), async (req, res) => {
   try {
-    const { wallet, feedback } = req.body;
+    const wallet = req.verifiedWallet || req.body.wallet;
+    const { feedback } = req.body;
     
     const job = await db.getJob(req.params.uuid);
     if (!job) return res.status(404).json({ error: 'Job not found' });
@@ -11544,10 +11685,12 @@ router.post('/api/jobs/:uuid/revision', validateUuidParam('uuid'), async (req, r
 /**
  * Hirer opens dispute
  * POST /api/jobs/:uuid/dispute
+ * SECURITY: Requires wallet signature verification
  */
-router.post('/api/jobs/:uuid/dispute', validateUuidParam('uuid'), async (req, res) => {
+router.post('/api/jobs/:uuid/dispute', validateUuidParam('uuid'), requireWalletSignature('dispute'), async (req, res) => {
   try {
-    const { wallet, reason, issue_type, evidence_urls } = req.body;
+    const wallet = req.verifiedWallet || req.body.wallet;
+    const { reason, issue_type, evidence_urls } = req.body;
     
     if (!reason) {
       return res.status(400).json({ error: 'Missing dispute reason' });
@@ -11560,6 +11703,14 @@ router.post('/api/jobs/:uuid/dispute', validateUuidParam('uuid'), async (req, re
     const user = await db.getUser(wallet);
     if (!user || user.id !== job.requester_id) {
       return res.status(403).json({ error: 'Not authorized' });
+    }
+    
+    // SECURITY P1-3: Check for existing active dispute on this job
+    if (job.status === 'disputed') {
+      return res.status(400).json({ 
+        error: 'This job already has an active dispute',
+        code: 'DUPLICATE_DISPUTE'
+      });
     }
     
     // Allow disputes for paid, in_progress, delivered, and revision_requested statuses
@@ -11946,44 +12097,68 @@ router.post('/api/reviews/:id/respond', validateIdParam('id'), async (req, res) 
 /**
  * Advanced agent search with filters
  * GET /api/agents/search
+ * 
+ * A2A Capability Discovery:
+ * Use `capability` param to find agents that can do specific tasks.
+ * Examples:
+ *   /api/agents/search?capability=python
+ *   /api/agents/search?capability=write%20code
+ *   /api/agents/search?q=research&min_rating=4.5
  */
 router.get('/api/agents/search', async (req, res) => {
   try {
     const {
       q,
+      capability, // A2A: Semantic capability search
       category,
       skills,
       min_rating,
       max_price,
       trust_tier,
-      sort = 'rating',
+      sort = 'relevance', // Default to relevance for capability search
       order = 'desc',
       page = 1,
       limit = 20
     } = req.query;
     
+    // Use capability or q for search
+    const searchTerm = capability || q;
+    
     let sql = `
       SELECT a.*, u.wallet_address, u.name, u.avatar_url, u.bio,
-             (SELECT json_agg(s.*) FROM skills s WHERE s.agent_id = a.id AND s.is_active = true) as skills
+             (SELECT json_agg(s.*) FROM skills s WHERE s.agent_id = a.id AND s.is_active = true) as skills,
+             CASE 
+               WHEN $1::text IS NOT NULL THEN (
+                 -- Relevance scoring for capability matching
+                 CASE WHEN LOWER(u.name) LIKE LOWER($1) THEN 100 ELSE 0 END +
+                 CASE WHEN LOWER(u.bio) LIKE LOWER($1) THEN 50 ELSE 0 END +
+                 (SELECT COUNT(*) * 30 FROM skills s WHERE s.agent_id = a.id AND (
+                   LOWER(s.name) LIKE LOWER($1) OR LOWER(s.description) LIKE LOWER($1)
+                 )) +
+                 COALESCE(a.trust_score, 0) / 10 +
+                 COALESCE(a.total_jobs, 0)
+               )
+               ELSE COALESCE(a.trust_score, 0)
+             END as relevance_score
       FROM agents a
       JOIN users u ON a.user_id = u.id
       WHERE a.is_active = true
     `;
-    const params = [];
-    let paramIndex = 1;
+    const params = [searchTerm ? `%${searchTerm}%` : null];
+    let paramIndex = 2;
     
-    // Search query
-    if (q) {
-      sql += ` AND (u.name ILIKE $${paramIndex} OR u.bio ILIKE $${paramIndex} OR EXISTS (
-        SELECT 1 FROM skills s WHERE s.agent_id = a.id AND (s.name ILIKE $${paramIndex} OR s.description ILIKE $${paramIndex})
+    // Search query / capability
+    if (searchTerm) {
+      sql += ` AND (u.name ILIKE $1 OR u.bio ILIKE $1 OR EXISTS (
+        SELECT 1 FROM skills s WHERE s.agent_id = a.id AND (
+          s.name ILIKE $1 OR s.description ILIKE $1 OR s.category ILIKE $1
+        )
       ))`;
-      params.push(`%${q}%`);
-      paramIndex++;
     }
     
     // Category filter
     if (category) {
-      sql += ` AND EXISTS (SELECT 1 FROM skills s WHERE s.agent_id = a.id AND s.category = $${paramIndex})`;
+      sql += ` AND EXISTS (SELECT 1 FROM skills s WHERE s.agent_id = a.id AND LOWER(s.category) = LOWER($${paramIndex}))`;
       params.push(category);
       paramIndex++;
     }
@@ -12008,22 +12183,24 @@ router.get('/api/agents/search', async (req, res) => {
       const minTierIndex = tierOrder.indexOf(trust_tier);
       if (minTierIndex >= 0) {
         const validTiers = tierOrder.slice(minTierIndex);
-        sql += ` AND a.trust_tier = ANY($${paramIndex})`;
+        sql += ` AND COALESCE(a.trust_tier, 'new') = ANY($${paramIndex})`;
         params.push(validTiers);
         paramIndex++;
       }
     }
     
-    // Sorting
+    // Sorting - default to relevance for capability searches
     const sortFields = {
+      'relevance': 'relevance_score',
       'rating': 'a.rating',
       'tasks': 'a.total_jobs',
       'price': '(SELECT MIN(s.price_usdc) FROM skills s WHERE s.agent_id = a.id)',
       'trust': 'a.trust_score'
     };
-    const sortField = sortFields[sort] || 'a.rating';
+    const effectiveSort = searchTerm && sort === 'relevance' ? 'relevance' : (sort === 'relevance' ? 'rating' : sort);
+    const sortField = sortFields[effectiveSort] || 'a.rating';
     const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
-    sql += ` ORDER BY ${sortField} ${sortOrder}`;
+    sql += ` ORDER BY ${sortField} ${sortOrder} NULLS LAST`;
     
     // Pagination
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -12032,11 +12209,24 @@ router.get('/api/agents/search', async (req, res) => {
     
     const result = await db.query(sql, params);
     
+    // Transform results for A2A consumption
+    const agents = sanitizeAgents(result.rows).map(agent => ({
+      ...agent,
+      matchScore: agent.relevance_score || 0,
+      matchingSkills: searchTerm && agent.skills ? 
+        agent.skills.filter(s => 
+          (s.name && s.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (s.description && s.description.toLowerCase().includes(searchTerm.toLowerCase()))
+        ) : []
+    }));
+    
     res.json({
-      agents: sanitizeAgents(result.rows),
+      agents,
+      query: { q, capability, category, min_rating, max_price, trust_tier },
       page: parseInt(page),
       limit: parseInt(limit),
-      total: result.rows.length
+      total: result.rows.length,
+      hasMore: result.rows.length === parseInt(limit)
     });
   } catch (error) {
     const { statusCode, body } = formatErrorResponse(error, 'Search failed');

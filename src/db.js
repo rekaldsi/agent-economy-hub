@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const crypto = require('crypto');
 const logger = require('./logger');
 
 const pool = new Pool({
@@ -985,15 +986,65 @@ async function getAllAgents(filters = {}) {
   return result.rows;
 }
 
+/**
+ * SECURITY P1-6: Hash API key using SHA-256
+ * @param {string} apiKey - Plain text API key
+ * @returns {string} Hashed API key
+ */
+function hashApiKey(apiKey) {
+  return crypto.createHash('sha256').update(apiKey).digest('hex');
+}
+
+/**
+ * SECURITY P1-6: Verify API key against stored hash
+ * Uses timing-safe comparison to prevent timing attacks
+ * @param {string} providedKey - Plain text API key from request
+ * @param {string} storedValue - Could be hash (new) or plain text (legacy)
+ * @returns {boolean} True if key matches
+ */
+function verifyApiKey(providedKey, storedValue) {
+  if (!providedKey || !storedValue) return false;
+  
+  // Hash the provided key
+  const providedHash = hashApiKey(providedKey);
+  
+  // Check if stored value is a hash (64 hex chars) or legacy plain key (starts with 'hub_')
+  const isLegacyKey = storedValue.startsWith('hub_');
+  
+  if (isLegacyKey) {
+    // Legacy: direct comparison (timing-safe)
+    try {
+      return crypto.timingSafeEqual(Buffer.from(providedKey), Buffer.from(storedValue));
+    } catch (e) {
+      // Buffer lengths don't match - can't be equal
+      return false;
+    }
+  } else {
+    // New: compare hashes (timing-safe)
+    try {
+      return crypto.timingSafeEqual(Buffer.from(providedHash), Buffer.from(storedValue));
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
 async function createAgent(userId, webhookUrl = null) {
-  const apiKey = 'hub_' + require('crypto').randomBytes(24).toString('hex');
+  // Generate API key - return plain text to user, store hash
+  const apiKeyPlain = 'hub_' + crypto.randomBytes(24).toString('hex');
+  const apiKeyHash = hashApiKey(apiKeyPlain);
+  
   const result = await query(
     `INSERT INTO agents (user_id, webhook_url, api_key) 
      VALUES ($1, $2, $3) 
      RETURNING *`,
-    [userId, webhookUrl, apiKey]
+    [userId, webhookUrl, apiKeyHash]
   );
-  return result.rows[0];
+  
+  // Return agent with PLAIN api_key (only time user sees it)
+  const agent = result.rows[0];
+  agent.api_key = apiKeyPlain; // Override hash with plain for this response only
+  return agent;
 }
 
 async function createSkill(agentId, name, description, category, priceUsdc, estimatedTime) {
@@ -1047,7 +1098,10 @@ async function updateJobStatus(jobId, status, extraFields = {}) {
     'paid_at',
     'delivered_at',
     'completed_at',
-    'output_data'
+    'output_data',
+    'accepted_at',
+    'dispute_reason',
+    'disputed_at'
   ];
 
   const setClauses = ['status = $2'];
@@ -1071,6 +1125,133 @@ async function updateJobStatus(jobId, status, extraFields = {}) {
     values
   );
   return result.rows[0];
+}
+
+/**
+ * SECURITY P1-4: Update job status with transaction and row locking to prevent race conditions
+ * @param {number} jobId - Job ID to update
+ * @param {string} newStatus - Target status
+ * @param {string[]} allowedFromStatuses - Array of statuses from which transition is allowed
+ * @param {Object} extraFields - Additional fields to update
+ * @returns {Object} { success: boolean, job?: object, error?: string }
+ */
+async function updateJobStatusWithLock(jobId, newStatus, allowedFromStatuses, extraFields = {}) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Lock the job row and verify status atomically
+    const lockResult = await client.query(
+      `SELECT * FROM jobs WHERE id = $1 FOR UPDATE`,
+      [jobId]
+    );
+    
+    if (lockResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return { success: false, error: 'Job not found' };
+    }
+    
+    const job = lockResult.rows[0];
+    
+    // Verify current status allows this transition
+    if (!allowedFromStatuses.includes(job.status)) {
+      await client.query('ROLLBACK');
+      return { 
+        success: false, 
+        error: `Job status is '${job.status}', cannot transition to '${newStatus}'`,
+        currentStatus: job.status
+      };
+    }
+    
+    // Build update query with extra fields
+    const allowedFields = [
+      'payment_tx_hash', 'payout_tx_hash', 'paid_at', 'delivered_at',
+      'completed_at', 'output_data', 'accepted_at', 'dispute_reason', 'disputed_at'
+    ];
+    
+    const setClauses = ['status = $2'];
+    const values = [jobId, newStatus];
+    let paramIndex = 3;
+    
+    for (const [key, value] of Object.entries(extraFields)) {
+      if (!allowedFields.includes(key)) {
+        logger.warn('Ignoring invalid field in updateJobStatusWithLock', { field: key });
+        continue;
+      }
+      setClauses.push(`${key} = $${paramIndex}`);
+      values.push(value);
+      paramIndex++;
+    }
+    
+    const updateResult = await client.query(
+      `UPDATE jobs SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
+      values
+    );
+    
+    await client.query('COMMIT');
+    
+    return { success: true, job: updateResult.rows[0] };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Accept a job with proper locking to prevent race conditions
+ * Uses SELECT FOR UPDATE to ensure only one agent can accept
+ * @param {number} jobId - Job ID to accept
+ * @param {number} expectedAgentId - Agent ID that should own this job
+ * @param {string} requiredStatus - Status the job must be in (default: 'paid')
+ * @returns {Object} { success: boolean, job?: object, error?: string }
+ */
+async function acceptJobWithLock(jobId, expectedAgentId, requiredStatus = 'paid') {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Lock the job row and verify status atomically
+    const lockResult = await client.query(
+      `SELECT * FROM jobs WHERE id = $1 FOR UPDATE`,
+      [jobId]
+    );
+    
+    if (lockResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return { success: false, error: 'Job not found' };
+    }
+    
+    const job = lockResult.rows[0];
+    
+    // Verify agent ownership
+    if (job.agent_id !== expectedAgentId) {
+      await client.query('ROLLBACK');
+      return { success: false, error: 'Job not assigned to this agent' };
+    }
+    
+    // Verify status
+    if (job.status !== requiredStatus) {
+      await client.query('ROLLBACK');
+      return { success: false, error: `Job status is '${job.status}', expected '${requiredStatus}'` };
+    }
+    
+    // Update status to in_progress
+    const updateResult = await client.query(
+      `UPDATE jobs SET status = 'in_progress', accepted_at = NOW() WHERE id = $1 RETURNING *`,
+      [jobId]
+    );
+    
+    await client.query('COMMIT');
+    
+    return { success: true, job: updateResult.rows[0] };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function getJob(jobUuid) {
@@ -1925,11 +2106,16 @@ module.exports = {
   getAgentByWallet,
   getAllAgents,
   createAgent,
+  // API key security (P1-6)
+  hashApiKey,
+  verifyApiKey,
   createSkill,
   getSkillsByAgent,
   getSkill,
   createJob,
   updateJobStatus,
+  updateJobStatusWithLock,
+  acceptJobWithLock,
   getJob,
   getJobsByUser,
   getJobsByAgent,
