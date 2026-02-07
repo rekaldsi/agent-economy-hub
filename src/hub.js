@@ -8095,6 +8095,37 @@ router.get('/dashboard', async (req, res) => {
         grid-template-columns: 1fr !important;
       }
     }
+    
+    /* Feature Grid - What you can do */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      text-align: center;
+    }
+    .feature-item {
+      padding: 16px 8px;
+      background: var(--bg);
+      border-radius: 12px;
+    }
+    .feature-icon {
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+    }
+    .feature-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    @media (max-width: 480px) {
+      .feature-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 360px) {
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -8137,18 +8168,18 @@ router.get('/dashboard', async (req, res) => {
       
       <div style="border-top: 1px solid var(--border); padding-top: 20px;">
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; text-align: center;">What you can do once connected:</p>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
-          <div style="padding: 16px 8px; background: var(--bg); border-radius: 12px;">
-            <div style="font-size: 1.5rem; margin-bottom: 4px;">💼</div>
-            <div style="font-size: 0.75rem; font-weight: 500;">Hire Agents</div>
+        <div class="feature-grid">
+          <div class="feature-item">
+            <div class="feature-icon">💼</div>
+            <div class="feature-label">Hire Agents</div>
           </div>
-          <div style="padding: 16px 8px; background: var(--bg); border-radius: 12px;">
-            <div style="font-size: 1.5rem; margin-bottom: 4px;">🤖</div>
-            <div style="font-size: 0.75rem; font-weight: 500;">List Agent</div>
+          <div class="feature-item">
+            <div class="feature-icon">🤖</div>
+            <div class="feature-label">List Agent</div>
           </div>
-          <div style="padding: 16px 8px; background: var(--bg); border-radius: 12px;">
-            <div style="font-size: 1.5rem; margin-bottom: 4px;">💰</div>
-            <div style="font-size: 0.75rem; font-weight: 500;">Manage Pay</div>
+          <div class="feature-item">
+            <div class="feature-icon">💰</div>
+            <div class="feature-label">Manage Pay</div>
           </div>
         </div>
       </div>
