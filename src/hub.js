@@ -199,7 +199,7 @@ function getHeader(activePath = '') {
     <nav>
       ${navLinks}
     </nav>
-    <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobileNav">
+    <button class="mobile-menu-btn" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobileNav">
       <span></span><span></span><span></span>
     </button>
   </header>
@@ -736,31 +736,38 @@ const HUB_STYLES = `
   /* Mobile Nav Overlay - MUST be hidden by default */
   .mobile-nav {
     display: none;
-    visibility: hidden;
-    opacity: 0;
     position: fixed;
-    top: 69px; /* Header height: 16px padding × 2 + 36px logo + 1px border */
+    top: 69px; /* Below header */
     left: 0;
     right: 0;
-    bottom: 0;
     background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
     padding: 16px 24px;
     z-index: 999;
     flex-direction: column;
     gap: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    transition: opacity 0.25s ease-out;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
   }
   .mobile-nav.active {
     display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+    max-height: calc(100vh - 69px);
+    overflow-y: auto;
   }
   /* Extra specificity for hidden state */
   .mobile-nav:not(.active) {
     display: none !important;
     visibility: hidden !important;
+  }
+  /* Adjust mobile nav top spacing for smaller mobile header */
+  @media (max-width: 767px) {
+    .mobile-nav {
+      top: 57px; /* Smaller mobile header */
+    }
+    .mobile-nav.active {
+      max-height: calc(100vh - 57px);
+    }
   }
   .mobile-nav a {
     color: var(--text);
@@ -806,29 +813,20 @@ const HUB_STYLES = `
     to { opacity: 1; transform: translateY(0); }
   }
 
-  @media (max-width: 768px) {
-    /* Hide desktop nav on mobile */
-    header nav:not(.mobile-nav) { 
-      display: none !important; 
-      visibility: hidden !important;
-      width: 0 !important;
-      height: 0 !important;
-      overflow: hidden !important;
+  /* Mobile + Tablet: Show hamburger menu, hide desktop nav */
+  @media (max-width: 1023px) {
+    header nav:not(.mobile-nav) {
+      display: none !important;
     }
-    .mobile-menu-btn { display: flex !important; }
+    .mobile-menu-btn {
+      display: flex !important;
+    }
+  }
+
+  @media (max-width: 768px) {
     h1 { font-size: 1.75rem; }
     h2 { font-size: 1.5rem; }
     .container { padding: 16px; }
-  }
-  
-  /* Ensure desktop nav hidden on tablet and below - stronger specificity */
-  @media (max-width: 900px) {
-    header > nav:not(.mobile-nav) { 
-      display: none !important;
-      visibility: hidden !important;
-      position: absolute !important;
-      left: -9999px !important;
-    }
   }
 
   /* ============================================
@@ -1162,49 +1160,78 @@ const HUB_STYLES = `
     margin: 0 auto 24px;
     line-height: 1.7;
   }
+  /* Hero Search - Unified Glass Morphism (Option 1) */
   .hero-search {
+    position: relative;
     display: flex;
     align-items: center;
-    position: relative;
+    gap: 8px;
     max-width: 600px;
     width: 100%;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 50px;
-    padding: 6px 6px 6px 20px;
+    background: rgba(15, 25, 45, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    border-radius: 16px;
+    padding: 6px;
     margin-bottom: 24px;
-    transition: all 0.3s;
-    box-shadow: var(--shadow-lg);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
+
   .hero-search:focus-within {
-    border-color: var(--teal);
-    box-shadow: var(--shadow-glow);
+    border-color: rgba(0, 240, 255, 0.4);
+    background: rgba(15, 25, 45, 0.6);
+    box-shadow:
+      0 8px 32px rgba(0, 240, 255, 0.2),
+      0 0 0 1px rgba(0, 240, 255, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
+
   .hero-search input {
     flex: 1;
     background: transparent;
     border: none;
+    outline: none;
     color: var(--text);
-    font-size: 1rem;
-    padding: 14px 12px;
+    font-size: 15px;
+    font-weight: 400;
+    padding: 12px 16px;
     min-width: 0;
   }
+
+  .hero-search input::placeholder {
+    color: #5a6479;
+  }
+
   .hero-search button {
     flex-shrink: 0;
-    padding: 12px 28px;
-    border-radius: 50px;
-    font-weight: 600;
-    background: var(--teal);
-    color: var(--bg);
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
     border: none;
+    background: linear-gradient(135deg, var(--accent) 0%, #00b8d4 100%);
+    color: var(--bg);
+    font-size: 16px;
+    font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(0, 240, 255, 0.3);
   }
+
   .hero-search button:hover {
-    background: var(--teal-light);
+    transform: scale(1.05);
+    box-shadow: 0 6px 24px rgba(0, 240, 255, 0.5);
   }
-  .hero-search input:focus { outline: none; }
-  .hero-search input::placeholder { color: var(--text-muted); }
+
+  .hero-search button:active {
+    transform: scale(0.98);
+  }
   .popular-tags {
     display: flex;
     gap: 10px;
@@ -1948,6 +1975,11 @@ const HUB_STYLES = `
     .container {
       padding: 16px;
       max-width: 100%;
+      overflow: visible;
+    }
+
+    .hero-content {
+      overflow: visible;
     }
 
     /* Header */
@@ -1963,40 +1995,7 @@ const HUB_STYLES = `
 
     .logo-icon { font-size: 1.3rem; }
 
-    /* Navigation - Hamburger Menu */
-    nav {
-      display: none;
-      position: fixed;
-      top: 60px;
-      left: 0;
-      right: 0;
-      background: var(--bg-card);
-      border-bottom: 1px solid var(--border);
-      flex-direction: column;
-      gap: 0;
-      padding: 16px;
-      z-index: 40;
-    }
-
-    nav.mobile-menu-open {
-      display: flex;
-    }
-
-    nav a {
-      padding: 12px 16px;
-      display: block;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .mobile-menu-toggle {
-      display: block;
-      background: none;
-      border: none;
-      color: var(--text);
-      font-size: 1.5rem;
-      cursor: pointer;
-      padding: 8px;
-    }
+    /* Legacy mobile nav removed - now using .mobile-nav overlay system */
 
     /* Hero */
     .hero {
@@ -2104,6 +2103,157 @@ const HUB_STYLES = `
     .card {
       padding: 16px;
       border-radius: 8px;
+    }
+
+    /* ====================
+       MOBILE FIXES
+       ==================== */
+
+    /* Hero Search - Consistent glass morphism on mobile */
+    .hero-search {
+      max-width: 100%;
+      padding: 6px;
+      margin-bottom: 20px;
+    }
+
+    .hero-search input {
+      font-size: 15px;
+      padding: 12px 14px;
+    }
+
+    .hero-search button {
+      width: 48px;
+      height: 48px;
+    }
+
+    /* Category Pills - Wrap nicely in rows */
+    .popular-tags {
+      display: flex;
+      flex-wrap: wrap !important;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 24px;
+      max-width: 100%;
+    }
+
+    .tag-pill {
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+
+    /* Trust Signals - 2x2 grid, text centered under icons */
+    .trust-signals {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 16px;
+      padding: 20px 16px;
+    }
+
+    .trust-block {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      text-align: center !important;
+      gap: 10px;
+      padding: 12px 8px;
+    }
+
+    .trust-icon {
+      width: 48px;
+      height: 48px;
+      font-size: 1.5rem;
+      margin: 0 auto;
+    }
+
+    .trust-content {
+      text-align: center !important;
+      width: 100%;
+    }
+
+    .trust-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: normal;
+      text-align: center;
+    }
+
+    .trust-desc {
+      font-size: 0.75rem;
+      text-align: center;
+    }
+
+    /* Steps Grid - Clean 2x2 layout */
+    .steps-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    .step {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .step:not(:last-child)::after {
+      display: none !important;
+    }
+
+    .step-icon {
+      width: 56px;
+      height: 56px;
+      font-size: 24px;
+      margin: 0 auto 12px;
+    }
+
+    .step-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .step-desc {
+      font-size: 0.8rem;
+      line-height: 1.4;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    /* Trust Grid - Single column, centered vertically */
+    .trust-grid {
+      grid-template-columns: 1fr !important;
+      gap: 16px;
+    }
+
+    .trust-card {
+      padding: 28px 20px;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      text-align: center !important;
+      min-height: 160px;
+    }
+
+    .trust-card-icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+    }
+
+    .trust-card h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .trust-card p {
+      font-size: 0.875rem;
+      line-height: 1.6;
+      text-align: center;
+      color: var(--text-muted);
     }
   }
 
@@ -2258,15 +2408,36 @@ const HUB_FOOTER = `
 `;
 
 const HUB_SCRIPTS = `
+  // Global helper functions for onclick handlers
+  window.closeModal = function(btn) {
+    var modal = btn.closest('.modal-overlay');
+    if (modal) modal.remove();
+  };
+
+  window.closeToast = function(btn) {
+    var toast = btn.parentElement;
+    if (toast) toast.remove();
+  };
+
+  window.toggleFAQ = function(el) {
+    var faqItem = el.parentElement;
+    if (faqItem) faqItem.classList.toggle('open');
+  };
+
+  window.removeParent = function(btn) {
+    var parent = btn.parentElement;
+    if (parent) parent.remove();
+  };
+
   // Mobile Menu Toggle - Class-based only, no inline styles
-  function toggleMobileMenu() {
+  window.toggleMobileMenu = function() {
     const btn = document.querySelector('.mobile-menu-btn');
     const nav = document.getElementById('mobileNav');
     if (!btn || !nav) return;
     
     const isActive = nav.classList.contains('active');
     if (isActive) {
-      closeMobileMenu();
+      window.closeMobileMenu();
     } else {
       // Open menu
       btn.classList.add('active');
@@ -2277,8 +2448,8 @@ const HUB_SCRIPTS = `
       document.body.style.overflow = 'hidden';
     }
   }
-  
-  function closeMobileMenu() {
+
+  window.closeMobileMenu = function() {
     const btn = document.querySelector('.mobile-menu-btn');
     const nav = document.getElementById('mobileNav');
     if (btn) {
@@ -2303,12 +2474,14 @@ const HUB_SCRIPTS = `
     if (btn) {
       btn.classList.remove('active');
       btn.setAttribute('aria-expanded', 'false');
+      // Attach click handler
+      btn.addEventListener('click', window.toggleMobileMenu);
     }
-    
+
     // Close mobile menu on link click
     document.querySelectorAll('.mobile-nav a').forEach(function(a) {
       a.addEventListener('click', function() {
-        closeMobileMenu();
+        window.closeMobileMenu();
       });
     });
     
@@ -2318,7 +2491,7 @@ const HUB_SCRIPTS = `
       const btn = document.querySelector('.mobile-menu-btn');
       if (nav && nav.classList.contains('active')) {
         if (!nav.contains(e.target) && !btn.contains(e.target)) {
-          closeMobileMenu();
+          window.closeMobileMenu();
         }
       }
     });
@@ -2326,14 +2499,14 @@ const HUB_SCRIPTS = `
     // Close mobile menu on escape key
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
-        closeMobileMenu();
+        window.closeMobileMenu();
       }
     });
     
     // Close menu on window resize to desktop
     window.addEventListener('resize', function() {
-      if (window.innerWidth > 768) {
-        closeMobileMenu();
+      if (window.innerWidth >= 1024) {
+        window.closeMobileMenu();
       }
     });
   });
@@ -2559,13 +2732,12 @@ const HUB_SCRIPTS = `
     const connectBtn = document.getElementById('connect-btn');
     
     if (statusEl) {
-      statusEl.innerHTML = \`
-        <div class="wallet-connected">
-          <span>🟢 Connected</span>
-          <span class="wallet-address">\${address.slice(0,6)}...\${address.slice(-4)}</span>
-          <span class="balance">\${balance} USDC</span>
-        </div>
-      \`;
+      statusEl.innerHTML =
+        '<div class="wallet-connected">' +
+          '<span>🟢 Connected</span>' +
+          '<span class="wallet-address">' + address.slice(0,6) + '...' + address.slice(-4) + '</span>' +
+          '<span class="balance">' + balance + ' USDC</span>' +
+        '</div>';
     }
     
     if (connectBtn) {
@@ -2629,7 +2801,7 @@ const HUB_SCRIPTS = `
   function animateList(selector, delay = 50) {
     const elements = document.querySelectorAll(selector);
     elements.forEach((el, index) => {
-      el.style.animationDelay = \`\${index * delay}ms\`;
+      el.style.animationDelay = (index * delay) + 'ms';
       el.classList.add('fade-in');
     });
   }
@@ -2651,10 +2823,9 @@ const HUB_SCRIPTS = `
     const overlay = document.createElement('div');
     overlay.className = 'loading-overlay';
     overlay.id = 'loading-overlay';
-    overlay.innerHTML = \`
-      <div class="spinner"></div>
-      <div class="loading-text">\${message}</div>
-    \`;
+    overlay.innerHTML =
+      '<div class="spinner"></div>' +
+      '<div class="loading-text">' + message + '</div>';
     document.body.appendChild(overlay);
   }
 
@@ -2719,7 +2890,7 @@ const HUB_SCRIPTS = `
         '<a href="https://link.trustwallet.com/open_url?coin_id=60&url=' + encodeURIComponent(window.location.href) + '" class="btn btn-secondary" style="text-decoration: none;">Open in Trust Wallet</a>' +
         '<a href="https://go.cb-w.com/dapp?cb_url=' + encodeURIComponent(window.location.href) + '" class="btn btn-secondary" style="text-decoration: none;">Open in Coinbase Wallet</a>' +
       '</div>' +
-      '<button onclick="this.closest(\'.modal-overlay\').remove()" style="margin-top: 24px; background: none; border: none; color: var(--text-muted); cursor: pointer;">Cancel</button>' +
+      "<button onclick=\"closeModal(this)\" style=\"margin-top: 24px; background: none; border: none; color: var(--text-muted); cursor: pointer;\">Cancel</button>" +
     '</div>';
     overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
     document.body.appendChild(overlay);
@@ -2752,15 +2923,14 @@ const HUB_SCRIPTS = `
 
     // Create toast
     const toast = document.createElement('div');
-    toast.className = \`toast \${type}\`;
-    toast.innerHTML = \`
-      <div class="toast-icon">\${icons[type] || icons.info}</div>
-      <div class="toast-content">
-        <div class="toast-title">\${titles[type]}</div>
-        <div class="toast-message">\${message}</div>
-      </div>
-      <button class="toast-close" onclick="this.parentElement.remove()">×</button>
-    \`;
+    toast.className = 'toast ' + type;
+    toast.innerHTML =
+      '<div class="toast-icon">' + (icons[type] || icons.info) + '</div>' +
+      '<div class="toast-content">' +
+        '<div class="toast-title">' + titles[type] + '</div>' +
+        '<div class="toast-message">' + message + '</div>' +
+      '</div>' +
+      '<button class="toast-close" onclick="closeToast(this)">×</button>';
 
     container.appendChild(toast);
 
@@ -2797,29 +2967,28 @@ const HUB_SCRIPTS = `
     // Create modal
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = \`
-      <div class="modal" style="max-width: 90vw; width: 450px; margin: 16px;">
-        <div class="modal-header">
-          <h2 style="font-size: 1.1rem; word-wrap: break-word;">Request: \${skill}</h2>
-          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
-        </div>
-        <div class="modal-body">
-          <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.9rem;">
-            From <strong>\${agentName}</strong> • <span style="color: var(--green);">$\${Number(price).toFixed(2)} USDC</span>
-          </p>
-          <div class="form-group">
-            <label>What do you need?</label>
-            <textarea id="quick-request-input" rows="4" placeholder="Describe your request..." style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-input); color: var(--text); resize: vertical; box-sizing: border-box;"></textarea>
-          </div>
-          <div class="modal-buttons" style="margin-top: 20px;">
-            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()" style="flex: 1;">Cancel</button>
-            <button class="btn btn-primary" onclick="submitQuickRequest('\${agentId}', '\${skill}', \${price})" style="flex: 1;">
-              \${connected ? 'Submit Request' : 'Connect Wallet'}
-            </button>
-          </div>
-        </div>
-      </div>
-    \`;
+    modal.innerHTML =
+      '<div class="modal" style="max-width: 90vw; width: 450px; margin: 16px;">' +
+        '<div class="modal-header">' +
+          '<h2 style="font-size: 1.1rem; word-wrap: break-word;">Request: ' + skill + '</h2>' +
+          "<button class=\"modal-close\" onclick=\"closeModal(this)\">×</button>" +
+        '</div>' +
+        '<div class="modal-body">' +
+          '<p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.9rem;">' +
+            'From <strong>' + agentName + '</strong> • <span style="color: var(--green);">$' + Number(price).toFixed(2) + ' USDC</span>' +
+          '</p>' +
+          '<div class="form-group">' +
+            '<label>What do you need?</label>' +
+            '<textarea id="quick-request-input" rows="4" placeholder="Describe your request..." style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-input); color: var(--text); resize: vertical; box-sizing: border-box;"></textarea>' +
+          '</div>' +
+          '<div class="modal-buttons" style="margin-top: 20px;">' +
+            "<button class=\"btn btn-secondary\" onclick=\"closeModal(this)\" style=\"flex: 1;\">Cancel</button>" +
+            "<button class=\"btn btn-primary\" onclick=\"submitQuickRequest('" + agentId + "', '" + skill + "', " + price + ")\" style=\"flex: 1;\">" +
+              (connected ? 'Submit Request' : 'Connect Wallet') +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
     document.body.appendChild(modal);
     document.getElementById('quick-request-input').focus();
   }
@@ -2842,7 +3011,7 @@ const HUB_SCRIPTS = `
       skill: skill,
       request: input
     });
-    window.location.href = \`/agent/\${agentId}?\${params.toString()}\`;
+    window.location.href = '/agent/' + agentId + '?' + params.toString();
   }
 
   // ============================================
@@ -2861,7 +3030,7 @@ const HUB_SCRIPTS = `
     }
 
     try {
-      const res = await fetch(\`/api/jobs/\${jobUuid}/approve\`, {
+      const res = await fetch('/api/jobs/' + jobUuid + '/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wallet: userAddress })
@@ -2891,7 +3060,7 @@ const HUB_SCRIPTS = `
     if (feedback === null) return; // User cancelled
 
     try {
-      const res = await fetch(\`/api/jobs/\${jobUuid}/revision\`, {
+      const res = await fetch('/api/jobs/' + jobUuid + '/revision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wallet: userAddress, feedback })
@@ -2928,7 +3097,7 @@ const HUB_SCRIPTS = `
     }
 
     try {
-      const res = await fetch(\`/api/jobs/\${jobUuid}/dispute\`, {
+      const res = await fetch('/api/jobs/' + jobUuid + '/dispute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wallet: userAddress, reason })
@@ -2936,7 +3105,7 @@ const HUB_SCRIPTS = `
 
       const data = await res.json();
       if (res.ok) {
-        showToast('⚠️ Dispute opened. We\\'ll review within 48 hours.', 'success');
+        showToast("⚠️ Dispute opened. We'll review within 48 hours.", 'success');
         setTimeout(() => window.location.reload(), 1500);
       } else {
         showToast(data.error || 'Failed to open dispute', 'error');
@@ -2947,6 +3116,64 @@ const HUB_SCRIPTS = `
     }
   }
 `;
+
+// Mobile menu script - inject into all pages
+const MOBILE_MENU_SCRIPT = `<script>
+window.toggleMobileMenu = function() {
+  const btn = document.querySelector('.mobile-menu-btn');
+  const nav = document.getElementById('mobileNav');
+  if (!btn || !nav) return;
+  const isActive = nav.classList.contains('active');
+  if (isActive) {
+    window.closeMobileMenu();
+  } else {
+    btn.classList.add('active');
+    btn.setAttribute('aria-expanded', 'true');
+    nav.removeAttribute('hidden');
+    nav.classList.add('active');
+  }
+};
+window.closeMobileMenu = function() {
+  const btn = document.querySelector('.mobile-menu-btn');
+  const nav = document.getElementById('mobileNav');
+  if (btn) {
+    btn.classList.remove('active');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+  if (nav) {
+    nav.classList.remove('active');
+    nav.setAttribute('hidden', '');
+  }
+};
+document.addEventListener('DOMContentLoaded', function() {
+  const nav = document.getElementById('mobileNav');
+  const btn = document.querySelector('.mobile-menu-btn');
+  if (nav) nav.classList.remove('active');
+  if (btn) {
+    btn.classList.remove('active');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.addEventListener('click', window.toggleMobileMenu);
+  }
+  document.querySelectorAll('.mobile-nav a').forEach(function(a) {
+    a.addEventListener('click', window.closeMobileMenu);
+  });
+  document.addEventListener('click', function(e) {
+    const nav = document.getElementById('mobileNav');
+    const btn = document.querySelector('.mobile-menu-btn');
+    if (nav && nav.classList.contains('active')) {
+      if (!nav.contains(e.target) && !btn.contains(e.target)) {
+        window.closeMobileMenu();
+      }
+    }
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') window.closeMobileMenu();
+  });
+  window.addEventListener('resize', function() {
+    if (window.innerWidth >= 1024) window.closeMobileMenu();
+  });
+});
+</script>`;
 
 // Hub landing page - REFINED FUTURISM v2
 router.get('/', async (req, res) => {
@@ -3988,23 +4215,13 @@ router.get('/', async (req, res) => {
       width: 64px;
       height: 64px;
       margin: 0 auto 20px;
-      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--purple) 100());
       border-radius: var(--radius-lg);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 28px;
-      transition: all var(--duration-normal) var(--ease-spring);
       box-shadow: 0 4px 16px rgba(0, 240, 255, 0.2);
-    }
-    
-    .step:hover .step-icon {
-      transform: scale(1.08) rotate(3deg);
-      box-shadow: 0 8px 24px rgba(0, 240, 255, 0.4);
-    }
-    
-    .step:hover .step-title {
-      color: var(--accent);
     }
     
     .step-title {
@@ -4039,21 +4256,11 @@ router.get('/', async (req, res) => {
       border-radius: 16px;
       padding: 32px;
       text-align: center;
-      transition: all var(--duration-normal);
-    }
-    
-    .trust-card:hover {
-      border-color: var(--accent);
-      transform: translateY(-4px);
-      box-shadow: 0 12px 40px rgba(0, 240, 255, 0.1);
-    }
-    
-    .trust-card:hover .trust-card-icon {
-      transform: scale(1.1);
-    }
-    
-    .trust-card:hover h3 {
-      color: var(--accent);
+      cursor: default;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
     
     .trust-card-icon {
@@ -4780,7 +4987,7 @@ router.get('/', async (req, res) => {
         
         <div class="hero-search">
           <input type="text" id="search-input" placeholder="What do you need help with?" onkeypress="if(event.key==='Enter')doSearch()">
-          <button class="btn btn-primary" onclick="doSearch()">Search</button>
+          <button onclick="doSearch()" aria-label="Search">→</button>
         </div>
         
         <div class="popular-tags">
@@ -5030,6 +5237,7 @@ router.get('/', async (req, res) => {
     </div>
   </section>
 
+  ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}
     function doSearch() {
       const query = document.getElementById('search-input').value.trim();
@@ -5787,6 +5995,7 @@ router.get('/agent/:id', validateIdParam('id'), async (req, res) => {
     </div>
   </div>
 
+  ${MOBILE_MENU_SCRIPT}
   <script>
     ${HUB_SCRIPTS}
     
@@ -6003,10 +6212,16 @@ router.get('/agents', async (req, res) => {
     /* Search Bar */
     .search-bar {
       display: flex;
-      gap: 12px;
+      flex-direction: column;
+      gap: 16px;
       margin-bottom: 24px;
     }
-    
+
+    .search-row {
+      display: flex;
+      gap: 12px;
+    }
+
     .search-bar input {
       flex: 1;
       padding: 16px 24px;
@@ -6235,9 +6450,9 @@ router.get('/agents', async (req, res) => {
     /* Mobile (below iPad portrait) */
     @media (max-width: 767px) {
       .browse-hero h1 { font-size: 1.75rem; }
-      .search-bar { flex-direction: column; }
+      .search-row { flex-direction: column; }
       .search-bar input { min-height: 48px; }
-      .search-bar .btn { min-height: 48px; width: 100%; }
+      .search-row .btn { min-height: 48px; width: 100%; }
       .filter-row { justify-content: center; }
       .filter-select { min-height: 44px; }
       .agents-grid { grid-template-columns: 1fr; }
@@ -6269,24 +6484,26 @@ router.get('/agents', async (req, res) => {
       <p class="subtitle">${agents.length} ${agents.length === 1 ? 'agent' : 'agents'} ready to work for you</p>
       
       <form class="search-bar" method="get" action="/agents">
-        <input type="text" name="search" placeholder="Search agents by skill, name, or description..." value="${escapeHtml(search || '')}">
-        <button type="submit" class="btn btn-primary">Search</button>
+        <div class="search-row">
+          <input type="text" name="search" placeholder="Search agents by skill, name, or description..." value="${escapeHtml(search || '')}">
+          <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+
+        <div class="filter-row">
+          <select name="trust_tier" class="filter-select" onchange="this.form.submit()">
+            <option value="">Any Trust Level</option>
+            <option value="rising" ${trust_tier === 'rising' ? 'selected' : ''}>↗ Rising+</option>
+            <option value="established" ${trust_tier === 'established' ? 'selected' : ''}>◆ Established+</option>
+            <option value="trusted" ${trust_tier === 'trusted' ? 'selected' : ''}>★ Trusted+</option>
+            <option value="verified" ${trust_tier === 'verified' ? 'selected' : ''}>✓ Verified</option>
+          </select>
+          <select name="sort" class="filter-select" onchange="this.form.submit()">
+            <option value="rating" ${sort === 'rating' ? 'selected' : ''}>★ Top Rated</option>
+            <option value="tasks" ${sort === 'tasks' ? 'selected' : ''}>📦 Most Tasks</option>
+            <option value="price" ${sort === 'price' ? 'selected' : ''}>💰 Lowest Price</option>
+          </select>
+        </div>
       </form>
-      
-      <div class="filter-row">
-        <select name="trust_tier" class="filter-select" onchange="this.form.submit()">
-          <option value="">Any Trust Level</option>
-          <option value="rising" ${trust_tier === 'rising' ? 'selected' : ''}>↗ Rising+</option>
-          <option value="established" ${trust_tier === 'established' ? 'selected' : ''}>◆ Established+</option>
-          <option value="trusted" ${trust_tier === 'trusted' ? 'selected' : ''}>★ Trusted+</option>
-          <option value="verified" ${trust_tier === 'verified' ? 'selected' : ''}>✓ Verified</option>
-        </select>
-        <select name="sort" class="filter-select" onchange="this.form.submit()">
-          <option value="rating" ${sort === 'rating' ? 'selected' : ''}>★ Top Rated</option>
-          <option value="tasks" ${sort === 'tasks' ? 'selected' : ''}>📦 Most Tasks</option>
-          <option value="price" ${sort === 'price' ? 'selected' : ''}>💰 Lowest Price</option>
-        </select>
-      </div>
     </div>
   </section>
 
@@ -6321,6 +6538,7 @@ router.get('/agents', async (req, res) => {
     </div>
   </div>
 
+  ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
@@ -6517,6 +6735,7 @@ curl -X POST https://www.thebotique.ai/api/jobs/JOB_UUID/deliver \\
     </div>
   </div>
   
+  ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
@@ -6861,7 +7080,7 @@ router.get('/register', async (req, res) => {
                 <label style="font-size: 0.8rem; color: var(--text-muted);">Price (USDC)</label>
                 <input type="number" class="skill-price" placeholder="0.50" step="0.01" min="0.01" aria-label="Skill price in USDC">
               </div>
-              <button class="remove-skill" onclick="this.parentElement.remove()" aria-label="Remove this skill">×</button>
+              <button class="remove-skill" onclick="removeParent(this)" aria-label="Remove this skill">×</button>
             </div>
           </div>
 
@@ -6886,6 +7105,7 @@ router.get('/register', async (req, res) => {
     </div>
   </div>
 
+  ${MOBILE_MENU_SCRIPT}
   <script>
     ${HUB_SCRIPTS}
 
@@ -6929,7 +7149,7 @@ router.get('/register', async (req, res) => {
           <label style="font-size: 0.8rem; color: var(--text-muted);">Price (USDC)</label>
           <input type="number" class="skill-price" placeholder="0.50" step="0.01" min="0.01">
         </div>
-        <button class="remove-skill" onclick="this.parentElement.remove()">×</button>
+        <button class="remove-skill" onclick="removeParent(this)">×</button>
       \`;
       container.appendChild(row);
     }
@@ -8314,6 +8534,7 @@ router.get('/dashboard', async (req, res) => {
     <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰</button>
   </div>
 
+  ${MOBILE_MENU_SCRIPT}
   <script>
     ${HUB_SCRIPTS}
 
@@ -8879,6 +9100,7 @@ router.get('/job/:uuid', validateUuidParam('uuid'), async (req, res) => {
     ` : ''}
   </div>
 
+  ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}</script>
   <script>
     const JOB_UUID = '${job.job_uuid}';
@@ -13154,6 +13376,7 @@ router.get('/admin', async (req, res) => {
     </div>
   </div>
 
+  ${MOBILE_MENU_SCRIPT}
   <script>
     ${HUB_SCRIPTS}
     
@@ -13746,6 +13969,7 @@ router.get('/category/:slug', async (req, res) => {
     ` : ''}
   </div>
 
+  ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
@@ -13905,6 +14129,7 @@ router.get('/categories', (req, res) => {
     </div>
   </div>
 
+  ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
@@ -13987,6 +14212,7 @@ router.get('/terms', (req, res) => {
     <h2>10. Contact</h2>
     <p>Questions? Email us at <a href="mailto:mrmagoochi@gmail.com" style="color: var(--accent);">mrmagoochi@gmail.com</a></p>
   </div>
+  ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
@@ -14542,6 +14768,7 @@ if (signature !== expected) {
       <p style="color: var(--text-muted);">Questions about the API? Contact us at <a href="mailto:mrmagoochi@gmail.com" style="color: var(--accent);">mrmagoochi@gmail.com</a> or join us on <a href="https://moltbook.com/u/mrmagoochi" style="color: var(--accent);">Moltbook</a>.</p>
     </div>
   </div>
+  ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
@@ -14624,6 +14851,7 @@ router.get('/privacy', (req, res) => {
     <h2>10. Contact</h2>
     <p>Privacy questions? Email <a href="mailto:mrmagoochi@gmail.com" style="color: var(--accent);">mrmagoochi@gmail.com</a></p>
   </div>
+  ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
@@ -14690,7 +14918,7 @@ router.get('/support', (req, res) => {
       <h2>Frequently Asked Questions</h2>
       
       <div class="faq-item">
-        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <div class="faq-question" onclick="toggleFAQ(this)">
           How do payments work?
           <span class="faq-arrow">▼</span>
         </div>
@@ -14700,7 +14928,7 @@ router.get('/support', (req, res) => {
       </div>
 
       <div class="faq-item">
-        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <div class="faq-question" onclick="toggleFAQ(this)">
           What if an agent doesn't deliver?
           <span class="faq-arrow">▼</span>
         </div>
@@ -14710,7 +14938,7 @@ router.get('/support', (req, res) => {
       </div>
 
       <div class="faq-item">
-        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <div class="faq-question" onclick="toggleFAQ(this)">
           How do I register my AI agent?
           <span class="faq-arrow">▼</span>
         </div>
@@ -14720,7 +14948,7 @@ router.get('/support', (req, res) => {
       </div>
 
       <div class="faq-item">
-        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <div class="faq-question" onclick="toggleFAQ(this)">
           What's a trust tier?
           <span class="faq-arrow">▼</span>
         </div>
@@ -14730,7 +14958,7 @@ router.get('/support', (req, res) => {
       </div>
 
       <div class="faq-item">
-        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <div class="faq-question" onclick="toggleFAQ(this)">
           Why Base network?
           <span class="faq-arrow">▼</span>
         </div>
@@ -14740,7 +14968,7 @@ router.get('/support', (req, res) => {
       </div>
 
       <div class="faq-item">
-        <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <div class="faq-question" onclick="toggleFAQ(this)">
           How do I contact an agent's operator?
           <span class="faq-arrow">▼</span>
         </div>
@@ -14766,6 +14994,7 @@ router.get('/support', (req, res) => {
       </div>
     </div>
   </div>
+  ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
 </body>
@@ -14896,6 +15125,7 @@ router.get('/compare', async (req, res) => {
     <div id="comparison-results"></div>
   </div>
 
+  ${MOBILE_MENU_SCRIPT}
   <script>${HUB_SCRIPTS}</script>
   ${HUB_FOOTER}
   <script>

@@ -57,7 +57,7 @@ app.use((req, res, next) => {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://* wss://*",
+    "connect-src 'self' https://mainnet.base.org https://base-mainnet.g.alchemy.com https://*.alchemy.com https://*.walletconnect.com https://*.walletconnect.org wss://*.walletconnect.com wss://*.walletconnect.org https://cloudflare-eth.com",
     "frame-src 'self' https://*.walletconnect.com https://*.walletconnect.org"
   ].join('; '));
   next();
