@@ -1866,22 +1866,49 @@ const HUB_STYLES = `
       gap: 16px;
     }
     
-    /* Agent and featured cards - optimized tablet padding */
+    /* Agent and featured cards - semi-compact tablet layout */
     .agent-card,
     .featured-agent-card {
       padding: 20px;
+    }
+    
+    /* Featured card - partial compact (hide some elements, keep others) */
+    .featured-agent-card .agent-bio {
+      font-size: 0.85rem;
+      -webkit-line-clamp: 2;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    
+    .featured-agent-card .agent-trust-signals {
+      display: none;
+    }
+    
+    .featured-agent-card .agent-avatar-lg {
+      width: 72px;
+      height: 72px;
+      font-size: 32px;
+    }
+    
+    .featured-agent-card h3 {
+      font-size: 1.15rem;
+    }
+    
+    .featured-agent-card .card-badges {
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    
+    .featured-agent-card .founder-badge {
+      padding: 6px 12px;
+      font-size: 0.7rem;
     }
     
     .agent-avatar {
       width: 48px;
       height: 48px;
       font-size: 1.25rem;
-    }
-    
-    .agent-avatar-lg {
-      width: 80px;
-      height: 80px;
-      font-size: 32px;
     }
     
     /* Stats bar - tighter tablet layout */
@@ -1900,16 +1927,22 @@ const HUB_STYLES = `
       padding: 20px 24px;
     }
     
-    /* Steps grid - 2 columns */
+    /* Steps grid - 2 columns with larger icons */
     .steps-grid {
       grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
+      gap: 20px;
+      max-width: 500px;
+      margin: 24px auto 0;
     }
     
     .step-icon {
-      width: 52px;
-      height: 52px;
-      font-size: 24px;
+      width: 56px;
+      height: 56px;
+      font-size: 26px;
+    }
+    
+    .step:not(:last-child)::after {
+      display: none;
     }
     
     /* Hero search - better tablet fit */
@@ -1919,19 +1952,6 @@ const HUB_STYLES = `
     
     .hero-search input {
       padding: 12px 12px;
-    }
-    
-    /* Featured agent card specifics */
-    .featured-agent-card h3 {
-      font-size: 1.25rem;
-    }
-    
-    .agent-bio {
-      font-size: 0.85rem;
-      -webkit-line-clamp: 3;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
     }
     
     /* Card actions - tighter */
@@ -1945,10 +1965,37 @@ const HUB_STYLES = `
       font-size: 0.85rem;
     }
     
-    /* Trust grid - single column at tablet portrait */
+    /* Trust grid - badge strip on tablet too */
     .trust-grid {
-      grid-template-columns: 1fr;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
       gap: 12px;
+    }
+    
+    .trust-card {
+      background: rgba(0, 240, 255, 0.05);
+      border: 1px solid rgba(0, 240, 255, 0.15);
+      border-radius: 24px;
+      padding: 12px 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+    
+    .trust-card-icon {
+      font-size: 1.5rem;
+      margin: 0;
+    }
+    
+    .trust-card h3 {
+      font-size: 0.9rem;
+      margin: 0;
+    }
+    
+    .trust-card p {
+      display: none;
     }
     
     /* Crypto section - stack */
@@ -1972,6 +2019,73 @@ const HUB_STYLES = `
     .cta-buttons .btn {
       width: 100%;
       max-width: 300px;
+    }
+  }
+  
+  /* ============================================
+     RESPONSIVE - TABLET LANDSCAPE (900px - 1023px)
+     ============================================ */
+  @media (min-width: 900px) and (max-width: 1023px) {
+    /* Featured cards - partial compact, 2-column */
+    .agents-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    
+    .featured-agent-card {
+      padding: 24px;
+    }
+    
+    .featured-agent-card .agent-bio {
+      -webkit-line-clamp: 3;
+    }
+    
+    .featured-agent-card .agent-trust-signals {
+      padding: 12px;
+    }
+    
+    /* Trust grid - badge strip */
+    .trust-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 14px;
+    }
+    
+    .trust-card {
+      background: rgba(0, 240, 255, 0.05);
+      border: 1px solid rgba(0, 240, 255, 0.15);
+      border-radius: 24px;
+      padding: 14px 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+    
+    .trust-card-icon {
+      font-size: 1.75rem;
+      margin: 0;
+    }
+    
+    .trust-card h3 {
+      font-size: 1rem;
+      margin: 0;
+    }
+    
+    .trust-card p {
+      display: none;
+    }
+    
+    /* Steps - 4 columns but tighter */
+    .steps-grid {
+      gap: 16px;
+    }
+    
+    .step-icon {
+      width: 56px;
+      height: 56px;
+      font-size: 26px;
     }
   }
 
