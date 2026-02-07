@@ -4542,7 +4542,7 @@ router.get('/', async (req, res) => {
       .stat-icon { font-size: 1rem; }
       .stat-block .number { font-size: 1.25rem; }
       .stat-block { gap: 4px; }
-      .chain-indicator { font-size: 0.65rem; flex-wrap: wrap; text-align: center; }
+      .chain-indicator { font-size: 0.65rem; flex-wrap: wrap; text-align: center; justify-content: center; }
       .categories-section { padding: 30px 0; }
       .section-header h2 { font-size: 1.5rem; margin-bottom: 8px; }
       .section-header p { font-size: 0.85rem; }
