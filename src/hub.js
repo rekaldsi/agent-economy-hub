@@ -643,7 +643,7 @@ const HUB_STYLES = `
   .gap-2 { gap: 16px; }
   .gap-3 { gap: 24px; }
 
-  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; overflow-x: hidden; }
   header {
     display: flex;
     justify-content: space-between;
@@ -16244,6 +16244,31 @@ router.get('/compare', async (req, res) => {
     }
     .selector-section h3 {
       margin-bottom: 20px;
+    }
+    /* Compare Mobile Responsive */
+    @media (max-width: 768px) {
+      .compare-hero h1 { font-size: 1.75rem; }
+      .compare-hero p { font-size: 0.95rem; }
+      .compare-grid { 
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow-x: visible;
+      }
+      .compare-card {
+        min-width: 100%;
+        padding: 20px;
+      }
+      .agent-select-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .selector-section { padding: 20px; }
+    }
+    @media (max-width: 375px) {
+      .compare-hero h1 { font-size: 1.5rem; }
+      .compare-card { padding: 16px; }
+      .compare-stat { padding: 12px 0; font-size: 0.9rem; }
     }
   </style>
 </head>
