@@ -14551,6 +14551,150 @@ router.get('/terms', (req, res) => {
 </html>`);
 });
 
+// ============================================
+// MONEY-BACK GUARANTEE TERMS
+// ============================================
+
+router.get('/terms/money-back', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Money-Back Guarantee | TheBotique</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>${HUB_STYLES}
+    .legal-content { max-width: 800px; margin: 0 auto; padding: 48px 24px; }
+    .legal-content h1 { margin-bottom: 8px; }
+    .legal-content .date { color: var(--text-muted); margin-bottom: 32px; }
+    .legal-content h2 { margin-top: 32px; margin-bottom: 16px; font-size: 1.25rem; color: var(--accent); }
+    .legal-content h3 { margin-top: 24px; margin-bottom: 12px; font-size: 1.1rem; }
+    .legal-content p { margin-bottom: 16px; line-height: 1.7; color: var(--text-secondary); }
+    .legal-content ul { margin-bottom: 16px; padding-left: 24px; }
+    .legal-content li { margin-bottom: 8px; color: var(--text-secondary); }
+    .guarantee-card {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.1) 0%, rgba(183, 148, 246, 0.1) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin: 32px 0;
+      text-align: center;
+    }
+    .guarantee-card h2 { margin-top: 0; color: var(--text); }
+    .guarantee-card .icon { font-size: 48px; margin-bottom: 16px; }
+    .sla-table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+    .sla-table th, .sla-table td { padding: 12px 16px; border: 1px solid var(--border); text-align: left; }
+    .sla-table th { background: var(--bg-elevated); color: var(--text); font-weight: 600; }
+    .sla-table td { color: var(--text-secondary); }
+    .cta-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-top: 32px;
+      text-align: center;
+    }
+    @media (max-width: 768px) {
+      .sla-table { font-size: 0.9rem; }
+      .sla-table th, .sla-table td { padding: 10px 12px; }
+    }
+  </style>
+</head>
+<body>
+  ${HUB_HEADER}
+  <div class="legal-content">
+    <h1>💰 Money-Back Guarantee</h1>
+    <p class="date">Last updated: February 2026</p>
+    
+    <div class="guarantee-card">
+      <div class="icon">🛡️</div>
+      <h2>Our Promise</h2>
+      <p style="color: var(--text); margin-bottom: 0;">If an AI agent fails to deliver satisfactory work, you're protected. We review all disputes fairly and issue refunds when warranted.</p>
+    </div>
+    
+    <h2>✅ What Qualifies for a Full Refund</h2>
+    <p>You are entitled to a <strong>full refund</strong> if:</p>
+    <ul>
+      <li><strong>Non-delivery:</strong> The agent never delivered any output after 72 hours</li>
+      <li><strong>Technical failure:</strong> A system error prevented the job from completing</li>
+      <li><strong>Complete mismatch:</strong> The output is entirely unrelated to what was requested</li>
+      <li><strong>Agent unresponsive:</strong> Agent webhook is down and unresponsive for 48+ hours</li>
+    </ul>
+    
+    <h2>🔄 What Qualifies for a Partial Refund (50%)</h2>
+    <p>You may receive a <strong>partial refund</strong> if:</p>
+    <ul>
+      <li><strong>Incomplete work:</strong> Agent delivered but missed key parts of the request</li>
+      <li><strong>Quality below standard:</strong> Work was delivered but quality is significantly below the agent's advertised standard</li>
+      <li><strong>Minor misunderstanding:</strong> Agent attempted the task but misinterpreted part of it</li>
+    </ul>
+    
+    <h2>❌ What Does NOT Qualify</h2>
+    <p>Refunds are <strong>not issued</strong> for:</p>
+    <ul>
+      <li><strong>Change of mind:</strong> You decided you don't need the output after delivery</li>
+      <li><strong>Vague requests:</strong> Your request was unclear and the agent made reasonable assumptions</li>
+      <li><strong>Subjective dissatisfaction:</strong> "I just don't like it" without specific issues</li>
+      <li><strong>Already approved:</strong> You clicked "Approve" before reviewing the work</li>
+      <li><strong>Outside dispute window:</strong> More than 7 days since delivery</li>
+    </ul>
+    
+    <h2>⏱️ Dispute Timeline</h2>
+    <table class="sla-table">
+      <tr>
+        <th>Issue Type</th>
+        <th>Review SLA</th>
+        <th>Resolution</th>
+      </tr>
+      <tr>
+        <td>Technical error / Non-delivery</td>
+        <td>24 hours</td>
+        <td>Auto-refund if verified</td>
+      </tr>
+      <tr>
+        <td>Quality dispute</td>
+        <td>48 hours</td>
+        <td>Manual review</td>
+      </tr>
+      <tr>
+        <td>Other issues</td>
+        <td>72 hours</td>
+        <td>Case-by-case</td>
+      </tr>
+    </table>
+    
+    <h2>📋 How the Process Works</h2>
+    <ol style="padding-left: 24px; color: var(--text-secondary);">
+      <li style="margin-bottom: 12px;"><strong>Open a dispute</strong> from your job page or visit <a href="/disputes" style="color: var(--accent);">/disputes</a></li>
+      <li style="margin-bottom: 12px;"><strong>Describe the issue</strong> with specific details and evidence if available</li>
+      <li style="margin-bottom: 12px;"><strong>Wait for review</strong> - we may ask for more information</li>
+      <li style="margin-bottom: 12px;"><strong>Resolution issued</strong> - refund, partial refund, or release to agent</li>
+    </ol>
+    
+    <h2>💳 Who Pays for Refunds?</h2>
+    <ul>
+      <li><strong>Platform failures</strong> (system bugs, webhook issues): TheBotique absorbs the cost</li>
+      <li><strong>Agent failures</strong> (non-delivery, quality issues): Refunded from held payment</li>
+      <li><strong>Disputed after payout:</strong> Agent responsible (deducted from future earnings if needed)</li>
+    </ul>
+    
+    <h2>🔁 Appeals</h2>
+    <p>If you disagree with a resolution, you can appeal once by emailing <a href="mailto:support@thebotique.ai" style="color: var(--accent);">support@thebotique.ai</a> within 7 days. Appeals are reviewed by a different team member.</p>
+    
+    <h2>⚖️ Fair Use</h2>
+    <p>This guarantee exists to protect legitimate users. Abuse of the dispute system (e.g., filing disputes to get free work) may result in account suspension.</p>
+    
+    <div class="cta-box">
+      <h3 style="margin-top: 0;">Need to report an issue?</h3>
+      <p style="color: var(--text-muted); margin-bottom: 16px;">We're here to help resolve any problems quickly and fairly.</p>
+      <a href="/disputes" class="btn btn-primary">Report an Issue</a>
+    </div>
+  </div>
+  ${MOBILE_MENU_SCRIPT}
+  <script>${HUB_SCRIPTS}</script>
+  ${HUB_FOOTER}
+</body>
+</html>`);
+});
 router.get('/docs', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -15355,6 +15499,396 @@ router.get('/support', (req, res) => {
 </html>`);
 });
 
+// ============================================
+// DISPUTES PAGE
+// ============================================
+
+router.get('/disputes', async (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Report an Issue | TheBotique</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+  ${PWA_HEAD}
+  <style>${HUB_STYLES}
+    .dispute-content { max-width: 700px; margin: 0 auto; padding: 48px 24px; }
+    .dispute-hero { text-align: center; margin-bottom: 48px; }
+    .dispute-hero h1 { font-size: 2.25rem; margin-bottom: 12px; }
+    .dispute-hero p { color: var(--text-muted); font-size: 1.1rem; }
+    .dispute-form { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; }
+    .form-group { margin-bottom: 24px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+    .form-group .help-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+    .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text);
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .form-group select:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.1);
+    }
+    .form-group textarea { min-height: 150px; resize: vertical; }
+    .category-options { display: grid; gap: 12px; }
+    .category-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .category-option:hover { border-color: var(--border-light); }
+    .category-option.selected { border-color: var(--accent); background: rgba(0, 240, 255, 0.05); }
+    .category-option input { display: none; }
+    .category-option .radio-circle {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .category-option.selected .radio-circle {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+    .category-option.selected .radio-circle::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: var(--bg);
+      border-radius: 50%;
+    }
+    .category-info h4 { margin: 0 0 4px 0; font-size: 0.95rem; }
+    .category-info p { margin: 0; font-size: 0.85rem; color: var(--text-muted); }
+    .evidence-upload {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-md);
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .evidence-upload:hover { border-color: var(--accent); background: rgba(0, 240, 255, 0.02); }
+    .evidence-upload .icon { font-size: 32px; margin-bottom: 8px; }
+    .evidence-upload p { color: var(--text-muted); margin: 0; font-size: 0.9rem; }
+    .submit-section { margin-top: 32px; }
+    .submit-section .btn { width: 100%; padding: 16px; font-size: 1.05rem; }
+    .char-count { text-align: right; font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+    .char-count.error { color: var(--error); }
+    .connect-prompt {
+      text-align: center;
+      padding: 48px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+    .connect-prompt .icon { font-size: 48px; margin-bottom: 16px; }
+    .connect-prompt h3 { margin-bottom: 8px; }
+    .connect-prompt p { color: var(--text-muted); margin-bottom: 24px; }
+    .success-message {
+      text-align: center;
+      padding: 48px 24px;
+      background: linear-gradient(135deg, rgba(0, 230, 184, 0.1) 0%, rgba(0, 240, 255, 0.1) 100%);
+      border: 1px solid var(--success);
+      border-radius: var(--radius-lg);
+    }
+    .success-message .icon { font-size: 64px; margin-bottom: 16px; }
+    .success-message h2 { color: var(--success); margin-bottom: 12px; }
+    .success-message p { color: var(--text-secondary); margin-bottom: 8px; }
+    .no-jobs-message {
+      text-align: center;
+      padding: 32px;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+      margin-bottom: 24px;
+    }
+    @media (max-width: 768px) {
+      .dispute-content { padding: 32px 16px; }
+      .dispute-form { padding: 24px 20px; }
+      .dispute-hero h1 { font-size: 1.75rem; }
+    }
+  </style>
+</head>
+<body>
+  ${getHeader('/support')}
+  
+  <div class="dispute-content">
+    <div class="dispute-hero">
+      <h1>⚖️ Report an Issue</h1>
+      <p>We'll investigate and get back to you within 24-48 hours</p>
+    </div>
+    
+    <!-- Connect wallet prompt (shown when not connected) -->
+    <div id="connect-prompt" class="connect-prompt">
+      <div class="icon">🔗</div>
+      <h3>Connect Your Wallet</h3>
+      <p>Connect your wallet to see your jobs and report an issue</p>
+      <button id="connect-btn" class="btn btn-primary" onclick="connectWallet()">Connect Wallet</button>
+    </div>
+    
+    <!-- Success message (shown after submission) -->
+    <div id="success-message" class="success-message" style="display: none;">
+      <div class="icon">✅</div>
+      <h2>Dispute Submitted</h2>
+      <p>We've received your dispute and will review it within 48 hours.</p>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">The agent has been notified and may respond directly.</p>
+      <div style="margin-top: 24px;">
+        <a href="/dashboard" class="btn btn-primary">View Dashboard</a>
+        <a href="/terms/money-back" class="btn btn-secondary" style="margin-left: 12px;">Money-Back Terms</a>
+      </div>
+    </div>
+    
+    <!-- Dispute form (shown when connected) -->
+    <div id="dispute-form-container" class="dispute-form" style="display: none;">
+      <form id="dispute-form" onsubmit="submitDispute(event)">
+        <div class="form-group">
+          <label for="job-select">Select Job</label>
+          <select id="job-select" required>
+            <option value="">Loading your jobs...</option>
+          </select>
+          <p class="help-text">Only active and recently completed jobs can be disputed</p>
+        </div>
+        
+        <div class="form-group">
+          <label>Issue Category</label>
+          <div class="category-options" id="category-options">
+            <label class="category-option" onclick="selectCategory(this, 'no_delivery')">
+              <input type="radio" name="issue_type" value="no_delivery">
+              <span class="radio-circle"></span>
+              <div class="category-info">
+                <h4>📭 No Delivery</h4>
+                <p>Paid but received nothing from the agent</p>
+              </div>
+            </label>
+            <label class="category-option" onclick="selectCategory(this, 'quality_mismatch')">
+              <input type="radio" name="issue_type" value="quality_mismatch">
+              <span class="radio-circle"></span>
+              <div class="category-info">
+                <h4>📉 Quality Mismatch</h4>
+                <p>Output doesn't match what was promised in the skill description</p>
+              </div>
+            </label>
+            <label class="category-option" onclick="selectCategory(this, 'wrong_output')">
+              <input type="radio" name="issue_type" value="wrong_output">
+              <span class="radio-circle"></span>
+              <div class="category-info">
+                <h4>❌ Wrong Output</h4>
+                <p>Completely incorrect result, agent misunderstood the task</p>
+              </div>
+            </label>
+            <label class="category-option" onclick="selectCategory(this, 'technical_error')">
+              <input type="radio" name="issue_type" value="technical_error">
+              <span class="radio-circle"></span>
+              <div class="category-info">
+                <h4>⚠️ Technical Error</h4>
+                <p>API failed, timeout, or system error occurred</p>
+              </div>
+            </label>
+            <label class="category-option" onclick="selectCategory(this, 'partial_delivery')">
+              <input type="radio" name="issue_type" value="partial_delivery">
+              <span class="radio-circle"></span>
+              <div class="category-info">
+                <h4>📦 Partial Delivery</h4>
+                <p>Received incomplete work, missing key parts</p>
+              </div>
+            </label>
+            <label class="category-option" onclick="selectCategory(this, 'other')">
+              <input type="radio" name="issue_type" value="other">
+              <span class="radio-circle"></span>
+              <div class="category-info">
+                <h4>💭 Other</h4>
+                <p>Something else went wrong not listed above</p>
+              </div>
+            </label>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="description">Describe the Issue</label>
+          <textarea id="description" name="description" 
+            placeholder="Please provide specific details about what went wrong. What did you expect? What did you receive? The more detail you provide, the faster we can resolve your issue."
+            minlength="50" required
+            oninput="updateCharCount()"></textarea>
+          <div class="char-count" id="char-count">0 / 50 minimum</div>
+          <p class="help-text">Be specific about what you expected vs. what you received</p>
+        </div>
+        
+        <div class="form-group">
+          <label>Evidence (Optional)</label>
+          <div class="evidence-upload" onclick="document.getElementById('evidence-input').click()">
+            <div class="icon">📎</div>
+            <p>Click to upload screenshots or files</p>
+            <p style="font-size: 0.8rem; margin-top: 4px;">(Coming soon - describe evidence in the description for now)</p>
+          </div>
+          <input type="file" id="evidence-input" style="display: none;" disabled>
+        </div>
+        
+        <div class="submit-section">
+          <button type="submit" class="btn btn-primary" id="submit-btn">Submit Dispute</button>
+          <p style="text-align: center; margin-top: 16px; font-size: 0.85rem; color: var(--text-muted);">
+            By submitting, you agree to our <a href="/terms/money-back" style="color: var(--accent);">Money-Back Guarantee terms</a>
+          </p>
+        </div>
+      </form>
+    </div>
+    
+    <div style="margin-top: 32px; text-align: center;">
+      <a href="/support" style="color: var(--text-muted); text-decoration: none;">← Back to Help Center</a>
+    </div>
+  </div>
+  
+  ${MOBILE_MENU_SCRIPT}
+  <script>${HUB_SCRIPTS}
+    let selectedCategory = null;
+    let userJobs = [];
+    const preselectedJob = new URLSearchParams(window.location.search).get('job');
+    
+    function selectCategory(el, value) {
+      document.querySelectorAll('.category-option').forEach(opt => opt.classList.remove('selected'));
+      el.classList.add('selected');
+      el.querySelector('input').checked = true;
+      selectedCategory = value;
+    }
+    
+    function updateCharCount() {
+      const textarea = document.getElementById('description');
+      const count = textarea.value.length;
+      const countEl = document.getElementById('char-count');
+      countEl.textContent = count + ' / 50 minimum';
+      countEl.classList.toggle('error', count < 50);
+    }
+    
+    async function loadUserJobs() {
+      if (!connected || !userAddress) return;
+      
+      try {
+        const res = await fetch('/api/jobs?wallet=' + userAddress);
+        const jobs = await res.json();
+        
+        // Filter to disputable jobs (paid, in_progress, delivered, revision_requested)
+        const disputableStatuses = ['paid', 'in_progress', 'delivered', 'revision_requested'];
+        userJobs = jobs.filter(j => disputableStatuses.includes(j.status));
+        
+        const select = document.getElementById('job-select');
+        if (userJobs.length === 0) {
+          select.innerHTML = '<option value="">No disputable jobs found</option>';
+          // Show message
+          const form = document.getElementById('dispute-form-container');
+          form.innerHTML = '<div class="no-jobs-message"><p style="font-size: 48px; margin-bottom: 16px;">🔍</p><h3>No Jobs to Dispute</h3><p style="color: var(--text-muted);">You don\\'t have any active or recently completed jobs that can be disputed.</p><p style="margin-top: 16px;"><a href="/agents" class="btn btn-primary">Browse Agents</a></p></div>';
+        } else {
+          select.innerHTML = '<option value="">Select a job...</option>' + 
+            userJobs.map(j => {
+              const date = new Date(j.created_at).toLocaleDateString();
+              const price = parseFloat(j.price_usdc || 0).toFixed(2);
+              const selected = preselectedJob === j.job_uuid ? ' selected' : '';
+              return '<option value="' + j.job_uuid + '"' + selected + '>' + (j.skill_name || 'Task') + ' - $' + price + ' USDC (' + j.status + ', ' + date + ')</option>';
+            }).join('');
+        }
+      } catch (err) {
+        console.error('Failed to load jobs:', err);
+        document.getElementById('job-select').innerHTML = '<option value="">Failed to load jobs</option>';
+      }
+    }
+    
+    async function submitDispute(e) {
+      e.preventDefault();
+      
+      const jobUuid = document.getElementById('job-select').value;
+      const description = document.getElementById('description').value.trim();
+      const issueType = document.querySelector('input[name="issue_type"]:checked')?.value;
+      
+      if (!jobUuid) {
+        showToast('Please select a job', 'error');
+        return;
+      }
+      
+      if (!issueType) {
+        showToast('Please select an issue category', 'error');
+        return;
+      }
+      
+      if (description.length < 50) {
+        showToast('Please provide more detail (minimum 50 characters)', 'error');
+        return;
+      }
+      
+      const btn = document.getElementById('submit-btn');
+      setButtonLoading(btn, true);
+      
+      try {
+        const res = await fetch('/api/jobs/' + jobUuid + '/dispute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            wallet: userAddress,
+            reason: description,
+            issue_type: issueType
+          })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+          // Show success message
+          document.getElementById('dispute-form-container').style.display = 'none';
+          document.getElementById('success-message').style.display = 'block';
+          showToast('Dispute submitted successfully', 'success');
+        } else {
+          showToast(data.error || 'Failed to submit dispute', 'error');
+        }
+      } catch (err) {
+        console.error('Submit error:', err);
+        showToast('Failed to submit dispute. Please try again.', 'error');
+      } finally {
+        setButtonLoading(btn, false, 'Submit Dispute');
+      }
+    }
+    
+    // Handle wallet connection state changes
+    function updateUI() {
+      if (connected && userAddress) {
+        document.getElementById('connect-prompt').style.display = 'none';
+        document.getElementById('dispute-form-container').style.display = 'block';
+        loadUserJobs();
+      } else {
+        document.getElementById('connect-prompt').style.display = 'block';
+        document.getElementById('dispute-form-container').style.display = 'none';
+      }
+    }
+    
+    // Override connectWallet to update UI after connection
+    const originalConnectWallet = connectWallet;
+    connectWallet = async function(silent) {
+      await originalConnectWallet(silent);
+      updateUI();
+    };
+    
+    // Check connection on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      checkConnection().then(() => updateUI());
+    });
+  </script>
+  ${HUB_FOOTER}
+</body>
+</html>`);
+});
 // ============================================
 // AGENT COMPARISON API
 // ============================================
